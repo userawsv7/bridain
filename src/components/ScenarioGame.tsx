@@ -254,7 +254,12 @@ Include CORRECT: [number] for the new scenario.`,
       if (response.ok) {
         const data = await response.json();
 
-        // Create feedback message showing the correct answer
+        // Use the API response as the explanation
+        const explanation = data.response || (isCorrect
+          ? "Great decision! This shows you understand the proper approach."
+          : `Option ${correctAnswerIndex} is the recommended solution.`);
+
+        // Create feedback message showing the correct answer with proper explanation
         const feedbackMsg: Message = {
           id: Date.now() + 1,
           text: isCorrect
@@ -264,22 +269,20 @@ Include CORRECT: [number] for the new scenario.`,
           selectedAnswer: choiceIndex,
           correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0, // Convert to 0-indexed for display
           isCorrect: isCorrect,
-          explanation: isCorrect
-            ? "Great decision! This shows you understand the proper approach."
-            : `Option ${correctAnswerIndex} is the recommended solution.`
+          explanation: explanation
         };
 
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak the feedback
-        speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
+        // Speak the feedback with explanation
+        speak(feedbackMsg.text + ". " + explanation, isCorrect ? 0.9 : 0.85);
 
-        // Generate next scenario after a short delay
+        // Generate next scenario after showing the explanation (longer delay for reading)
         setTimeout(() => {
           if (selectedSkill) {
             generateScenario(selectedSkill);
           }
-        }, 1500);
+        }, 4000);
       }
     } catch (error) {
       const feedbackMsg: Message = {
@@ -298,6 +301,13 @@ Include CORRECT: [number] for the new scenario.`,
 
       setMessages(prev => [...prev, feedbackMsg]);
       speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
+
+      // Generate next scenario after showing the explanation (longer delay for reading)
+      setTimeout(() => {
+        if (selectedSkill) {
+          generateScenario(selectedSkill);
+        }
+      }, 4000);
     }
 
     // Update score
