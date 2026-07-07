@@ -39,9 +39,9 @@ export async function POST(request: Request) {
       emoji = '⚡';
       powered = 'Groq';
     }
-    // Hugging Face (with write token - more powerful access)
+    // Hugging Face only
     else if (hfKey) {
-      response = await callHuggingFace(message, context, hfKey);
+      response = await callHuggingFace(message, context, hfKey, skill, mode);
       emoji = '🤗';
       powered = 'HuggingFace';
     }
@@ -71,11 +71,12 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Chat API error:', error);
-    // Return an intelligent fallback response
+    // Try to provide more helpful error info
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({
-      response: "I'm here to help you learn! What skill would you like to explore?",
-      emoji: '💡',
-      powered: 'Fallback'
+      response: `API Error: ${errorMessage}. Please check your API keys are valid and have sufficient credits.`,
+      emoji: '⚠️',
+      powered: 'Error'
     });
   }
 }
@@ -209,7 +210,7 @@ async function callTogether(message: string, context: string, apiKey: string): P
   return data.choices[0].message.content;
 }
 
-async function callHuggingFace(message: string, context: string, apiKey: string): Promise<string> {
+async function callHuggingFace(message: string, context: string, apiKey: string, skill?: string, mode?: string): Promise<string> {
   // Using Hugging Face with write token - more powerful access to models!
   const models = [
     'microsoft/DialoGPT-large',
