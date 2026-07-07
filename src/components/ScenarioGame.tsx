@@ -94,8 +94,8 @@ export function ScenarioGame() {
       if (altMatch) {
         setCorrectAnswerIndex(parseInt(altMatch[1]));
       } else {
-        // Default to option 2 - user reports this is always correct
-        setCorrectAnswerIndex(2);
+        // Default to option 1 if not specified
+        setCorrectAnswerIndex(1);
       }
     }
 
@@ -141,7 +141,7 @@ export function ScenarioGame() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Generate a REAL ${skill}-specific scenario game question. The scenario MUST involve actual ${skill} concepts, tools, commands, and problems. Format: SCENARIO: [description] CHOICES: 1) [choice] 2) [choice] 3) [choice] 4) [choice]`,
+          message: `Generate a REAL ${skill}-specific scenario game question about ${skill}.`,
           context: `SCENARIO GAME MODE for ${skill}:
 
 ${context}
@@ -269,28 +269,17 @@ Include CORRECT: [number] for the new scenario.`,
             : `Option ${correctAnswerIndex} is the recommended solution.`
         };
 
-        // Parse next scenario
-        const parsed = parseScenario(data.response);
-
-        const scenarioMsg: Message = {
-          id: Date.now() + 2,
-          text: parsed.scenario,
-          isUser: false,
-          type: 'scenario'
-        };
-
-        const choicesMsg: Message = {
-          id: Date.now() + 3,
-          text: 'Choose your response:',
-          isUser: false,
-          type: 'choices',
-          choices: parsed.choices
-        };
-
-        setMessages(prev => [...prev, feedbackMsg, scenarioMsg, choicesMsg]);
+        setMessages(prev => [...prev, feedbackMsg]);
 
         // Speak the feedback
         speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
+
+        // Generate next scenario after a short delay
+        setTimeout(() => {
+          if (selectedSkill) {
+            generateScenario(selectedSkill);
+          }
+        }, 1500);
       }
     } catch (error) {
       const feedbackMsg: Message = {
