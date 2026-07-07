@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Send, Loader2, Target } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Send, Loader2, Target, Volume2, VolumeX, MicOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Message {
@@ -17,6 +17,42 @@ export function CoachChat() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const speak = (text: string, rate: number = 0.9) => {
+    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    utterance.pitch = 1.0;
+    utterance.volume = 0.9;
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    utteranceRef.current = utterance;
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+  };
+
+  const toggleMute = () => {
+    if (!isMuted) {
+      stopSpeaking();
+    }
+    setIsMuted(!isMuted);
+  };
 
   const handleSkillSubmit = () => {
     if (!input.trim()) return;
@@ -73,6 +109,8 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
           isUser: false
         };
         setMessages(prev => [...prev, aiMsg]);
+        // Speak the response
+        speak(data.response, 0.9);
       }
     } catch (error) {
       const aiMsg: Message = {
@@ -81,6 +119,7 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
         isUser: false
       };
       setMessages(prev => [...prev, aiMsg]);
+      speak(`Here's guidance for ${selectedSkill}. Start with the fundamentals and build up.`, 0.9);
     }
 
     setIsLoading(false);
@@ -89,14 +128,35 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="glass rounded-3xl p-8 space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <Target className="w-7 h-7" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <Target className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold">Coach Mode</h3>
+              <p className="text-white/60">Master any skill with expert guidance</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-2xl font-bold">Coach Mode</h3>
-            <p className="text-white/60">Master any skill with expert guidance</p>
-          </div>
+          {selectedSkill && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleMute}
+                className={`p-2 rounded-xl transition-all ${isMuted ? 'bg-red-500/20 border border-red-500/30' : 'bg-white/5 border border-white/10 hover:bg-white/10'}`}
+                title={isMuted ? "Unmute voice" : "Mute voice"}
+              >
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={stopSpeaking}
+                disabled={!isSpeaking}
+                className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50"
+                title="Stop speaking"
+              >
+                <MicOff className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         {!selectedSkill ? (
@@ -152,6 +212,7 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
                 </motion.div>
               ))}
               {isLoading && <div className="flex justify-start"><div className="p-4 rounded-2xl bg-white/10"><Loader2 className="w-5 h-5 animate-spin" /></div></div>}
+              {isSpeaking && <div className="flex justify-start"><div className="p-2 rounded-xl bg-primary/20"><Volume2 className="w-4 h-4 animate-pulse" /></div></div>}
             </div>
 
             <div className="flex gap-3">

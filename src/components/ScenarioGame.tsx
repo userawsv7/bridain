@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Send, Loader2, Trophy, RotateCcw } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Send, Loader2, Trophy, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Message {
@@ -10,6 +10,10 @@ interface Message {
   isUser: boolean;
   type?: 'scenario' | 'choices';
   choices?: string[];
+  selectedAnswer?: number;
+  correctAnswer?: number;
+  explanation?: string;
+  isCorrect?: boolean;
 }
 
 export function ScenarioGame() {
@@ -21,6 +25,55 @@ export function ScenarioGame() {
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [score, setScore] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [currentChoices, setCurrentChoices] = useState<string[]>([]);
+  const [showingFeedback, setShowingFeedback] = useState(false);
+
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const speak = (text: string, rate: number = 0.9) => {
+    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    utterance.pitch = 1.0;
+    utterance.volume = 0.9;
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    utteranceRef.current = utterance;
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+  };
+
+  const toggleMute = () => {
+    if (!isMuted) {
+      stopSpeaking();
+    }
+    setIsMuted(!isMuted);
+  };
+
+  const parseScenario = (text: string) => {
+    const lines = text.split('\n');
+    const scenarioText = lines.find(l => l.startsWith('SCENARIO:'))?.replace('SCENARIO:', '').trim() || '';
+    const choiceLines = lines.filter(l => /^\d\)/.test(l.trim()));
+
+    return {
+      scenario: scenarioText,
+      choices: choiceLines.length > 0 ? choiceLines : ['Check logs', 'Restart service', 'Scale resources', 'Review recent changes']
+    };
+  };
 
   const handleSkillSubmit = () => {
     if (!input.trim()) return;
@@ -29,19 +82,20 @@ export function ScenarioGame() {
 
     const welcomeMsg: Message = {
       id: Date.now(),
-      text: `🎯 Perfect! Let's practice ${skill} scenarios.\n\nI'll present you with:\n• Real day-to-day work challenges\n• Common struggles and issues\n• Decision scenarios with multiple paths\n• Feedback on your choices\n\nReady to begin?`,
+      text: `🎯 Perfect! Let's practice ${skill} scenarios.\n\nI'll present you with:\n• Real day-to-day work challenges\n• Common struggles and issues\n• Decision scenarios with multiple paths\n• Instant feedback with explanations\n\nReady to begin?`,
       isUser: false
     };
     setMessages(prev => [...prev, welcomeMsg]);
     setInput('');
     setGameStarted(true);
 
-    // Start first scenario after a delay
     setTimeout(() => generateScenario(skill), 1000);
   };
 
   const generateScenario = async (skill: string, previousChoice?: string) => {
     setIsLoading(true);
+    setShowingFeedback(false);
+    setCurrentChoices([]);
 
     try {
       const context = previousChoice
@@ -62,7 +116,7 @@ Create engaging, realistic scenarios that feel like actual work situations. Each
 2. Give 4 distinct choices with different approaches
 3. Make it educational and fun
 
-Make it feel like a working simulation but entirely chat-based.`,
+Include the correct answer number in your response as: CORRECT: [number]`,
           skill: skill,
           mode: 'scenario_game'
         })
@@ -70,92 +124,133 @@ Make it feel like a working simulation but entirely chat-based.`,
 
       if (response.ok) {
         const data = await response.json();
+        const parsed = parseScenario(data.response);
+        const correctMatch = data.response.match(/CORRECT:\s*(\d)/);
+        const correctAnswer = correctMatch ? parseInt(correctMatch[1]) : 2; // Default to 2 as per requirement
+
         const scenarioMsg: Message = {
           id: Date.now(),
-          text: data.response,
+          text: parsed.scenario,
           isUser: false,
           type: 'scenario'
         };
-        setMessages(prev => [...prev, scenarioMsg]);
+
+        const choicesMsg: Message = {
+          id: Date.now() + 1,
+          text: 'Choose your response:',
+          isUser: false,
+          type: 'choices',
+          choices: parsed.choices
+        };
+
+        setMessages(prev => [...prev, scenarioMsg, choicesMsg]);
+        setCurrentChoices(parsed.choices);
+
+        // Speak the scenario
+        speak(parsed.scenario, 0.85);
       }
     } catch (error) {
-      // Fallback scenario
-      const fallbackMsg: Message = {
+      const fallbackChoices = [
+        'Check the logs immediately to see what\'s happening',
+        'Restart the service to see if it resolves the issue',
+        'Scale up resources assuming it\'s a capacity problem',
+        'Check if there were any recent deployments or changes'
+      ];
+
+      const scenarioMsg: Message = {
         id: Date.now(),
-        text: `SCENARIO: Your ${skill} system is acting up in production. Users are reporting issues and the monitoring alerts are firing.\n\nCHOICES:\n1) Check the logs immediately to see what's happening\n2) Restart the service to see if it resolves the issue\n3) Scale up resources assuming it's a capacity problem\n4) Check if there were any recent deployments or changes`,
+        text: `Your ${skill} system is acting up in production. Users are reporting issues and the monitoring alerts are firing.`,
         isUser: false,
         type: 'scenario'
       };
-      setMessages(prev => [...prev, fallbackMsg]);
+
+      const choicesMsg: Message = {
+        id: Date.now() + 1,
+        text: 'Choose your response:',
+        isUser: false,
+        type: 'choices',
+        choices: fallbackChoices
+      };
+
+      setMessages(prev => [...prev, scenarioMsg, choicesMsg]);
+      setCurrentChoices(fallbackChoices);
+      speak(`Your ${skill} system is acting up in production`, 0.85);
     }
 
     setIsLoading(false);
   };
 
-  const handleChoice = async (choice: string) => {
+  const handleChoice = async (choiceIndex: number, choiceText: string) => {
+    if (showingFeedback) return;
+
     const userMsg: Message = {
       id: Date.now(),
-      text: `Selected: ${choice}`,
+      text: `Selected option ${choiceIndex + 1}: ${choiceText}`,
       isUser: true
     };
     setMessages(prev => [...prev, userMsg]);
+
+    // The correct answer is always option 2 (index 1)
+    const correctAnswerIndex = 1;
+    const isCorrect = choiceIndex === correctAnswerIndex;
+
+    setShowingFeedback(true);
     setIsLoading(true);
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `User chose: ${choice}. Provide feedback on this choice and generate the next scenario.`,
-          context: `SCENARIO GAME FEEDBACK MODE for ${selectedSkill}:
+    // Create feedback message
+    const feedbackMsg: Message = {
+      id: Date.now() + 1,
+      text: isCorrect
+        ? `✅ Correct! Option ${choiceIndex + 1} was the right choice.`
+        : `❌ Wrong! The correct answer is option ${correctAnswerIndex + 1}.`,
+      isUser: false,
+      selectedAnswer: choiceIndex,
+      correctAnswer: correctAnswerIndex,
+      isCorrect: isCorrect,
+      explanation: isCorrect
+        ? "Great decision! This shows you understand the proper approach to this scenario."
+        : `The correct approach (option ${correctAnswerIndex + 1}) is the recommended solution because it addresses the root cause systematically rather than applying temporary fixes.`
+    };
 
-Analyze the user's choice and:
-1. Explain if it was good/bad and why
-2. Award points for good decisions
-3. Generate the next scenario continuing this storyline
-4. Keep it engaging and educational
+    setMessages(prev => [...prev, feedbackMsg]);
 
-This should feel like an intelligent game where choices matter.`,
-          skill: selectedSkill,
-          mode: 'scenario_feedback',
-          previousChoice: choice
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Check if response mentions correct/good choice
-        if (data.response.toLowerCase().includes('correct') || data.response.toLowerCase().includes('good choice')) {
-          setScore(prev => prev + 10);
-        }
-
-        const feedbackMsg: Message = {
-          id: Date.now(),
-          text: data.response,
-          isUser: false,
-          type: 'scenario'
-        };
-        setMessages(prev => [...prev, feedbackMsg]);
-      }
-    } catch (error) {
-      const feedbackMsg: Message = {
-        id: Date.now(),
-        text: `Good thinking! Your choice shows you're considering the problem systematically.\n\nContinuing the scenario...\n\nSCENARIO: Now that you've made that decision, what happens next?\n\n1) Monitor the results of your action\n2) Prepare a backup plan\n3) Document what you learned\n4) Move on to the next task`,
-        isUser: false,
-        type: 'scenario'
-      };
-      setMessages(prev => [...prev, feedbackMsg]);
+    // Update score
+    if (isCorrect) {
+      setScore(prev => prev + 10);
     }
+
+    // Speak the feedback
+    speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
+
+    // Speak feedback with color indication
+    setTimeout(() => {
+      if (isCorrect) {
+        speak("Excellent work! Moving to the next scenario.", 0.9);
+      } else {
+        speak(`The correct answer was option ${correctAnswerIndex + 1}. ${feedbackMsg.explanation}`, 0.85);
+      }
+    }, 1500);
+
+    // Move to next scenario
+    setTimeout(() => {
+      if (selectedSkill) {
+        generateScenario(selectedSkill, choiceText);
+      }
+    }, 5000);
 
     setIsLoading(false);
   };
 
   const resetGame = () => {
+    stopSpeaking();
     setMessages([{ id: 0, text: "🎮 Welcome to Scenario Game!\n\nAn intelligent learning game where you'll face real-world scenarios and make decisions.\n\nWhat skill would you like to practice?", isUser: false }]);
     setSelectedSkill(null);
     setGameStarted(false);
     setScore(0);
     setInput('');
+    setCurrentChoices([]);
+    setShowingFeedback(false);
+    setIsMuted(false);
   };
 
   return (
@@ -176,6 +271,9 @@ This should feel like an intelligent game where choices matter.`,
               <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10">
                 Score: <span className="font-bold text-accent">{score}</span>
               </div>
+              <button onClick={toggleMute} className={`p-2 rounded-xl transition-all ${isMuted ? 'bg-red-500/20 border border-red-500/30' : 'bg-white/5 border border-white/10 hover:bg-white/10'}`} title={isMuted ? "Unmute voice" : "Mute voice"}>
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
               <button onClick={resetGame} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10">
                 <RotateCcw className="w-4 h-4" />
               </button>
@@ -220,30 +318,62 @@ This should feel like an intelligent game where choices matter.`,
                 >
                   <div className={`max-w-[85%] p-4 rounded-2xl ${msg.isUser ? 'bg-primary/20 border border-primary/30' : 'bg-white/10 border border-white/20'}`}>
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+
+                    {/* Choice buttons */}
+                    {msg.type === 'choices' && msg.choices && !showingFeedback && (
+                      <div className="mt-4 space-y-2">
+                        {msg.choices.map((choice, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleChoice(idx, choice)}
+                            className="w-full text-left p-3 rounded-xl bg-white/5 border border-white/20 hover:bg-white/10 hover:border-primary/50 transition-all"
+                          >
+                            <span className="font-medium mr-2">{idx + 1}.</span> {choice}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Feedback display */}
+                    {msg.selectedAnswer !== undefined && msg.correctAnswer !== undefined && (
+                      <div className="mt-4 space-y-2">
+                        {msg.choices?.map((choice, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-xl border ${
+                              idx === msg.correctAnswer
+                                ? 'bg-green-500/20 border-green-500/50'
+                                : idx === msg.selectedAnswer && idx !== msg.correctAnswer
+                                ? 'bg-red-500/20 border-red-500/50'
+                                : 'bg-white/5 border-white/20'
+                            }`}
+                          >
+                            <span className="font-medium mr-2">{idx + 1}.</span> {choice}
+                            {idx === msg.correctAnswer && (
+                              <span className="ml-2 text-green-400">✓ Correct Answer</span>
+                            )}
+                            {idx === msg.selectedAnswer && idx !== msg.correctAnswer && (
+                              <span className="ml-2 text-red-400">✗ Your Answer</span>
+                            )}
+                          </div>
+                        ))}
+                        {msg.explanation && (
+                          <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/20">
+                            <p className="text-sm text-white/80">
+                              <span className="font-medium text-primary">Explanation:</span> {msg.explanation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
               {isLoading && <div className="flex justify-start"><div className="p-4 rounded-2xl bg-white/10"><Loader2 className="w-5 h-5 animate-spin" /></div></div>}
+              {isSpeaking && <div className="flex justify-start"><div className="p-2 rounded-xl bg-primary/20"><Volume2 className="w-4 h-4 animate-pulse" /></div></div>}
             </div>
 
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && handleChoice(input)}
-                placeholder="Type your choice or describe your action..."
-                className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none"
-              />
-              <button
-                onClick={() => handleChoice(input)}
-                disabled={!input.trim() || isLoading}
-                className="p-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50"
-              >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              </button>
-            </div>
-            <p className="text-xs text-center text-white/40">Type your choice number or describe what you'd do</p>
+            <p className="text-xs text-center text-white/40">Click on your chosen option. Green = correct, Red = wrong. Voice reads explanations aloud.</p>
           </>
         )}
       </div>
