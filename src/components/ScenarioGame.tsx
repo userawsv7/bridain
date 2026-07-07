@@ -94,8 +94,8 @@ export function ScenarioGame() {
       if (altMatch) {
         setCorrectAnswerIndex(parseInt(altMatch[1]));
       } else {
-        // Default to option 1 for fallback scenarios
-        setCorrectAnswerIndex(1);
+        // Default to option 2 - user reports this is always correct
+        setCorrectAnswerIndex(2);
       }
     }
 
@@ -164,7 +164,9 @@ Include the CORRECT answer number as: CORRECT: [number]`,
         console.log('Parsed:', parsed); // Debug log
 
         // Ensure we have content to show
-        const scenarioText = parsed.scenario || data.response || 'A technical scenario for you to solve:';
+        let scenarioText = parsed.scenario || data.response || 'A technical scenario for you to solve:';
+    // Filter out CORRECT markers from displayed text
+    scenarioText = scenarioText.replace(/CORRECT:\s*\d/i, '').trim();
 
         const scenarioMsg: Message = {
           id: Date.now(),
@@ -260,7 +262,7 @@ Include CORRECT: [number] for the new scenario.`,
             : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
           isUser: false,
           selectedAnswer: choiceIndex,
-          correctAnswer: correctAnswerIndex - 1, // Convert to 0-indexed for display
+          correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0, // Convert to 0-indexed for display
           isCorrect: isCorrect,
           explanation: isCorrect
             ? "Great decision! This shows you understand the proper approach."
@@ -298,7 +300,7 @@ Include CORRECT: [number] for the new scenario.`,
           : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
         isUser: false,
         selectedAnswer: choiceIndex,
-        correctAnswer: correctAnswerIndex - 1,
+        correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0,
         isCorrect: isCorrect,
         explanation: isCorrect
           ? "Great decision!"
