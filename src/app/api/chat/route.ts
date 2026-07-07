@@ -140,9 +140,19 @@ Be practical, actionable, and encouraging.`;
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    console.error('Groq API error:', errorData);
-    throw new Error(`Groq API error: ${response.status}`);
+    let errorMessage = `Groq API error: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      console.error('Groq API error:', errorData);
+      if (errorData.error?.message) {
+        errorMessage = `Groq API error: ${errorData.error.message}`;
+      }
+    } catch (e) {
+      // Response might not be JSON
+      const text = await response.text();
+      if (text) errorMessage = `Groq API error: ${text}`;
+    }
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
