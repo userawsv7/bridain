@@ -27,8 +27,7 @@ export function ScenarioGame() {
   const [score, setScore] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [currentChoices, setCurrentChoices] = useState<string[]>([]);
-  const [showingFeedback, setShowingFeedback] = useState(false);
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState(2); // Default to option 2 (1-indexed)
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
@@ -69,6 +68,15 @@ export function ScenarioGame() {
     const scenarioText = lines.find(l => l.startsWith('SCENARIO:'))?.replace('SCENARIO:', '').trim() || '';
     const choiceLines = lines.filter(l => /^\d\)/.test(l.trim()));
 
+    // Extract correct answer if provided
+    const correctMatch = text.match(/CORRECT:\s*(\d)/);
+    if (correctMatch) {
+      setCorrectAnswerIndex(parseInt(correctMatch[1]));
+    } else {
+      // Default to 2 as per requirement
+      setCorrectAnswerIndex(2);
+    }
+
     return {
       scenario: scenarioText,
       choices: choiceLines.length > 0 ? choiceLines : ['Check logs', 'Restart service', 'Scale resources', 'Review recent changes']
@@ -94,8 +102,6 @@ export function ScenarioGame() {
 
   const generateScenario = async (skill: string, previousChoice?: string) => {
     setIsLoading(true);
-    setShowingFeedback(false);
-    setCurrentChoices([]);
 
     try {
       const context = previousChoice
@@ -116,7 +122,7 @@ Create engaging, realistic scenarios that feel like actual work situations. Each
 2. Give 4 distinct choices with different approaches
 3. Make it educational and fun
 
-Include the correct answer number in your response as: CORRECT: [number]`,
+Include the CORRECT answer number as: CORRECT: [number]`,
           skill: skill,
           mode: 'scenario_game'
         })
@@ -125,8 +131,6 @@ Include the correct answer number in your response as: CORRECT: [number]`,
       if (response.ok) {
         const data = await response.json();
         const parsed = parseScenario(data.response);
-        const correctMatch = data.response.match(/CORRECT:\s*(\d)/);
-        const correctAnswer = correctMatch ? parseInt(correctMatch[1]) : 2; // Default to 2 as per requirement
 
         const scenarioMsg: Message = {
           id: Date.now(),
@@ -144,12 +148,13 @@ Include the correct answer number in your response as: CORRECT: [number]`,
         };
 
         setMessages(prev => [...prev, scenarioMsg, choicesMsg]);
-        setCurrentChoices(parsed.choices);
 
         // Speak the scenario
         speak(parsed.scenario, 0.85);
       }
     } catch (error) {
+      // Fallback scenario with correct answer = 2
+      setCorrectAnswerIndex(2);
       const fallbackChoices = [
         'Check the logs immediately to see what\'s happening',
         'Restart the service to see if it resolves the issue',
@@ -173,7 +178,6 @@ Include the correct answer number in your response as: CORRECT: [number]`,
       };
 
       setMessages(prev => [...prev, scenarioMsg, choicesMsg]);
-      setCurrentChoices(fallbackChoices);
       speak(`Your ${skill} system is acting up in production`, 0.85);
     }
 
@@ -181,62 +185,99 @@ Include the correct answer number in your response as: CORRECT: [number]`,
   };
 
   const handleChoice = async (choiceIndex: number, choiceText: string) => {
-    if (showingFeedback) return;
-
     const userMsg: Message = {
       id: Date.now(),
       text: `Selected option ${choiceIndex + 1}: ${choiceText}`,
       isUser: true
     };
     setMessages(prev => [...prev, userMsg]);
-
-    // The correct answer is always option 2 (index 1)
-    const correctAnswerIndex = 1;
-    const isCorrect = choiceIndex === correctAnswerIndex;
-
-    setShowingFeedback(true);
     setIsLoading(true);
 
-    // Create feedback message
-    const feedbackMsg: Message = {
-      id: Date.now() + 1,
-      text: isCorrect
-        ? `✅ Correct! Option ${choiceIndex + 1} was the right choice.`
-        : `❌ Wrong! The correct answer is option ${correctAnswerIndex + 1}.`,
-      isUser: false,
-      selectedAnswer: choiceIndex,
-      correctAnswer: correctAnswerIndex,
-      isCorrect: isCorrect,
-      explanation: isCorrect
-        ? "Great decision! This shows you understand the proper approach to this scenario."
-        : `The correct approach (option ${correctAnswerIndex + 1}) is the recommended solution because it addresses the root cause systematically rather than applying temporary fixes.`
-    };
+    const isCorrect = (choiceIndex + 1) === correctAnswerIndex;
 
-    setMessages(prev => [...prev, feedbackMsg]);
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `User chose option ${choiceIndex + 1}: ${choiceText}. The correct answer is option ${correctAnswerIndex}.`,
+          context: `SCENARIO GAME FEEDBACK MODE for ${selectedSkill}:
+
+User selected option ${choiceIndex + 1}, correct answer was option ${correctAnswerIndex}.
+${isCorrect ? 'User was correct!' : 'User was wrong.'}
+
+Provide brief feedback and generate the next scenario continuing this storyline.
+Include CORRECT: [number] for the new scenario.`,
+          skill: selectedSkill,
+          mode: 'scenario_feedback',
+          previousChoice: choiceText
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Create feedback message showing the correct answer
+        const feedbackMsg: Message = {
+          id: Date.now() + 1,
+          text: isCorrect
+            ? `✅ Correct! Option ${correctAnswerIndex} was the right choice.`
+            : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
+          isUser: false,
+          selectedAnswer: choiceIndex,
+          correctAnswer: correctAnswerIndex - 1, // Convert to 0-indexed for display
+          isCorrect: isCorrect,
+          explanation: isCorrect
+            ? "Great decision! This shows you understand the proper approach."
+            : `Option ${correctAnswerIndex} is the recommended solution.`
+        };
+
+        // Parse next scenario
+        const parsed = parseScenario(data.response);
+
+        const scenarioMsg: Message = {
+          id: Date.now() + 2,
+          text: parsed.scenario,
+          isUser: false,
+          type: 'scenario'
+        };
+
+        const choicesMsg: Message = {
+          id: Date.now() + 3,
+          text: 'Choose your response:',
+          isUser: false,
+          type: 'choices',
+          choices: parsed.choices
+        };
+
+        setMessages(prev => [...prev, feedbackMsg, scenarioMsg, choicesMsg]);
+
+        // Speak the feedback
+        speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
+      }
+    } catch (error) {
+      const feedbackMsg: Message = {
+        id: Date.now() + 1,
+        text: isCorrect
+          ? `✅ Correct! Option ${correctAnswerIndex} was the right choice.`
+          : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
+        isUser: false,
+        selectedAnswer: choiceIndex,
+        correctAnswer: correctAnswerIndex - 1,
+        isCorrect: isCorrect,
+        explanation: isCorrect
+          ? "Great decision!"
+          : `Option ${correctAnswerIndex} addresses the root cause systematically.`
+      };
+
+      setMessages(prev => [...prev, feedbackMsg]);
+      speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
+    }
 
     // Update score
     if (isCorrect) {
       setScore(prev => prev + 10);
     }
-
-    // Speak the feedback
-    speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
-
-    // Speak feedback with color indication
-    setTimeout(() => {
-      if (isCorrect) {
-        speak("Excellent work! Moving to the next scenario.", 0.9);
-      } else {
-        speak(`The correct answer was option ${correctAnswerIndex + 1}. ${feedbackMsg.explanation}`, 0.85);
-      }
-    }, 1500);
-
-    // Move to next scenario
-    setTimeout(() => {
-      if (selectedSkill) {
-        generateScenario(selectedSkill, choiceText);
-      }
-    }, 5000);
 
     setIsLoading(false);
   };
@@ -248,8 +289,7 @@ Include the correct answer number in your response as: CORRECT: [number]`,
     setGameStarted(false);
     setScore(0);
     setInput('');
-    setCurrentChoices([]);
-    setShowingFeedback(false);
+    setCorrectAnswerIndex(2);
     setIsMuted(false);
   };
 
@@ -320,7 +360,7 @@ Include the correct answer number in your response as: CORRECT: [number]`,
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
 
                     {/* Choice buttons */}
-                    {msg.type === 'choices' && msg.choices && !showingFeedback && (
+                    {msg.type === 'choices' && msg.choices && (
                       <div className="mt-4 space-y-2">
                         {msg.choices.map((choice, idx) => (
                           <button
@@ -334,31 +374,24 @@ Include the correct answer number in your response as: CORRECT: [number]`,
                       </div>
                     )}
 
-                    {/* Feedback display */}
+                    {/* Feedback display showing correct answer */}
                     {msg.selectedAnswer !== undefined && msg.correctAnswer !== undefined && (
                       <div className="mt-4 space-y-2">
-                        {msg.choices?.map((choice, idx) => (
-                          <div
-                            key={idx}
-                            className={`p-3 rounded-xl border ${
-                              idx === msg.correctAnswer
-                                ? 'bg-green-500/20 border-green-500/50'
-                                : idx === msg.selectedAnswer && idx !== msg.correctAnswer
-                                ? 'bg-red-500/20 border-red-500/50'
-                                : 'bg-white/5 border-white/20'
-                            }`}
-                          >
-                            <span className="font-medium mr-2">{idx + 1}.</span> {choice}
-                            {idx === msg.correctAnswer && (
-                              <span className="ml-2 text-green-400">✓ Correct Answer</span>
+                        <div className="p-3 rounded-xl bg-white/5 border border-white/20">
+                          <p className="text-sm">
+                            <span className="font-medium">Your answer:</span> Option {msg.selectedAnswer + 1}
+                            {msg.isCorrect ? (
+                              <span className="ml-2 text-green-400">✓ Correct!</span>
+                            ) : (
+                              <span className="ml-2 text-red-400">✗ Wrong</span>
                             )}
-                            {idx === msg.selectedAnswer && idx !== msg.correctAnswer && (
-                              <span className="ml-2 text-red-400">✗ Your Answer</span>
-                            )}
-                          </div>
-                        ))}
+                          </p>
+                          <p className="text-sm mt-1">
+                            <span className="font-medium text-green-400">Correct answer:</span> Option {msg.correctAnswer + 1}
+                          </p>
+                        </div>
                         {msg.explanation && (
-                          <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/20">
+                          <div className="p-3 rounded-xl bg-white/5 border border-white/20">
                             <p className="text-sm text-white/80">
                               <span className="font-medium text-primary">Explanation:</span> {msg.explanation}
                             </p>
@@ -373,7 +406,7 @@ Include the correct answer number in your response as: CORRECT: [number]`,
               {isSpeaking && <div className="flex justify-start"><div className="p-2 rounded-xl bg-primary/20"><Volume2 className="w-4 h-4 animate-pulse" /></div></div>}
             </div>
 
-            <p className="text-xs text-center text-white/40">Click on your chosen option. Green = correct, Red = wrong. Voice reads explanations aloud.</p>
+            <p className="text-xs text-center text-white/40">Choose your option. After selecting, the correct answer will be shown in green. Voice reads explanations aloud.</p>
           </>
         )}
       </div>
