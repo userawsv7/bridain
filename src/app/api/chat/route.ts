@@ -87,6 +87,12 @@ async function callGroq(message: string, context: string, apiKey: string, skill?
   if (mode === 'scenario_game') {
     systemPrompt = `You are creating an interactive scenario-based learning game for ${skill}.
 
+CRITICAL RULES:
+- NEVER use  or  or any  symbols
+- Write everything in plain text with clear formatting
+- Use numbered lists: 1) 2) 3) 4) for choices
+- Use simple line breaks for sections
+
 Generate engaging, realistic work scenarios with clear multiple-choice options.
 Format your response with clear SCENARIO and CHOICES sections.
 Make scenarios feel like real day-to-day work situations - intelligent and educational.
@@ -95,12 +101,17 @@ Keep responses engaging and fun while being educational.`;
   } else if (mode === 'scenario_feedback') {
     systemPrompt = `You are providing feedback in a scenario learning game for ${skill}.
 
-Analyze the user's choice and provide:
-1. Whether this was a good or poor choice and why
-2. Educational explanation of the correct approach
-3. Award points for good decisions
-4. Generate the next scenario continuing from this decision
-5. Keep it engaging like an intelligent game
+CRITICAL RULES:
+- NEVER use  symbols like  or
+- Always say exactly which option number was correct (e.g., "Option 2 is the correct choice")
+- Explain WHY that option is correct using real-world reasoning
+- Use simple analogies to make concepts memorable
+- Structure your response as:
+  1. "You chose: [their choice]"
+  2. "[X] points! Option Y is correct because..."
+  3. "Here's why: [clear explanation with analogy]"
+  4. "What happens next: [next scenario]"
+- Make it educational and memorable like a great teacher
 
 Previous choice context: ${message}`;
   } else {
@@ -308,13 +319,19 @@ function getSmartResponse(message: string): string {
   const lowerMessage = message.toLowerCase();
 
   const responses: { [key: string]: string } = {
-    docker: "Docker packages apps in containers 🐳. Start with: docker run hello-world, then try docker build -t myapp .",
-    kubernetes: "K8s orchestrates containers ☸️. Practice with: kubectl get pods, then explore deployments and services.",
-    ci: "CI/CD automates deployments 🔄. GitHub Actions + Docker = seamless deployments! Start simple.",
-    mlops: "MLOps manages ML lifecycles 🤖. Track with MLflow, deploy with KServe. Start with experiment tracking.",
-    api: "REST APIs communicate via HTTP 🌐. Try Postman, understand status codes, always validate inputs!",
-    test: "Testing catches bugs early 🧪. Start with unit tests, then integration, finally e2e with Cypress.",
-    default: "Great question! 🌟 Break complex topics into small chunks. Practice daily. You're making progress! What specific part interests you?"
+    docker: "🐳 DOCKER: 4-Layer Memory Method - IMAGE(blueprint) → CONTAINER(running instance) → VOLUME(data persistence) → NETWORK(communication)\n\n🎯 LEARN: Run `docker run hello-world` → `docker ps -a` → `docker logs <id>` → `docker inspect <id>` (verify state)\n\n🔧 FIX: Check logs first, verify image exists, inspect container config, restart/recreate if corrupted\n\n💡 MNEMONIC: \"Docker Images Create Very Nice Apps\" (Image→Container→Volume→Network→App)",
+
+    kubernetes: "☸️ K8S: POD→REPLICASET→DEPLOYMENT→SERVICE hierarchy\n\n🎯 LEARN: `kubectl get pods --all-namespaces` → check logs `kubectl logs <pod>` → describe `kubectl describe pod <name>` → check events\n\n🔧 FIX: 3-Step Debug - 1) Check pod status (CrashLoopBackOff=app crash, ImagePullBackOff=wrong image) 2) Verify config `kubectl get deploy,svc` 3) Check logs & events\n\n💡 MNEMONIC: \"Please Read Deployed Services\" (Pod→ReplicaSet→Deployment→Service)",
+
+    ci: "🔄 CI/CD: TRIGGER→BUILD→TEST→DEPLOY→MONITOR pipeline\n\n🎯 LEARN: `.github/workflows/ci.yml` → `runs-on: ubuntu-latest` → `actions/checkout@v4` → cache deps → matrix testing\n\n🔧 FIX: Check workflow logs, verify secrets, validate YAML syntax, ensure build artifacts persist between jobs\n\n💡 MNEMONIC: \"Tigers Bite Tigers Daily, Making Muscles\" (Trigger→Build→Test→Deploy→Monitor→Metrics)",
+
+    mlops: "🤖 MLOPS: DATA→EXPERIMENT→MODEL→DEPLOY→MONITOR lifecycle\n\n🎯 LEARN: MLflow tracking → DVC for data versioning → model registry → KServe/Seldon deployment → drift detection\n\n🔧 FIX: Track experiments first, version data/models, monitor prediction drift, retrain on data drift detection\n\n💡 MNEMONIC: \"Dads Expect Many Dogs\" (Data→Experiment→Model→Deploy→Monitor)",
+
+    api: "🌐 REST: URL+METHOD+HEADERS+BODY+STATUS framework\n\n🎯 LEARN: Postman collection → understand methods (GET=read, POST=create, PUT=update, DELETE=remove) → status codes (2xx=success, 4xx=client error, 5xx=server error)\n\n🔧 FIX: Check request format first, validate auth headers, inspect response status, use proper error handling\n\n💡 MNEMONIC: \"Users Make Happy Beings\" (URL→Method→Headers→Body→Status)",
+
+    test: "🧪 TESTING: UNIT→INTEGRATION→E2E→PERFORMANCE→SECURITY pyramid\n\n🎯 LEARN: Jest (units) → Supertest (API) → Cypress (E2E) → Artillery (load) → OWASP (security)\n\n🔧 FIX: Run tests locally first, check test data setup, verify environment config, isolate flaky tests\n\n💡 MNEMONIC: \"Uncle Iggy Eats Pizza Slowly\" (Unit→Integration→E2E→Performance→Security)",
+
+    default: "🎯 TECH MASTERY METHOD: CONCEPT→ANALOGY→PRACTICE→TROUBLESHOOT→TEACH\n\n1. **Learn Concept** - Understand the 'why' before 'how'\n2. **Use Analogy** - Connect to familiar patterns (e.g., Git branches = time machine saves)\n3. **Hands-on Practice** - Run commands, break things intentionally\n4. **Systematic Debug** - LOGS→CONFIG→STATE→DEPENDENCIES flow\n5. **Teach Others** - Explain to reinforce understanding\n\n💡 Remember: Every expert was once a beginner who practiced deliberately!"
   };
 
   for (const [key, response] of Object.entries(responses)) {
