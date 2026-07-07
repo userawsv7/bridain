@@ -85,21 +85,22 @@ async function callGroq(message: string, context: string, apiKey: string, skill?
   let systemPrompt = context;
 
   if (mode === 'scenario_game') {
-    systemPrompt = `You are creating an interactive scenario-based learning game SPECIFICALLY about ${skill}.
+    const skillName = skill || 'technology';
+    systemPrompt = `You are creating an interactive scenario-based learning game SPECIFICALLY about ${skillName}.
 
-CRITICAL REQUIREMENTS - MUST USE REAL ${skill.toUpperCase()} CONCEPTS:
-- The scenario MUST involve actual ${skill} tools, commands, configurations, errors, or workflows
-- Use real ${skill} terminology, error messages, and technical concepts
-- Make choices feature actual ${skill} solutions and approaches
-- NEVER use generic examples - always use ${skill}-specific problems
+CRITICAL REQUIREMENTS - MUST USE REAL ${skillName.toUpperCase()} CONCEPTS:
+- The scenario MUST involve actual ${skillName} tools, commands, configurations, errors, or workflows
+- Use real ${skillName} terminology, error messages, and technical concepts
+- Make choices feature actual ${skillName} solutions and approaches
+- NEVER use generic examples - always use ${skillName}-specific problems`;
 
 MANDATORY FORMAT - YOU MUST FOLLOW EXACTLY:
-1. Start with: SCENARIO: [describe a REAL ${skill} problem in 1-2 sentences using real terminology]
+1. Start with: SCENARIO: [describe a REAL ${skillName} problem in 1-2 sentences using real terminology]
 2. List exactly 4 choices with this EXACT format:
-   1) [${skill}-specific choice]
-   2) [${skill}-specific choice]
-   3) [${skill}-specific choice]
-   4) [${skill}-specific choice]
+   1) [${skillName}-specific choice]
+   2) [${skillName}-specific choice]
+   3) [${skillName}-specific choice]
+   4) [${skillName}-specific choice]
 3. End with: CORRECT: [number 1-4]
 
 EXAMPLE for Docker:
@@ -110,7 +111,7 @@ SCENARIO: Your Docker container keeps restarting due to health check failures
 4) Pull a newer base image from Docker Hub
 CORRECT: 1
 
-CRITICAL: Must be about ${skill}. Always use this format. Never deviate.`;
+CRITICAL: Must be about ${skillName}. Always use this format. Never deviate.`;
   } else if (mode === 'scenario_feedback') {
     systemPrompt = `You are providing feedback in a scenario learning game for ${skill}.
 
