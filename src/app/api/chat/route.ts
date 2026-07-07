@@ -85,26 +85,32 @@ async function callGroq(message: string, context: string, apiKey: string, skill?
   let systemPrompt = context;
 
   if (mode === 'scenario_game') {
-    systemPrompt = `You are creating an interactive scenario-based learning game for ${skill}.
+    systemPrompt = `You are creating an interactive scenario-based learning game SPECIFICALLY about ${skill}.
+
+CRITICAL REQUIREMENTS - MUST USE REAL ${skill.toUpperCase()} CONCEPTS:
+- The scenario MUST involve actual ${skill} tools, commands, configurations, errors, or workflows
+- Use real ${skill} terminology, error messages, and technical concepts
+- Make choices feature actual ${skill} solutions and approaches
+- NEVER use generic examples - always use ${skill}-specific problems
 
 MANDATORY FORMAT - YOU MUST FOLLOW EXACTLY:
-1. Start with: SCENARIO: [describe a realistic work problem in 1-2 sentences]
+1. Start with: SCENARIO: [describe a REAL ${skill} problem in 1-2 sentences using real terminology]
 2. List exactly 4 choices with this EXACT format:
-   1) [choice text here]
-   2) [choice text here]
-   3) [choice text here]
-   4) [choice text here]
+   1) [${skill}-specific choice]
+   2) [${skill}-specific choice]
+   3) [${skill}-specific choice]
+   4) [${skill}-specific choice]
 3. End with: CORRECT: [number 1-4]
 
-EXAMPLE:
-SCENARIO: Your web server is returning 500 errors
-1) Check the application logs
-2) Restart the web server
-3) Clear the browser cache
-4) Update the database schema
+EXAMPLE for Docker:
+SCENARIO: Your Docker container keeps restarting due to health check failures
+1) Check docker logs CONTAINER_ID to diagnose the issue
+2) Increase container memory limits in docker-compose.yml
+3) Restart the Docker daemon service
+4) Pull a newer base image from Docker Hub
 CORRECT: 1
 
-CRITICAL: Always use this format. Never deviate. Always include all three parts.`;
+CRITICAL: Must be about ${skill}. Always use this format. Never deviate.`;
   } else if (mode === 'scenario_feedback') {
     systemPrompt = `You are providing feedback in a scenario learning game for ${skill}.
 
