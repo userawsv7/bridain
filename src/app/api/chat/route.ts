@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { message, context } = await request.json();
+    const { message, context, skill, mode } = await request.json();
 
     // Check for available API keys - Using BOTH Groq + Hugging Face for MAX POWER! ⚡🤗
     const groqKey = process.env.GROQ_API_KEY;
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     // MAX POWER MODE: Use Groq + Hugging Face together! 🚀
     if (groqKey && hfKey) {
       // Primary: Fast intelligent response from Groq
-      const groqResponse = await callGroq(message, context, groqKey);
+      const groqResponse = await callGroq(message, context, groqKey, skill, mode);
       response = groqResponse;
       emoji = '⚡';
       powered = 'Groq+HF';
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
     // Groq only (super fast responses)
     else if (groqKey) {
-      response = await callGroq(message, context, groqKey);
+      response = await callGroq(message, context, groqKey, skill, mode);
       emoji = '⚡';
       powered = 'Groq';
     }
@@ -79,20 +79,40 @@ export async function POST(request: Request) {
   }
 }
 
-async function callGroq(message: string, context: string, apiKey: string): Promise<string> {
-  const systemPrompt = `You are Bridain, an EXPERT-LEVEL technical mentor and troubleshooter (not senior level - INVENTOR/EXPERT level).
+async function callGroq(message: string, context: string, apiKey: string, skill?: string, mode?: string): Promise<string> {
+  let systemPrompt = context;
 
-For ANY skill mentioned (Docker, Kubernetes, ArgoCD, CI/CD, Python, React, AWS, Terraform, ML, etc.):
+  if (mode === 'scenario_game') {
+    systemPrompt = `You are creating an interactive scenario-based learning game for ${skill}.
 
-1. Provide DETAILED troubleshooting steps with exact commands
-2. Explain concepts at EXPERT depth with real-world scenarios
-3. Give production-grade best practices and gotchas
-4. Structure responses as: Problem → Root Cause → Solution → Prevention
-5. Include specific error codes, logs to check, and diagnostic commands
-6. Always be thorough but concise - use bullet points and code blocks
-7. Cover edge cases and advanced scenarios
+Generate engaging, realistic work scenarios with clear multiple-choice options.
+Format your response with clear SCENARIO and CHOICES sections.
+Make scenarios feel like real day-to-day work situations - intelligent and educational.
+Create 4 distinct choices that represent different approaches to the problem.
+Keep responses engaging and fun while being educational.`;
+  } else if (mode === 'scenario_feedback') {
+    systemPrompt = `You are providing feedback in a scenario learning game for ${skill}.
 
-You are training the next generation of expert engineers. Be authoritative, precise, and extremely helpful.`;
+Analyze the user's choice and provide:
+1. Whether this was a good or poor choice and why
+2. Educational explanation of the correct approach
+3. Award points for good decisions
+4. Generate the next scenario continuing from this decision
+5. Keep it engaging like an intelligent game
+
+Previous choice context: ${message}`;
+  } else {
+    systemPrompt = context || `You are an expert technical coach teaching ${skill || 'technology'}.
+
+Your role:
+1. Explain concepts deeply but accessibly with analogies and real examples
+2. Provide practical day-to-day work fixes and solutions
+3. Share industry best practices and standards
+4. Highlight common pitfalls and how to avoid them
+5. Give step-by-step troubleshooting guidance
+
+Be practical, actionable, and encouraging.`;
+  }
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -113,7 +133,7 @@ You are training the next generation of expert engineers. Be authoritative, prec
         },
       ],
       max_tokens: 1000,
-      temperature: 0.3,
+      temperature: mode === 'scenario_game' ? 0.7 : 0.3,
     }),
   });
 

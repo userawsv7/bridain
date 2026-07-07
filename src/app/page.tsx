@@ -1,19 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Brain, MessageCircle, Mic, FileText, Trophy, Target } from 'lucide-react';
+import { Brain, Target, Trophy, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { ScenarioSimulator } from '../components/ScenarioSimulator';
-import { BridainChat } from '../components/BridainChat';
+import { CoachChat } from '../components/CoachChat';
+import { ScenarioGame } from '../components/ScenarioGame';
 import { ResumeBuilder } from '../components/ResumeBuilder';
 import { Resources } from '../components/Resources';
 
 export default function Bridain() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'simulator' | 'resume' | 'resources'>('chat');
+  const [activeTab, setActiveTab] = useState<'coach' | 'game' | 'resume' | 'resources'>('coach');
 
   const tabs = [
-    { id: 'chat', label: 'Bridain Chat', icon: MessageCircle, emoji: '💬' },
-    { id: 'simulator', label: 'Legacy Simulator', icon: Target, emoji: '🎮' },
+    { id: 'coach', label: 'Coach', icon: Target, emoji: '🎯' },
+    { id: 'game', label: 'Scenario Game', icon: Trophy, emoji: '🎮' },
     { id: 'resume', label: 'Resume Builder', icon: FileText, emoji: '📄' },
     { id: 'resources', label: 'Resources', icon: Trophy, emoji: '🎁' },
   ];
@@ -92,8 +92,8 @@ export default function Bridain() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 pb-16">
-        {activeTab === 'chat' && <BridainChat />}
-        {activeTab === 'simulator' && <ScenarioSimulator />}
+        {activeTab === 'coach' && <CoachChat />}
+        {activeTab === 'game' && <ScenarioGame />}
         {activeTab === 'resume' && <ResumeBuilder />}
         {activeTab === 'resources' && <Resources />}
       </div>
