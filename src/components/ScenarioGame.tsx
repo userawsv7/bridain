@@ -141,7 +141,7 @@ export function ScenarioGame() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: "Generate a scenario game question with 4 realistic choices. Format: SCENARIO: [description] CHOICES: 1) [choice] 2) [choice] 3) [choice] 4) [choice]",
+          message: `Generate a REAL ${skill}-specific scenario game question. The scenario MUST involve actual ${skill} concepts, tools, commands, and problems. Format: SCENARIO: [description] CHOICES: 1) [choice] 2) [choice] 3) [choice] 4) [choice]`,
           context: `SCENARIO GAME MODE for ${skill}:
 
 ${context}
