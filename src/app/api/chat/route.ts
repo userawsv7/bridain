@@ -71,9 +71,13 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Chat API error:', error);
+    // Return an intelligent fallback response based on the skill context
+    const fallbackResponse = skill
+      ? `Let's talk about ${skill}! Here's a practical tip:\n\n• Start with the fundamentals and build understanding\n• Practice with real examples daily\n• Use logs and debugging tools effectively\n• Follow established best practices\n\nWhat specific aspect of ${skill} would you like to explore?`
+      : "I'm here to help! What would you like to explore?";
     return NextResponse.json({
-      response: "I'm having trouble connecting right now. Here's a tip: Practice makes perfect! What would you like to explore? 🌟",
-      emoji: '💭',
+      response: fallbackResponse,
+      emoji: '💡',
       powered: 'Fallback'
     });
   }
@@ -137,7 +141,19 @@ Be practical, actionable, and encouraging.`;
     }),
   });
 
+  if (!response.ok) {
+    const errorData = await response.json();
+    console.error('Groq API error:', errorData);
+    throw new Error(`Groq API error: ${response.status}`);
+  }
+
   const data = await response.json();
+
+  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    console.error('Unexpected Groq response structure:', data);
+    throw new Error('Invalid response from Groq API');
+  }
+
   return data.choices[0].message.content;
 }
 
