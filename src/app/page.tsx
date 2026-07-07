@@ -4,16 +4,16 @@ import React, { useState } from 'react';
 import { Brain, MessageCircle, Mic, FileText, Trophy, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ScenarioSimulator } from '../components/ScenarioSimulator';
-import { VoiceAssistant } from '../components/VoiceAssistant';
+import { ChatCoach } from '../components/ChatCoach';
 import { ResumeBuilder } from '../components/ResumeBuilder';
 import { Resources } from '../components/Resources';
 
 export default function Bridain() {
-  const [activeTab, setActiveTab] = useState<'simulator' | 'voice' | 'resume' | 'resources'>('simulator');
+  const [activeTab, setActiveTab] = useState<'simulator' | 'coach' | 'resume' | 'resources'>('coach');
 
   const tabs = [
-    { id: 'simulator', label: 'Simulations', icon: Target, emoji: '🎮' },
-    { id: 'voice', label: 'Voice Coach', icon: Mic, emoji: '🎙️' },
+    { id: 'coach', label: 'AI Coach', icon: MessageCircle, emoji: '🤖' },
+    { id: 'simulator', label: 'Legacy Simulator', icon: Target, emoji: '🎮' },
     { id: 'resume', label: 'Resume Builder', icon: FileText, emoji: '📄' },
     { id: 'resources', label: 'Resources', icon: Trophy, emoji: '🎁' },
   ];
@@ -92,8 +92,8 @@ export default function Bridain() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 pb-16">
+        {activeTab === 'coach' && <ChatCoach />}
         {activeTab === 'simulator' && <ScenarioSimulator />}
-        {activeTab === 'voice' && <VoiceAssistant />}
         {activeTab === 'resume' && <ResumeBuilder />}
         {activeTab === 'resources' && <Resources />}
       </div>
