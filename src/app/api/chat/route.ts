@@ -87,17 +87,24 @@ async function callGroq(message: string, context: string, apiKey: string, skill?
   if (mode === 'scenario_game') {
     systemPrompt = `You are creating an interactive scenario-based learning game for ${skill}.
 
-CRITICAL RULES:
-- NEVER use  or  or any  symbols
-- Write everything in plain text with clear formatting
-- Use numbered lists: 1) 2) 3) 4) for choices
-- Use simple line breaks for sections
+MANDATORY FORMAT - YOU MUST FOLLOW EXACTLY:
+1. Start with: SCENARIO: [describe a realistic work problem in 1-2 sentences]
+2. List exactly 4 choices with this EXACT format:
+   1) [choice text here]
+   2) [choice text here]
+   3) [choice text here]
+   4) [choice text here]
+3. End with: CORRECT: [number 1-4]
 
-Generate engaging, realistic work scenarios with clear multiple-choice options.
-Format your response with clear SCENARIO and CHOICES sections.
-Make scenarios feel like real day-to-day work situations - intelligent and educational.
-Create 4 distinct choices that represent different approaches to the problem.
-Keep responses engaging and fun while being educational.`;
+EXAMPLE:
+SCENARIO: Your web server is returning 500 errors
+1) Check the application logs
+2) Restart the web server
+3) Clear the browser cache
+4) Update the database schema
+CORRECT: 1
+
+CRITICAL: Always use this format. Never deviate. Always include all three parts.`;
   } else if (mode === 'scenario_feedback') {
     systemPrompt = `You are providing feedback in a scenario learning game for ${skill}.
 

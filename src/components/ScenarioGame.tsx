@@ -27,7 +27,7 @@ export function ScenarioGame() {
   const [score, setScore] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [correctAnswerIndex, setCorrectAnswerIndex] = useState(2); // Default to option 2 (1-indexed)
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(null);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
@@ -64,22 +64,51 @@ export function ScenarioGame() {
   };
 
   const parseScenario = (text: string) => {
-    const lines = text.split('\n');
-    const scenarioText = lines.find(l => l.startsWith('SCENARIO:'))?.replace('SCENARIO:', '').trim() || '';
-    const choiceLines = lines.filter(l => /^\d\)/.test(l.trim()));
+    const lines = text.split('\n').filter(l => l.trim());
+
+    // Get the full scenario text - everything before the choices
+    let scenarioText = text;
+    const choiceStartIndex = lines.findIndex(l => /^\d[\)\.\-]/.test(l.trim()));
+    if (choiceStartIndex > 0) {
+      scenarioText = lines.slice(0, choiceStartIndex).join(' ').replace(/SCENARIO:?/i, '').trim();
+    } else {
+      scenarioText = lines[0] || text;
+    }
+
+    // Try different formats for choices: "1)" or "1." or "1 -"
+    let choiceLines = lines.filter(l => /^\d[\)\.\-]/.test(l.trim()));
+
+    // If no choices found with prefix, look for numbered items differently
+    if (choiceLines.length === 0) {
+      // Look for lines that start with a number
+      choiceLines = lines.filter(l => /^\d+\s/.test(l.trim()) && l.length > 5);
+    }
 
     // Extract correct answer if provided
-    const correctMatch = text.match(/CORRECT:\s*(\d)/);
+    const correctMatch = text.match(/CORRECT:\s*(\d)/i);
     if (correctMatch) {
       setCorrectAnswerIndex(parseInt(correctMatch[1]));
     } else {
-      // Default to 2 as per requirement
-      setCorrectAnswerIndex(2);
+      // Try to find "option X is correct" type patterns
+      const altMatch = text.match(/option\s*(\d)\s*(is\s*)?correct/i);
+      if (altMatch) {
+        setCorrectAnswerIndex(parseInt(altMatch[1]));
+      } else {
+        // Default to option 1 for fallback scenarios
+        setCorrectAnswerIndex(1);
+      }
     }
 
+    // Ensure we have 4 choices
+    const finalChoices = choiceLines.length >= 4
+      ? choiceLines.slice(0, 4).map(c => c.replace(/^\d[\)\.\-]\s*/, '')) // Remove the number prefix
+      : choiceLines.length > 0
+        ? choiceLines.map(c => c.replace(/^\d[\)\.\-]\s*/, ''))
+        : ['Check logs immediately', 'Restart the service', 'Scale up resources', 'Review recent changes'];
+
     return {
-      scenario: scenarioText,
-      choices: choiceLines.length > 0 ? choiceLines : ['Check logs', 'Restart service', 'Scale resources', 'Review recent changes']
+      scenario: scenarioText || 'A technical issue has occurred in your system.',
+      choices: finalChoices.length > 0 ? finalChoices : ['Check logs immediately', 'Restart the service', 'Scale up resources', 'Review recent changes']
     };
   };
 
@@ -130,11 +159,16 @@ Include the CORRECT answer number as: CORRECT: [number]`,
 
       if (response.ok) {
         const data = await response.json();
+        console.log('API Response:', data.response); // Debug log
         const parsed = parseScenario(data.response);
+        console.log('Parsed:', parsed); // Debug log
+
+        // Ensure we have content to show
+        const scenarioText = parsed.scenario || data.response || 'A technical scenario for you to solve:';
 
         const scenarioMsg: Message = {
           id: Date.now(),
-          text: parsed.scenario,
+          text: scenarioText,
           isUser: false,
           type: 'scenario'
         };
@@ -150,11 +184,12 @@ Include the CORRECT answer number as: CORRECT: [number]`,
         setMessages(prev => [...prev, scenarioMsg, choicesMsg]);
 
         // Speak the scenario
-        speak(parsed.scenario, 0.85);
+        speak(scenarioText, 0.85);
       }
     } catch (error) {
-      // Fallback scenario with correct answer = 2
-      setCorrectAnswerIndex(2);
+      console.log('Error in scenario generation:', error);
+      // Fallback scenario with correct answer = 1 (first option is typically best)
+      setCorrectAnswerIndex(1);
       const fallbackChoices = [
         'Check the logs immediately to see what\'s happening',
         'Restart the service to see if it resolves the issue',
