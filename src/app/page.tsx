@@ -13,7 +13,7 @@ export default function Bridain() {
 
   const tabs = [
     { id: 'coach', label: 'AI Coach', icon: MessageCircle, emoji: '🤖' },
-    { id: 'simulator', label: 'Legacy Simulator', icon: Target, emoji: '🎮' },
+    { id: 'simulator', label: 'Fun Puzzles', icon: Target, emoji: '🧩' },
     { id: 'resume', label: 'Resume Builder', icon: FileText, emoji: '📄' },
     { id: 'resources', label: 'Resources', icon: Trophy, emoji: '🎁' },
   ];

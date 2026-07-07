@@ -66,22 +66,44 @@ export function ChatCoach() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Generate a multiple choice question about ${skill}. Format: Question on line 1, then 4 options numbered 1-4, then which is correct (1-4), then brief explanation. Make it relevant to real interview questions, certifications (CKA, AWS, Docker), or common production issues faced by engineers.`,
-          context: `Generate MCQ for ${skill} skill level. Focus on: interview questions, certification topics, real production issues, best practices, troubleshooting scenarios, safety considerations.`
+          message: `Generate a PRACTICAL multiple choice question for ${skill} that tests real-world engineering scenarios. Focus on: 1) Common day-to-day struggles engineers face, 2) Production incidents and firefighting, 3) Certification exam patterns (CKA, AWS, Docker, etc.), 4) Troubleshooting commands and debugging workflows, 5) Best practices that prevent disasters. Format exactly: Q: [question], A) [option1], B) [option2], C) [option3], D) [option4], ANSWER: [letter], EXPLANATION: [why this is correct and what happens in production]`,
+          context: `Real production scenarios for ${skill}. Include actual error messages, log outputs, kubectl/docker commands, deployment issues, scaling problems, and the exact commands needed to diagnose and fix. Make it feel like helping an engineer at 3 AM with a production incident.`
         })
       });
 
       const data = await response.json();
+
+      // Parse the LLM response into structured MCQ
+      const parsedResponse = data.response;
+      const lines = parsedResponse.split('\n').filter((l: string) => l.trim());
+
+      let question = '';
+      const options: string[] = [];
+      let correctAnswer = 0;
+      let explanation = '';
+
+      lines.forEach((line: string, index: number) => {
+        if (line.startsWith('Q:')) question = line.replace('Q:', '').trim();
+        if (line.match(/^[A-D]\)/)) options.push(line);
+        if (line.startsWith('ANSWER:')) {
+          const ans = line.replace('ANSWER:', '').trim().toUpperCase();
+          correctAnswer = ans.charCodeAt(0) - 65; // Convert A->0, B->1, etc
+        }
+        if (line.startsWith('EXPLANATION:')) explanation = line.replace('EXPLANATION:', '').trim();
+      });
+
       const mcqMessage: Message = {
         id: Date.now(),
-        text: data.response,
+        text: question || parsedResponse,
         isUser: false,
         type: 'mcq',
-        options: ['Option 1', 'Option 2', 'Option 3', 'Option 4'] // Parse from response
+        options: options.length === 4 ? options : ['A) Option 1', 'B) Option 2', 'C) Option 3', 'D) Option 4'],
+        correctAnswer: correctAnswer + 1,
+        explanation: explanation || 'Review the production implications carefully.'
       };
       setMessages(prev => [...prev, mcqMessage]);
     } catch (error) {
-      toast.error('Failed to generate question');
+      toast.error('Failed to generate practical scenario');
     }
 
     setIsLoading(false);
@@ -105,16 +127,25 @@ export function ChatCoach() {
     const isCorrect = optionIndex === message.correctAnswer - 1;
     setAnswered(prev => prev + 1);
 
+    // Show answer with explanation in chat
+    const resultMessage: Message = {
+      id: Date.now(),
+      text: `${isCorrect ? '✅ CORRECT!' : '❌ INCORRECT'} The answer is ${String.fromCharCode(64 + message.correctAnswer)}.\n\n${message.explanation}\n\n💡 Real-world impact: ${isCorrect ? 'You prevented a 3 AM incident!' : 'This mistake causes production outages - learn from it!'}`,
+      isUser: false,
+      type: 'chat'
+    };
+    setMessages(prev => [...prev, resultMessage]);
+
     if (isCorrect) {
       setScore(prev => prev + 10);
-      toast.success('+10 XP! Correct! 🎉');
+      toast.success('+10 XP! Production-ready! 🎉');
     } else {
-      toast.error(`Incorrect. ${message.explanation}`);
+      toast.error('Study this scenario - it\'s a common production issue');
     }
 
-    // Generate next question
+    // Generate next practical question
     if (selectedSkill) {
-      setTimeout(() => generateMCQ(selectedSkill.name), 1000);
+      setTimeout(() => generateMCQ(selectedSkill.name), 1500);
     }
   };
 
@@ -138,7 +169,7 @@ export function ChatCoach() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: `User is learning ${selectedSkill?.name || 'technical skills'}. Mode: ${mode}. Provide detailed expert-level guidance on concepts, troubleshooting, monitoring, logging, observability, safety, best practices, prevention, automation, scripting, and planning.`
+          context: `PRACTICAL ${selectedSkill?.name || 'technical'} EXPERT MODE: User needs real production help. Provide: 1) Exact commands to diagnose issues, 2) Step-by-step troubleshooting workflows, 3) Common day-to-day struggles and firefighting scenarios, 4) Production monitoring/logging/observability commands, 5) Safety checks and prevention strategies, 6) Automation/scripts to prevent recurrence, 7) Real incident examples from experienced engineers. Be specific with kubectl, docker, aws cli, terraform, python, etc. commands. Structure as: DIAGNOSIS → COMMANDS → ROOT CAUSE → FIX → PREVENTION. Make every response feel like on-call help at 3 AM.`
         })
       });
 
