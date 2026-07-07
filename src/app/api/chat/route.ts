@@ -92,7 +92,7 @@ CRITICAL REQUIREMENTS - MUST USE REAL ${skillName.toUpperCase()} CONCEPTS:
 - The scenario MUST involve actual ${skillName} tools, commands, configurations, errors, or workflows
 - Use real ${skillName} terminology, error messages, and technical concepts
 - Make choices feature actual ${skillName} solutions and approaches
-- NEVER use generic examples - always use ${skillName}-specific problems`;
+- NEVER use generic examples - always use ${skillName}-specific problems
 
 MANDATORY FORMAT - YOU MUST FOLLOW EXACTLY:
 1. Start with: SCENARIO: [describe a REAL ${skillName} problem in 1-2 sentences using real terminology]
