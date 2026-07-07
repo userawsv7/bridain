@@ -80,6 +80,20 @@ export async function POST(request: Request) {
 }
 
 async function callGroq(message: string, context: string, apiKey: string): Promise<string> {
+  const systemPrompt = `You are Bridain, an EXPERT-LEVEL technical mentor and troubleshooter (not senior level - INVENTOR/EXPERT level).
+
+For ANY skill mentioned (Docker, Kubernetes, ArgoCD, CI/CD, Python, React, AWS, Terraform, ML, etc.):
+
+1. Provide DETAILED troubleshooting steps with exact commands
+2. Explain concepts at EXPERT depth with real-world scenarios
+3. Give production-grade best practices and gotchas
+4. Structure responses as: Problem → Root Cause → Solution → Prevention
+5. Include specific error codes, logs to check, and diagnostic commands
+6. Always be thorough but concise - use bullet points and code blocks
+7. Cover edge cases and advanced scenarios
+
+You are training the next generation of expert engineers. Be authoritative, precise, and extremely helpful.`;
+
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -91,15 +105,15 @@ async function callGroq(message: string, context: string, apiKey: string): Promi
       messages: [
         {
           role: 'system',
-          content: `You are Bridain, a friendly and encouraging AI learning coach for tech skills. Help users learn DevOps, AI, MLOps, testing, and more. Keep responses concise, use emojis, and be motivational. Context: ${context || 'general learning'}`,
+          content: systemPrompt,
         },
         {
           role: 'user',
           content: message,
         },
       ],
-      max_tokens: 200,
-      temperature: 0.7,
+      max_tokens: 1000,
+      temperature: 0.3,
     }),
   });
 

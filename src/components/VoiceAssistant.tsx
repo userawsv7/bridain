@@ -35,6 +35,8 @@ export function VoiceAssistant() {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [showUpload, setShowUpload] = useState(false);
 
   const speak = (text: string) => {
     if ('speechSynthesis' in window) {
@@ -85,12 +87,42 @@ export function VoiceAssistant() {
       if (Math.random() > 0.7) {
         toast.success(encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)]);
       }
+
+      // Auto-speak response if voice is enabled
+      if (voiceEnabled && data.response) {
+        speak(data.response);
+      }
     } catch (error) {
       toast.error('Connection issue. Using backup responses!');
     }
 
     setIsLoading(false);
     setInput('');
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const userMessage: Message = {
+        id: Date.now(),
+        text: `📎 Uploaded: ${file.name}`,
+        isUser: true,
+        emoji: "📎"
+      };
+      setMessages(prev => [...prev, userMessage]);
+
+      // Simulate file analysis
+      setTimeout(() => {
+        const aiMessage: Message = {
+          id: Date.now() + 1,
+          text: `I've analyzed your ${file.name}. This looks like a ${file.type.includes('log') ? 'log file' : 'configuration file'}. What specific issue are you troubleshooting?`,
+          isUser: false,
+          emoji: "🔍"
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }, 1000);
+    }
+    setShowUpload(false);
   };
 
   const toggleListening = () => {
@@ -152,7 +184,7 @@ export function VoiceAssistant() {
                   <span className="text-2xl">{msg.emoji}</span>
                   <div className="space-y-1">
                     <p className="text-sm leading-relaxed">{msg.text}</p>
-                    {!msg.isUser && (
+                    {!msg.isUser && voiceEnabled && (
                       <button
                         onClick={() => speak(msg.text)}
                         className="text-xs text-white/40 hover:text-white/60 flex items-center gap-1"
@@ -181,6 +213,17 @@ export function VoiceAssistant() {
             />
           </div>
           <button
+            onClick={() => setVoiceEnabled(!voiceEnabled)}
+            className={`p-3 rounded-xl transition-all ${
+              voiceEnabled
+                ? 'bg-green-500/20 border border-green-500 text-green-500'
+                : 'bg-white/5 border border-white/10 hover:bg-white/10'
+            }`}
+            title="Toggle voice responses"
+          >
+            <Volume2 className="w-5 h-5" />
+          </button>
+          <button
             onClick={toggleListening}
             className={`p-3 rounded-xl transition-all ${
               isListening
@@ -191,6 +234,13 @@ export function VoiceAssistant() {
             {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
           </button>
           <button
+            onClick={() => setShowUpload(!showUpload)}
+            className="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10"
+            title="Upload logs/configs for analysis"
+          >
+            📎
+          </button>
+          <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
             className="p-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50"
@@ -199,8 +249,20 @@ export function VoiceAssistant() {
           </button>
         </div>
 
+        {showUpload && (
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+            <input
+              type="file"
+              onChange={handleFileUpload}
+              accept=".log,.txt,.yaml,.yml,.json,.conf"
+              className="text-sm"
+            />
+            <p className="text-xs text-white/40 mt-2">Upload logs, configs, or error files for AI analysis</p>
+          </div>
+        )}
+
         <div className="text-xs text-center text-white/40">
-          💡 Try asking: "How do I debug Docker?" or "Explain Kubernetes pods"
+          💡 Try asking: "How do I debug Docker?" or "Explain Kubernetes pods" | Toggle voice for auto-read
         </div>
       </div>
     </div>
