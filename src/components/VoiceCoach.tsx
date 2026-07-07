@@ -115,7 +115,7 @@ Make it challenging but fair for a ${skill} role.`,
         setAwaitingAnswer(true);
 
         // Speak the question
-        speak(data.response.replace(/CHOICES:.*$/s, ''), 0.85);
+        speak(data.response.split('CHOICES:')[0], 0.85);
       }
     } catch (error) {
       const fallbackQuestion: Message = {
@@ -180,7 +180,7 @@ Format: CORRECT/INCORRECT: [explanation] NEXT: [next question with choices]`,
         setMessages(prev => [...prev, feedbackMsg]);
 
         // Speak the feedback
-        const speechText = data.response.replace(/NEXT:.*$/s, '');
+        const speechText = data.response.split('NEXT:')[0] || data.response;
         speak(speechText, 0.9);
 
         // Ask next question after feedback
