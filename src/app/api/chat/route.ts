@@ -71,12 +71,9 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Chat API error:', error);
-    // Return an intelligent fallback response based on the skill context
-    const fallbackResponse = skill
-      ? `Let's talk about ${skill}! Here's a practical tip:\n\n• Start with the fundamentals and build understanding\n• Practice with real examples daily\n• Use logs and debugging tools effectively\n• Follow established best practices\n\nWhat specific aspect of ${skill} would you like to explore?`
-      : "I'm here to help! What would you like to explore?";
+    // Return an intelligent fallback response
     return NextResponse.json({
-      response: fallbackResponse,
+      response: "I'm here to help you learn! What skill would you like to explore?",
       emoji: '💡',
       powered: 'Fallback'
     });
