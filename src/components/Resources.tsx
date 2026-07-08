@@ -422,6 +422,24 @@ export function Resources() {
                 </div>
               </div>
 
+              {/* Core Concepts */}
+              {(certificationData as any).coreConcepts && (
+                <div>
+                  <h5 className="font-semibold mb-3 flex items-center gap-2">
+                    🧠 Core Concepts
+                  </h5>
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex flex-wrap gap-2">
+                      {(certificationData as any).coreConcepts.map((concept: string, index: number) => (
+                        <span key={index} className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm">
+                          {concept}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Certification Path */}
               <div>
                 <h5 className="font-semibold mb-3 flex items-center gap-2">

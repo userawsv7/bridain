@@ -31,6 +31,13 @@ export function VoiceCoach() {
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
+  const selectFemaleVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    return voices.find(v => v.name.includes('Female') || v.name.includes('Karen') || v.name.includes('Samantha') || v.name.includes('Victoria')) ||
+           voices.find(v => v.name.includes('Google')) ||
+           voices[0];
+  };
+
   const speak = (text: string, rate: number = 0.9) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
@@ -39,8 +46,9 @@ export function VoiceCoach() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = rate;
-    utterance.pitch = 1.0;
+    utterance.pitch = 1.1; // Higher pitch for female voice
     utterance.volume = 0.9;
+    utterance.voice = selectFemaleVoice() || null;
 
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);

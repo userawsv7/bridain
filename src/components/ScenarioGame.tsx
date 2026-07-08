@@ -52,9 +52,12 @@ export function ScenarioGame() {
 
     utterance.onend = () => {
       setIsSpeaking(false);
-      if (onComplete) onComplete();
+      if (onComplete) setTimeout(onComplete, 100); // Small delay to ensure complete
     };
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      if (onComplete) setTimeout(onComplete, 100);
+    };
 
     utteranceRef.current = utterance;
     setIsSpeaking(true);
@@ -286,15 +289,14 @@ Include CORRECT: [number] for the new scenario.`,
 
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak the feedback with explanation
-        speak(feedbackMsg.text + ". " + explanation, isCorrect ? 0.9 : 0.85);
-
-        // Generate next scenario after showing the explanation (longer delay for reading)
-        setTimeout(() => {
+        // Speak the feedback with explanation and wait for completion
+        const feedbackText = feedbackMsg.text + ". " + explanation;
+        speak(feedbackText, isCorrect ? 0.9 : 0.85, () => {
+          // Generate next scenario only after speech completes
           if (selectedSkill) {
             generateScenario(selectedSkill);
           }
-        }, 4000);
+        });
       }
     } catch (error) {
       const feedbackMsg: Message = {
