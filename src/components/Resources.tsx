@@ -86,6 +86,18 @@ export function Resources() {
     setIsLoading(false);
   };
 
+  const generateCoreConcepts = (skill: string): string[] => {
+    const concepts: { [key: string]: string[] } = {
+      kubernetes: ["Pods", "Deployments", "Services", "ConfigMaps", "Ingress", "Namespaces"],
+      docker: ["Images", "Containers", "Volumes", "Networks", "Dockerfile", "Docker Compose"],
+      aws: ["EC2", "S3", "VPC", "IAM", "Lambda", "RDS"],
+      terraform: ["Providers", "Resources", "State", "Variables", "Modules", "Workspaces"],
+      python: ["Variables", "Functions", "Classes", "Modules", "Decorators", "Async/Await"],
+      react: ["Components", "State", "Props", "Hooks", "Context", "Redux"]
+    };
+    return concepts[skill] || ["Fundamentals", "Core Concepts", "Best Practices", "Advanced Topics"];
+  };
+
   const generateOfficialDocs = (skill: string): Array<{name: string, url: string}> => {
     const docs: { [key: string]: Array<{name: string, url: string}> } = {
       docker: [
