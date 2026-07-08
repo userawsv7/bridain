@@ -51,9 +51,21 @@ export function ChatCoach() {
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(0);
 
+  const selectFemaleVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    return voices.find(v => v.name.includes('Female') || v.name.includes('Karen') || v.name.includes('Samantha') || v.name.includes('Victoria') || v.name.includes('Google')) ||
+           voices.find(v => v.lang.includes('en') && v.name.toLowerCase().includes('female')) ||
+           voices[0];
+  };
+
   const speak = (text: string) => {
     if ('speechSynthesis' in window && voiceEnabled) {
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.1; // Slightly fast but clear
+      utterance.pitch = 1.15; // Higher pitch for female voice
+      utterance.volume = 0.9;
+      utterance.voice = selectFemaleVoice() || null;
       window.speechSynthesis.speak(utterance);
     }
   };

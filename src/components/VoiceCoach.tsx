@@ -38,16 +38,17 @@ export function VoiceCoach() {
            voices[0];
   };
 
-  const speak = (text: string, rate: number = 0.9) => {
+  const speak = (text: string, rate: number = 1.1) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     // Stop any current speech
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = rate;
-    utterance.pitch = 1.1; // Higher pitch for female voice
+    utterance.rate = rate; // 1.1 - slightly fast but clear
+    utterance.pitch = 1.15; // Higher pitch for female voice
     utterance.volume = 0.9;
+    utterance.voice = selectFemaleVoice() || null;
     utterance.voice = selectFemaleVoice() || null;
 
     utterance.onend = () => setIsSpeaking(false);
