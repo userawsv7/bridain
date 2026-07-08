@@ -31,17 +31,29 @@ export function ScenarioGame() {
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const speak = (text: string, rate: number = 0.9) => {
+  const selectFemaleVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    // Look for female voices with different flavors
+    return voices.find(v => v.name.includes('Female') || v.name.includes('Karen') || v.name.includes('Samantha') || v.name.includes('Victoria')) ||
+           voices.find(v => v.name.includes('Google')) ||
+           voices[0];
+  };
+
+  const speak = (text: string, rate: number = 0.9, onComplete?: () => void) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = rate;
-    utterance.pitch = 1.0;
+    utterance.pitch = 1.1; // Slightly higher for female voice
     utterance.volume = 0.9;
+    utterance.voice = selectFemaleVoice() || null;
 
-    utterance.onend = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (onComplete) onComplete();
+    };
     utterance.onerror = () => setIsSpeaking(false);
 
     utteranceRef.current = utterance;

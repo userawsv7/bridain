@@ -79,6 +79,9 @@ export function Resources() {
       estimatedTime: estimateTime(skill)
     };
 
+    // Add core concepts to the path
+    (path as any).coreConcepts = generateCoreConcepts(skill);
+
     setCertificationData(path);
     setIsLoading(false);
   };
