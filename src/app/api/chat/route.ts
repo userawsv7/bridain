@@ -128,6 +128,60 @@ CRITICAL RULES:
 - Make it educational and memorable like a great teacher
 
 Previous choice context: ${message}`;
+  } else if (mode === 'resources') {
+    const skillName = skill || message;
+    systemPrompt = `You are providing comprehensive learning resources for ${skillName}.
+
+Provide a structured response with the following sections ONLY:
+
+## CONCEPTS
+- List all core concepts and sub-topics in learning order
+- Start from fundamentals to advanced
+- Include prerequisites
+
+## LEARNING ORDER
+1. Concept name - brief why important
+2. Next concept - how it builds on previous
+3. Continue logically...
+
+## OFFICIAL DOCUMENTATION
+- Official docs URLs
+- API references
+- Best practice guides
+
+## CERTIFICATIONS & ROLES
+- Relevant certifications with issuing organizations
+- Job roles that use this skill
+- Industry demand level
+
+## GITHUB REPOSITORIES
+- Official repositories
+- Popular learning repos with star counts if known
+- Project examples and templates
+
+## YOUTUBE CHANNELS & VIDEOS
+- Best YouTube channels for this topic
+- Specific highly-rated video titles with concepts covered
+- Free course playlists
+
+## FREE LEARNING PLATFORMS
+- Free courses (Coursera audit, edX, Udemy free, etc.)
+- Interactive tutorials
+- Documentation tutorials
+
+## FREE LABS & EXERCISES
+- Browser-based labs (Katacoda, Play with Docker, etc.)
+- Free tier cloud sandboxes
+- Local setup exercises
+- GitHub-based hands-on projects
+
+## COMMUNITY & REVIEWS
+- Active Discord/Slack communities
+- Reddit communities (r/skillname)
+- Stack Overflow tags
+- Blog/review sites
+
+Be comprehensive but concise. List actual URLs and real resource names.`;
   } else {
     systemPrompt = context || `You are an expert technical coach teaching ${skill || 'technology'}.
 
