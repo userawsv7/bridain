@@ -39,16 +39,57 @@ export function ScenarioGame() {
            voices[0];
   };
 
-  const speak = (text: string, rate: number = 1.1, onComplete?: () => void) => {
+  const sanitizeForTTS = (text: string): string => {
+    return text
+      .replace(/[*_`#]/g, '') // Remove markdown formatting characters
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+  };
+
+  const selectPreferredFemaleVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+
+    // Priority order for premium female voices
+    const premiumVoices = [
+      'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan',
+      'Moira', 'Tessa', 'Veena', 'Fiona', 'Serena'
+    ];
+
+    // First try exact premium voice matches
+    for (const voiceName of premiumVoices) {
+      const voice = voices.find(v => v.name.includes(voiceName));
+      if (voice) return voice;
+    }
+
+    // Then try any female voice indicators
+    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
+    for (const indicator of femaleIndicators) {
+      const voice = voices.find(v => v.name.includes(indicator));
+      if (voice) return voice;
+    }
+
+    // Fallback to Google voices or first available
+    return voices.find(v => v.name.includes('Google')) || voices[0];
+  };
+
+  const speak = (text: string, rate: number = 0.9, onComplete?: () => void) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    // Clean text for pleasant TTS experience
+    const cleanText = sanitizeForTTS(text);
 
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = rate; // 1.1 - slightly fast but clear
-    utterance.pitch = 1.15; // Higher pitch for female voice
-    utterance.volume = 0.9;
-    utterance.voice = selectFemaleVoice() || null;
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = rate; // 0.9 - natural, pleasant speaking pace
+    utterance.pitch = 1.1; // Natural female pitch
+    utterance.volume = 0.85; // Pleasant volume level
+
+    // Ensure strict female voice selection
+    const femaleVoice = selectPreferredFemaleVoice();
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
+    }
 
     utterance.onend = () => {
       setIsSpeaking(false);
