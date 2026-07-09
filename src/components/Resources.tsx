@@ -158,7 +158,7 @@ export function Resources() {
   const [customSkill, setCustomSkill] = useState('');
   const [customResources, setCustomResources] = useState<SkillResources | null>(null);
 
-  const current = customResources || SKILLS[activeSkill];
+  const current = customResources || { skill: '', timeToCert: '', keyTopics: [], certs: [], studyPath: [], practice: [], docs: [], community: [] };
 
   const handleCustomSearch = () => {
     if (!customSkill.trim()) return;
@@ -187,28 +187,8 @@ export function Resources() {
         </p>
       </div>
 
-      {/* Skill Selector + Custom Search */}
+      {/* Custom Skill Search */}
       <div className="space-y-4 mb-8">
-        <div className="flex flex-wrap gap-2 justify-center">
-          {Object.keys(SKILLS).map((skill) => (
-            <button
-              key={skill}
-              onClick={() => {
-                setActiveSkill(skill as keyof typeof SKILLS);
-                setCustomResources(null);
-              }}
-              className={`px-5 py-2 rounded-xl text-sm font-medium transition-all ${
-                activeSkill === skill && !customResources
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-800'
-              }`}
-            >
-              {SKILLS[skill].skill}
-            </button>
-          ))}
-        </div>
-
-        {/* Custom Skill Search */}
         <div className="flex justify-center gap-3">
           <input
             type="text"
