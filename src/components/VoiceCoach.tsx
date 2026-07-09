@@ -28,6 +28,16 @@ export function VoiceCoach() {
   const [isMuted, setIsMuted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [awaitingAnswer, setAwaitingAnswer] = useState(false);
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
+  const [speechRate, setSpeechRate] = useState(0.85);
+
+  const voiceFlavors = {
+    Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
+    Amba: { name: 'Amba', pitch: 1.1, description: 'Gentle, melodic Indian goddess' },
+    Venus: { name: 'Venus', pitch: 1.2, description: 'Elegant, romantic Roman goddess' },
+    Ishtar: { name: 'Ishtar', pitch: 1.05, description: 'Strong, confident Babylonian goddess' },
+    Freyja: { name: 'Freyja', pitch: 1.12, description: 'Nurturing, wise Norse goddess' }
+  };
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
@@ -88,8 +98,8 @@ export function VoiceCoach() {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = rate; // 0.9 - natural, pleasant speaking pace
-    utterance.pitch = 1.1; // Natural female pitch
+    utterance.rate = speechRate;
+    utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
     utterance.volume = 0.85; // Pleasant volume level
 
     // Ensure strict female voice selection
@@ -416,6 +426,31 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                 >
                   <MicOff className="w-4 h-4" />
                 </button>
+                {/* Voice Controls */}
+                <div className="flex items-center gap-2 ml-2">
+                  <select
+                    value={selectedVoiceFlavor}
+                    onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
+                    className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs"
+                  >
+                    {Object.keys(voiceFlavors).map(flavor => (
+                      <option key={flavor} value={flavor}>{flavor}</option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-white/60">Rate:</span>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2.0"
+                      step="0.1"
+                      value={speechRate}
+                      onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                      className="w-16"
+                    />
+                    <span className="text-xs w-8">{speechRate.toFixed(1)}x</span>
+                  </div>
+                </div>
               </div>
             </div>
 
