@@ -22,12 +22,25 @@ export function CoachChat() {
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
+  const sanitizeText = (text: string): string => {
+    return text
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers
+      .replace(/\*\*{1,2}/g, '') // Remove bold/italic markers
+      .replace(/\*{1,2}/g, '') // Remove remaining asterisks
+      .replace(/_{1,2}/g, '') // Remove underscores
+      .replace(/`{1,3}/g, '') // Remove code markers
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+  };
+
   const speak = (text: string, rate: number = 0.9) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
+    const cleanText = sanitizeText(text);
+
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = rate;
     utterance.pitch = 1.0;
     utterance.volume = 0.9;
@@ -103,14 +116,15 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
 
       if (response.ok) {
         const data = await response.json();
+        const sanitizedResponse = sanitizeText(data.response);
         const aiMsg: Message = {
           id: Date.now() + 1,
-          text: data.response,
+          text: sanitizedResponse,
           isUser: false
         };
         setMessages(prev => [...prev, aiMsg]);
         // Speak the response
-        speak(data.response, 0.9);
+        speak(sanitizedResponse, 0.9);
       }
     } catch (error) {
       const aiMsg: Message = {

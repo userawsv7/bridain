@@ -40,9 +40,16 @@ export function VoiceCoach() {
 
   const sanitizeForTTS = (text: string): string => {
     return text
-      .replace(/[*_`#]/g, '') // Remove markdown formatting characters
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers
+      .replace(/\*\*{1,2}/g, '') // Remove bold markers
+      .replace(/\*{1,2}/g, '') // Remove remaining asterisks
+      .replace(/[`_]/g, '') // Remove code/underscore markers
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
+  };
+
+  const sanitizeMessageText = (text: string): string => {
+    return sanitizeForTTS(text);
   };
 
   const selectPreferredFemaleVoice = () => {
@@ -154,17 +161,18 @@ Make it challenging but fair for a ${skill} role.`,
 
       if (response.ok) {
         const data = await response.json();
+        const sanitizedResponse = sanitizeMessageText(data.response);
         const questionMsg: Message = {
           id: Date.now(),
-          text: data.response,
+          text: sanitizedResponse,
           isUser: false
         };
         setMessages(prev => [...prev, questionMsg]);
-        setCurrentQuestion(data.response);
+        setCurrentQuestion(sanitizedResponse);
         setAwaitingAnswer(true);
 
         // Speak the question
-        speak(data.response.split('CHOICES:')[0], 0.85);
+        speak(sanitizedResponse.split('CHOICES:')[0], 0.85);
       }
     } catch (error) {
       const fallbackQuestion: Message = {

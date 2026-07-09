@@ -41,9 +41,16 @@ export function ScenarioGame() {
 
   const sanitizeForTTS = (text: string): string => {
     return text
-      .replace(/[*_`#]/g, '') // Remove markdown formatting characters
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers
+      .replace(/\*\*{1,2}/g, '') // Remove bold markers
+      .replace(/\*{1,2}/g, '') // Remove remaining asterisks
+      .replace(/[`_]/g, '') // Remove code/underscore markers
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
+  };
+
+  const sanitizeMessageText = (text: string): string => {
+    return sanitizeForTTS(text);
   };
 
   const selectPreferredFemaleVoice = () => {
