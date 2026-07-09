@@ -35,8 +35,8 @@ export function CoachChat() {
   const sanitizeText = (text: string): string => {
     return text
       .replace(/#{1,6}\s*/g, '') // Remove markdown headers
-      .replace(/\*\*{1,2}/g, '') // Remove bold/italic markers
-      .replace(/\*{1,2}/g, '') // Remove remaining asterisks
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold **text**
+      .replace(/\*([^*]+)\*/g, '$1') // Remove italic *text*
       .replace(/_{1,2}/g, '') // Remove underscores
       .replace(/`{1,3}/g, '') // Remove code markers
       .replace(/\s+/g, ' ') // Normalize whitespace
@@ -258,7 +258,7 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
                   className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`max-w-[85%] p-4 rounded-2xl ${msg.isUser ? 'bg-primary/20 border border-primary/30' : 'bg-white/10 border border-white/20'}`}>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{sanitizeText(msg.text)}</p>
                   </div>
                 </motion.div>
               ))}

@@ -49,17 +49,28 @@ export function VoiceCoach() {
   };
 
   const sanitizeForTTS = (text: string): string => {
+    // Enhanced sanitization that properly handles all markdown formatting
     return text
-      .replace(/#{1,6}\s*/g, '') // Remove markdown headers
-      .replace(/\*\*{1,2}/g, '') // Remove bold markers
-      .replace(/\*{1,2}/g, '') // Remove remaining asterisks
-      .replace(/[`_]/g, '') // Remove code/underscore markers
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers like ###, ##, #
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold **text** but keep the content
+      .replace(/\*([^*]+)\*/g, '$1') // Remove italic *text* but keep the content
+      .replace(/_{1,2}([^_]+)_{1,2}/g, '$1') // Remove underscores with content
+      .replace(/`{1,3}([^`]+)`{1,3}/g, '$1') // Remove code markers but keep content
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
   };
 
   const sanitizeMessageText = (text: string): string => {
-    return sanitizeForTTS(text);
+    // Enhanced sanitization that properly handles markdown formatting
+    return text
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold **text** but keep the content
+      .replace(/\*([^*]+)\*/g, '$1') // Remove italic *text* but keep the content
+      .replace(/_{1,2}([^_]+)_{1,2}/g, '$1') // Remove underscores with content
+      .replace(/`{1,3}([^`]+)`{1,3}/g, '$1') // Remove code markers but keep content
+      .replace(/#{1,6}\s*/g, '') // Additional header cleanup
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
   };
 
   const selectPreferredFemaleVoice = () => {
