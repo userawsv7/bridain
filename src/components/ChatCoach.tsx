@@ -451,7 +451,39 @@ export function ChatCoach() {
                   : 'bg-white/10 border border-white/20'
               }`}>
                 <div className="space-y-3">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-invert prose-sm max-w-none">
+                    {msg.text.split('\n').map((line, idx) => {
+                      // Handle headings
+                      if (line.startsWith('##')) {
+                        return <h3 key={idx} className="font-semibold mt-4 mb-2 text-white/90">{line.replace(/^##\s*/, '')}</h3>;
+                      }
+                      if (line.startsWith('#')) {
+                        return <h2 key={idx} className="font-semibold mt-4 mb-2 text-lg text-white">{line.replace(/^#\s*/, '')}</h2>;
+                      }
+                      // Handle bullet points
+                      if (line.startsWith('- ') || line.startsWith('• ')) {
+                        return <div key={idx} className="ml-4 text-white/80">• {line.replace(/^[-•]\s*/, '')}</div>;
+                      }
+                      // Handle numbered items
+                      if (/^\d+\./.test(line)) {
+                        return <div key={idx} className="ml-4 text-white/80">{line}</div>;
+                      }
+                      // Handle code blocks
+                      if (line.includes('```')) {
+                        return null; // Skip code markers, handle inline code below
+                      }
+                      // Handle empty lines
+                      if (!line.trim()) {
+                        return <div key={idx} className="h-2" />;
+                      }
+                      // Regular text with inline formatting
+                      const formattedLine = line
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>')
+                        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                        .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-white/10 rounded text-xs">$1</code>');
+                      return <div key={idx} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
+                    })}
+                  </div>
 
                   {/* MCQ Options */}
                   {msg.type === 'mcq' && msg.options && (
