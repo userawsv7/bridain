@@ -154,7 +154,7 @@ const generateCustomResources = (skill: string): SkillResources => {
 };
 
 export function Resources() {
-  const [activeSkill, setActiveSkill] = useState<keyof typeof SKILLS>('kubernetes');
+  const [activeSkill, setActiveSkill] = useState<string>('custom');
   const [customSkill, setCustomSkill] = useState('');
   const [customResources, setCustomResources] = useState<SkillResources | null>(null);
 
