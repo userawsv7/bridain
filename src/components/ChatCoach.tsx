@@ -101,24 +101,6 @@ export function ChatCoach() {
     return voices.find(v => v.name.includes('Google')) || voices[0];
   };
 
-  const selectPreferredFemaleVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
-    const premiumVoices = [
-      'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan',
-      'Moira', 'Tessa', 'Veena', 'Fiona', 'Serena'
-    ];
-    for (const voiceName of premiumVoices) {
-      const voice = voices.find(v => v.name.includes(voiceName));
-      if (voice) return voice;
-    }
-    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
-    for (const indicator of femaleIndicators) {
-      const voice = voices.find(v => v.name.includes(indicator));
-      if (voice) return voice;
-    }
-    return voices.find(v => v.name.includes('Google')) || voices[0];
-  };
-
   const speak = (text: string, rate: number = 0.9) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
