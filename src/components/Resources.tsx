@@ -30,126 +30,227 @@ interface SkillResources {
 }
 
 const generateCustomResources = (skill: string): SkillResources => {
-  const skillLower = skill.toLowerCase();
+  const skillLower = skill.toLowerCase().trim();
 
-  // Career paths and resources based on skill
-  const skillMappings: { [key: string]: Partial<SkillResources> } = {
+  // Comprehensive skill-specific resources with real trusted sites
+  const skillResources: { [key: string]: Partial<SkillResources> } = {
+    // CLOUD & DEVOPS
+    kubernetes: {
+      skill: "Kubernetes",
+      timeToCert: "8-12 weeks",
+      certs: [
+        { name: "CKA", provider: "CNCF", level: "Associate", duration: "6-8 weeks", focus: "Cluster administration" },
+        { name: "CKAD", provider: "CNCF", level: "Associate", duration: "4-6 weeks", focus: "App development" },
+        { name: "CKS", provider: "CNCF", level: "Professional", duration: "4-6 weeks", focus: "Security" }
+      ],
+      studyPath: ["Learn container concepts", "Master kubectl", "Deploy apps to K8s", "Set up networking", "Practice with labs"],
+      keyTopics: ["Pods & Deployments", "Services & Ingress", "ConfigMaps & Secrets", "RBAC", "Networking", "Storage", "Helm", "Operators"],
+      practice: [
+        { name: "Killer.sh CKA Labs", url: "https://killer.sh", type: "Exam Simulator" },
+        { name: "Kubernetes.io Tutorials", url: "https://kubernetes.io/docs/tutorials/", type: "Official" },
+        { name: "Katacoda K8s", url: "https://www.katacoda.com/courses/kubernetes", type: "Interactive" }
+      ],
+      docs: [
+        { name: "Official Documentation", url: "https://kubernetes.io/docs/", type: "Core Docs" },
+        { name: "Kubectl Cheat Sheet", url: "https://kubernetes.io/docs/reference/kubectl/cheatsheet/", type: "Cheat Sheet" },
+        { name: "API Reference", url: "https://kubernetes.io/docs/reference/generated/kubernetes-api/", type: "API" }
+      ],
+      community: [
+        { name: "Kubernetes YouTube", url: "https://www.youtube.com/c/Kubernetes", type: "Official YouTube" },
+        { name: "r/kubernetes", url: "https://reddit.com/r/kubernetes", type: "Reddit" },
+        { name: "K8s Slack", url: "https://kubernetes.slack.com", type: "Slack" }
+      ]
+    },
+    docker: {
+      skill: "Docker",
+      timeToCert: "4-6 weeks",
+      certs: [
+        { name: "DCA", provider: "Docker", level: "Associate", duration: "4-6 weeks", focus: "Container fundamentals" }
+      ],
+      studyPath: ["Container basics", "Build images", "Docker Compose", "Registry management", "Security basics"],
+      keyTopics: ["Images & Containers", "Dockerfile", "Volumes", "Networking", "Compose", "Registry", "Security", "Multi-stage builds"],
+      practice: [
+        { name: "Docker Playgrounds", url: "https://labs.play-with-docker.com", type: "Interactive" },
+        { name: "Docker Curriculum", url: "https://docker-curriculum.com", type: "Course" },
+        { name: "Play with Docker", url: "https://training.play-with-docker.com", type: "Official Labs" }
+      ],
+      docs: [
+        { name: "Docker Docs", url: "https://docs.docker.com", type: "Core" },
+        { name: "Docker Cheat Sheet", url: "https://dockerlabs.collabnix.com/docker/cheatsheet/", type: "Cheat Sheet" },
+        { name: "Best Practices", url: "https://docs.docker.com/develop/dev-best-practices/", type: "Guide" }
+      ],
+      community: [
+        { name: "Docker YouTube", url: "https://www.youtube.com/c/DockerCommunity", type: "YouTube" },
+        { name: "Docker Hub", url: "https://hub.docker.com", type: "Registry" },
+        { name: "r/docker", url: "https://reddit.com/r/docker", type: "Reddit" }
+      ]
+    },
+    aws: {
+      skill: "AWS",
+      timeToCert: "10-16 weeks",
+      certs: [
+        { name: "Solutions Architect Associate", provider: "Amazon", level: "Associate", duration: "8-10 weeks", focus: "Architecture" },
+        { name: "Developer Associate", provider: "Amazon", level: "Associate", duration: "6-8 weeks", focus: "Development" },
+        { name: "SysOps Administrator", provider: "Amazon", level: "Associate", duration: "6-8 weeks", focus: "Operations" }
+      ],
+      studyPath: ["Core services", "IAM & security", "Networking (VPC)", "EC2 & containers", "Serverless", "Databases", "Monitoring", "Cost optimization"],
+      keyTopics: ["EC2", "S3", "Lambda", "RDS", "VPC", "IAM", "CloudWatch", "Route 53", "ELB", "Auto Scaling"],
+      practice: [
+        { name: "AWS Free Tier", url: "https://aws.amazon.com/free/", type: "Official" },
+        { name: "A Cloud Guru", url: "https://acloudguru.com", type: "Courses" },
+        { name: "AWS Skill Builder", url: "https://skillbuilder.aws", type: "Official Labs" }
+      ],
+      docs: [
+        { name: "AWS Documentation", url: "https://docs.aws.amazon.com", type: "Core" },
+        { name: "Well-Architected Framework", url: "https://aws.amazon.com/architecture/well-architected/", type: "Guide" },
+        { name: "AWS Cheat Sheets", url: "https://digitalcloud.training/aws-cheat-sheets/", type: "Cheat Sheet" }
+      ],
+      community: [
+        { name: "AWS YouTube", url: "https://www.youtube.com/user/AmazonWebServices", type: "Official YouTube" },
+        { name: "AWS re:Post", url: "https://repost.aws", type: "Forum" },
+        { name: "r/aws", url: "https://reddit.com/r/aws", type: "Reddit" }
+      ]
+    },
+
+    // PROGRAMMING LANGUAGES
+    python: {
+      skill: "Python",
+      timeToCert: "6-10 weeks",
+      certs: [
+        { name: "PCAP", provider: "Python Institute", level: "Associate", duration: "6-8 weeks", focus: "Core programming" },
+        { name: "PCEP", provider: "Python Institute", level: "Entry", duration: "4-6 weeks", focus: "Entry level" }
+      ],
+      studyPath: ["Basics & syntax", "Data structures", "OOP", "File handling", "APIs", "Testing", "Virtual envs", "Packaging"],
+      keyTopics: ["Variables", "Lists/Dicts", "Functions", "Classes", "Decorators", "Generators", "Async", "Testing"],
+      practice: [
+        { name: "LeetCode Python", url: "https://leetcode.com/tag/python/", type: "Practice" },
+        { name: "HackerRank Python", url: "https://hackerrank.com/domains/python", type: "Practice" },
+        { name: "Automate the Boring Stuff", url: "https://automatetheboringstuff.com", type: "Free Course" }
+      ],
+      docs: [
+        { name: "Python Docs", url: "https://docs.python.org/3/", type: "Official" },
+        { name: "Python Cheat Sheet", url: "https://www.pythoncheatsheet.org", type: "Cheat Sheet" },
+        { name: "Real Python", url: "https://realpython.com", type: "Tutorials" }
+      ],
+      community: [
+        { name: "Python YouTube", url: "https://www.youtube.com/c/Python", type: "Official" },
+        { name: "r/learnpython", url: "https://reddit.com/r/learnpython", type: "Reddit" },
+        { name: "PyCon", url: "https://pyvideo.org", type: "Talks" }
+      ]
+    },
+    javascript: {
+      skill: "JavaScript",
+      timeToCert: "8-12 weeks",
+      certs: [
+        { name: "JavaScript Algorithms", provider: "freeCodeCamp", level: "Certificate", duration: "6-8 weeks", focus: "Algorithms" }
+      ],
+      studyPath: ["ES6+ features", "Async programming", "DOM manipulation", "APIs", "Testing", "Build tools", "Frameworks"],
+      keyTopics: ["Variables", "Functions", "Promises", "Async/Await", "DOM", "Events", "Modules", "Closures"],
+      practice: [
+        { name: "freeCodeCamp", url: "https://freecodecamp.org/learn/javascript", type: "Free" },
+        { name: "JavaScript30", url: "https://javascript30.com", type: "Course" },
+        { name: "Codewars JS", url: "https://codewars.com", type: "Practice" }
+      ],
+      docs: [
+        { name: "MDN JavaScript", url: "https://developer.mozilla.org/en-US/docs/Web/JavaScript", type: "Official" },
+        { name: "JS Info", url: "https://javascript.info", type: "Guide" },
+        { name: "Eloquent JS", url: "https://eloquentjavascript.net", type: "Free Book" }
+      ],
+      community: [
+        { name: "Traversy Media", url: "https://youtube.com/c/TraversyMedia", type: "YouTube" },
+        { name: "r/javascript", url: "https://reddit.com/r/javascript", type: "Reddit" },
+        { name: "JS Discord", url: "https://discord.gg/javascript", type: "Discord" }
+      ]
+    },
+
+    // FRAMEWORKS
     react: {
       skill: "React",
       timeToCert: "6-10 weeks",
       certs: [
-        { name: "Meta React", provider: "Meta", level: "Associate", duration: "4-6 weeks", focus: "React fundamentals & hooks" },
-        { name: "Frontend Masters", provider: "FEM", level: "Intermediate", duration: "6-8 weeks", focus: "Advanced patterns" }
+        { name: "Meta Front-End", provider: "Meta", level: "Certificate", duration: "6-8 weeks", focus: "React & Redux" }
       ],
-      studyPath: ["Master React hooks & state", "Build 5 complete apps", "Practice with React testing", "Learn Next.js", "Deploy production apps"],
-      keyTopics: ["Components & JSX", "Hooks & State", "Props & Context", "React Router", "State Management", "Testing", "Performance", "SSR"],
+      studyPath: ["JSX & components", "Hooks & state", "Props & context", "React Router", "State management", "Testing", "Next.js"],
+      keyTopics: ["Components", "Hooks", "State", "Props", "Context", "Effects", "Refs", "Memoization"],
       practice: [
-        { name: "React Docs", url: "https://react.dev/learn", type: "Official" },
+        { name: "React Docs Tutorial", url: "https://react.dev/learn", type: "Official" },
         { name: "Scrimba React", url: "https://scrimba.com/learn/react", type: "Interactive" },
-        { name: "Epic React", url: "https://epicreact.dev", type: "Course" }
+        { name: "Epic React", url: "https://epicreact.dev", type: "Workshops" }
       ],
       docs: [
-        { name: "React Documentation", url: "https://react.dev" },
-        { name: "React Testing", url: "https://testing-library.com/docs/react-testing-library" },
-        { name: "React Patterns", url: "https://reactpatterns.com" }
+        { name: "React.dev", url: "https://react.dev", type: "Official" },
+        { name: "React Patterns", url: "https://reactpatterns.com", type: "Guide" },
+        { name: "Testing Library", url: "https://testing-library.com/docs/react-testing-library", type: "Testing" }
       ],
       community: [
-        { name: "Reactiflux Discord", url: "https://reactiflux.com", type: "Discord" },
-        { name: "r/reactjs", url: "https://reddit.com/r/reactjs", type: "Reddit" },
-        { name: "React YouTube", url: "https://youtube.com/c/React", type: "YouTube" }
+        { name: "Academind React", url: "https://youtube.com/c/Academind", type: "YouTube" },
+        { name: "Reactiflux", url: "https://www.reactiflux.com", type: "Discord" },
+        { name: "r/reactjs", url: "https://reddit.com/r/reactjs", type: "Reddit" }
       ]
     },
-    python: {
-      skill: "Python",
-      timeToCert: "8-12 weeks",
+
+    // DATABASES
+    mongodb: {
+      skill: "MongoDB",
+      timeToCert: "4-6 weeks",
       certs: [
-        { name: "PCAP", provider: "Python Institute", level: "Associate", duration: "6-8 weeks", focus: "Python fundamentals" },
-        { name: "PCEP", provider: "Python Institute", level: "Entry", duration: "4-6 weeks", focus: "Basic coding" }
+        { name: "MongoDB Developer", provider: "MongoDB", level: "Associate", duration: "4-6 weeks", focus: "Database design" }
       ],
-      studyPath: ["Learn Python basics", "Build automation scripts", "Practice data structures", "Work with APIs", "Complete personal projects"],
-      keyTopics: ["Syntax & Basics", "OOP", "Data Structures", "APIs & Requests", "Testing", "Virtual Environments", "Packaging", "Async"],
+      studyPath: ["CRUD operations", "Schema design", "Aggregation", "Indexing", "Replication", "Sharding"],
+      keyTopics: ["Documents", "Collections", "Indexes", "Aggregation", "Replica Sets", "Sharding", "Atlas"],
       practice: [
-        { name: "LeetCode Python", url: "https://leetcode.com", type: "Practice" },
-        { name: "Automate the Boring Stuff", url: "https://automatetheboringstuff.com", type: "Course" },
-        { name: "Real Python", url: "https://realpython.com", type: "Tutorials" }
+        { name: "MongoDB University", url: "https://university.mongodb.com", type: "Official Free" },
+        { name: "MongoDB Playground", url: "https://mongoplayground.net", type: "Practice" }
       ],
       docs: [
-        { name: "Python Docs", url: "https://docs.python.org/3" },
-        { name: "Python Package Index", url: "https://pypi.org" },
-        { name: "Real Python Guide", url: "https://realpython.com/tutorials" }
+        { name: "MongoDB Manual", url: "https://www.mongodb.com/docs/", type: "Official" },
+        { name: "MongoDB Cheat Sheet", url: "https://www.mongodb.com/try/download/shell", type: "Reference" }
       ],
       community: [
-        { name: "Python Discord", url: "https://pythondiscord.com", type: "Discord" },
-        { name: "r/python", url: "https://reddit.com/r/python", type: "Reddit" },
-        { name: "PyCon YouTube", url: "https://youtube.com/user/PyCon" , type: "YouTube" }
-      ]
-    },
-    java: {
-      skill: "Java",
-      timeToCert: "10-14 weeks",
-      certs: [
-        { name: "Oracle Java SE 17", provider: "Oracle", level: "Associate", duration: "8-10 weeks", focus: "Core Java" },
-        { name: "Spring Professional", provider: "VMware", level: "Associate", duration: "6-8 weeks", focus: "Spring Framework" }
-      ],
-      studyPath: ["Master Java syntax & OOP", "Build Spring Boot apps", "Practice algorithms", "Learn JVM internals", "Complete certification mock exams"],
-      keyTopics: ["Core Java", "Collections", "Multithreading", "Spring Boot", "JPA & Hibernate", "Testing", "Design Patterns", "JVM Tuning"],
-      practice: [
-        { name: "HackerRank Java", url: "https://hackerrank.com/domains/java", type: "Practice" },
-        { name: "Baeldung", url: "https://baeldung.com", type: "Tutorials" },
-        { name: "CodingBat", url: "https://codingbat.com/java", type: "Exercises" }
-      ],
-      docs: [
-        { name: "Java Documentation", url: "https://docs.oracle.com/en/java" },
-        { name: "Spring Docs", url: "https://spring.io/projects/spring-boot" },
-        { name: "Baeldung Guides", url: "https://baeldung.com/java-tutorial" }
-      ],
-      community: [
-        { name: "Java Discord", url: "https://discord.gg/java", type: "Discord" },
-        { name: "r/java", url: "https://reddit.com/r/java", type: "Reddit" },
-        { name: "Java YouTube", url: "https://youtube.com/c/Java", type: "YouTube" }
+        { name: "MongoDB YouTube", url: "https://youtube.com/c/MongoDB", type: "YouTube" },
+        { name: "MongoDB Community", url: "https://community.mongodb.com", type: "Forum" }
       ]
     }
   };
 
-  // Default generic structure for unknown skills
-  const defaults: SkillResources = {
+  // Generate comprehensive resources based on skill
+  const skillData = skillResources[skillLower];
+
+  if (skillData) {
+    return skillData as SkillResources;
+  }
+
+  // Generic comprehensive template for  any skill
+  return {
     skill: skill,
-    timeToCert: "6-10 weeks",
+    timeToCert: "6-12 weeks",
     certs: [
-      { name: `${skill} Fundamentals`, provider: "Industry", level: "Associate", duration: "4-6 weeks", focus: "Core concepts" },
-      { name: `${skill} Professional`, provider: "Industry", level: "Professional", duration: "6-8 weeks", focus: "Advanced topics" }
+      { name: `${skill} Professional`, provider: "Industry", level: "Associate", duration: "6-8 weeks", focus: "Core concepts" },
+      { name: `${skill} Expert`, provider: "Industry", level: "Professional", duration: "4-6 weeks", focus: "Advanced topics" }
     ],
-    studyPath: [`Learn ${skill} basics and syntax`, `Build 3-5 hands-on projects`, `Practice with interactive labs`, `Study documentation daily`, "Join community discussions"],
-    keyTopics: ["Fundamentals", "Core Concepts", "Best Practices", "Tools", "Patterns", "Testing", "Deployment", "Performance"],
+    studyPath: [
+      `Learn ${skill} fundamentals`,
+      "Build hands-on projects",
+      "Practice with real scenarios",
+      "Study documentation",
+      "Join community discussions"
+    ],
+    keyTopics: ["Fundamentals", "Core APIs", "Best Practices", "Tools", "Architecture", "Testing", "Deployment", "Security"],
     practice: [
-      { name: "Official Tutorials", url: `https://google.com/search?q=${encodeURIComponent(skill)}+official+tutorial`, type: "Tutorial" },
-      { name: "Practice Platform", url: `https://google.com/search?q=${encodeURIComponent(skill)}+practice+exercises`, type: "Practice" },
-      { name: "Interactive Labs", url: `https://google.com/search?q=${encodeURIComponent(skill)}+interactive+labs`, type: "Labs" }
+      { name: "Official Documentation", url: `https://docs.${skillLower}.dev`, type: "Official" },
+      { name: `${skill} GitHub`, url: `https://github.com/topics/${skillLower}`, type: "GitHub" },
+      { name: "freeCodeCamp", url: "https://freecodecamp.org", type: "Free Courses" }
     ],
     docs: [
-      { name: "Official Documentation", url: `https://google.com/search?q=${encodeURIComponent(skill)}+documentation`, type: "Docs" },
-      { name: "Cheat Sheets", url: `https://google.com/search?q=${encodeURIComponent(skill)}+cheat+sheet`, type: "Reference" },
-      { name: "API Reference", url: `https://google.com/search?q=${encodeURIComponent(skill)}+api+reference`, type: "API" }
+      { name: "Official Docs", url: `https://docs.${skillLower}.org`, type: "Documentation" },
+      { name: "Cheat Sheet", url: `https://quickref.me/${skillLower}`, type: "Reference" },
+      { name: "GitHub Awesome Lists", url: `https://github.com/sindresorhus/awesome`, type: "Curated" }
     ],
     community: [
-      { name: "Official Community", url: `https://google.com/search?q=${encodeURIComponent(skill)}+community+forum`, type: "Forum" },
-      { name: "Reddit Community", url: `https://reddit.com/r/${skill.toLowerCase()}`, type: "Reddit" },
-      { name: "YouTube Channel", url: `https://youtube.com/results?search_query=${encodeURIComponent(skill)}+tutorial`, type: "YouTube" }
+      { name: `${skill} YouTube`, url: `https://youtube.com/results?search_query=${skill}+tutorial`, type: "Tutorials" },
+      { name: "Reddit Community", url: `https://reddit.com/r/${skillLower}`, type: "Discussion" },
+      { name: "Discord Server", url: "https://discord.com/app", type: "Community" }
     ]
-  };
-
-  // Use specific mapping if exists, else use defaults with skill name
-  const mapped = skillMappings[skillLower] || defaults;
-
-  return {
-    skill: mapped.skill || skill,
-    timeToCert: mapped.timeToCert || defaults.timeToCert,
-    certs: mapped.certs || defaults.certs,
-    studyPath: mapped.studyPath || defaults.studyPath,
-    keyTopics: mapped.keyTopics || defaults.keyTopics,
-    practice: mapped.practice || defaults.practice,
-    docs: mapped.docs || defaults.docs,
-    community: mapped.community || defaults.community
   };
 };
 
