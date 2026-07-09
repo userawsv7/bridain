@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Send, Volume2, Loader2, Mic, MicOff, Award, Target, Book } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Send, Volume2, VolumeX, Loader2, Mic, MicOff, Award, Target, Book } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -46,15 +46,32 @@ export function ChatCoach() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [mode, setMode] = useState<'mcq' | 'chat'>('mcq');
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
+  const [speechRate, setSpeechRate] = useState(0.9);
   const [isListening, setIsListening] = useState(false);
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(0);
 
+  const voiceFlavors = {
+    Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
+    Amba: { name: 'Amba', pitch: 1.1, description: 'Gentle, melodic Indian goddess' },
+    Venus: { name: 'Venus', pitch: 1.2, description: 'Elegant, romantic Roman goddess' },
+    Ishtar: { name: 'Ishtar', pitch: 1.05, description: 'Strong, confident Babylonian goddess' },
+    Freyja: { name: 'Freyja', pitch: 1.12, description: 'Nurturing, wise Norse goddess' }
+  };
+
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
   const sanitizeForTTS = (text: string): string => {
     return text
-      .replace(/[*_`#]/g, '') // Remove markdown formatting characters
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/#{1,6}\s*/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/_{1,2}/g, '')
+      .replace(/`{1,3}/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   };
 
@@ -84,22 +101,53 @@ export function ChatCoach() {
     return voices.find(v => v.name.includes('Google')) || voices[0];
   };
 
-  const speak = (text: string) => {
-    if ('speechSynthesis' in window && voiceEnabled) {
-      window.speechSynthesis.cancel();
-      const cleanText = sanitizeForTTS(text);
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 0.9; // Natural, pleasant speaking pace
-      utterance.pitch = 1.1; // Natural female pitch
-      utterance.volume = 0.85; // Pleasant volume level
-
-      // Ensure strict female voice selection
-      const femaleVoice = selectPreferredFemaleVoice();
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
-      }
-      window.speechSynthesis.speak(utterance);
+  const selectPreferredFemaleVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const premiumVoices = [
+      'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan',
+      'Moira', 'Tessa', 'Veena', 'Fiona', 'Serena'
+    ];
+    for (const voiceName of premiumVoices) {
+      const voice = voices.find(v => v.name.includes(voiceName));
+      if (voice) return voice;
     }
+    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
+    for (const indicator of femaleIndicators) {
+      const voice = voices.find(v => v.name.includes(indicator));
+      if (voice) return voice;
+    }
+    return voices.find(v => v.name.includes('Google')) || voices[0];
+  };
+
+  const speak = (text: string, rate: number = 0.9) => {
+    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const cleanText = sanitizeForTTS(text);
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const flavor = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors];
+
+    utterance.rate = rate;
+    utterance.pitch = flavor.pitch;
+    utterance.volume = 0.85;
+
+    const femaleVoice = selectPreferredFemaleVoice();
+    if (femaleVoice) utterance.voice = femaleVoice;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleMute = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+    setIsMuted(!isMuted);
   };
 
   const generateMCQ = async (skill: string) => {
@@ -227,8 +275,8 @@ export function ChatCoach() {
 
       setMessages(prev => [...prev, aiMessage]);
 
-      if (voiceEnabled) {
-        speak(data.response);
+      if (!isMuted) {
+        speak(data.response, speechRate);
       }
     } catch (error) {
       toast.error('Connection issue');
@@ -312,16 +360,46 @@ export function ChatCoach() {
           >
             <Book className="w-4 h-4" /> Chat & Learn
           </button>
-          <button
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
-            className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
-              voiceEnabled
-                ? 'bg-green-500/20 border border-green-500 text-green-500'
-                : 'bg-white/5 border border-white/10 hover:bg-white/10'
-            }`}
-          >
-            <Volume2 className="w-4 h-4" /> Voice {voiceEnabled ? 'ON' : 'OFF'}
-          </button>
+          {/* Voice Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleMute}
+              className={`px-3 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                isMuted
+                  ? 'bg-red-500/20 border border-red-500 text-red-500'
+                  : 'bg-white/5 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted ? 'Muted' : 'Voice'}
+            </button>
+
+            {/* Voice Flavor Selector */}
+            <select
+              value={selectedVoiceFlavor}
+              onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm focus:border-primary/50 outline-none"
+            >
+              {Object.keys(voiceFlavors).map(flavor => (
+                <option key={flavor} value={flavor}>{flavor}</option>
+              ))}
+            </select>
+
+            {/* Speech Rate Controls */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+              <span className="text-xs text-white/60">Speed</span>
+              <input
+                type="range"
+                min="0.5"
+                max="1.5"
+                step="0.1"
+                value={speechRate}
+                onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                className="w-16 accent-primary"
+              />
+              <span className="text-xs font-mono w-8">{speechRate.toFixed(1)}x</span>
+            </div>
+          </div>
         </div>
 
         {/* Skills Selection */}
