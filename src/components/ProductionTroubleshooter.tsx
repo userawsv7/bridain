@@ -75,7 +75,7 @@ I'll provide:
 5. **Prevention Strategy** - How to avoid recurrence
 6. **Learning Resources** - Concepts to understand
 
-Paste logs, error output, or describe the issue in detail. Large uploads supported.`;`;
+Paste logs, error output, or describe the issue in detail. Large uploads supported.`;
 
 const rcaTemplate = (issue: string): string => `## Root Cause Analysis
 
