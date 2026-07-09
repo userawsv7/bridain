@@ -479,29 +479,31 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                     msg.isCorrect !== undefined ? (msg.isCorrect ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30') :
                     'bg-white/10 border border-white/20'
                   }`}>
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-invert prose-sm max-w-none">
-                      {msg.text.split('\n').map((line: string, idx: number) => {
-                        if (line.startsWith('##')) {
-                          return <h3 key={idx} className="font-semibold mt-4 mb-2 text-white/90">{line.replace(/^##\s*/, '')}</h3>;
-                        }
-                        if (line.startsWith('#')) {
-                          return <h2 key={idx} className="font-semibold mt-4 mb-2 text-lg text-white">{line.replace(/^#\s*/, '')}</h2>;
-                        }
-                        if (line.startsWith('- ') || line.startsWith('• ')) {
-                          return <div key={idx} className="ml-4 text-white/80">• {line.replace(/^[-•]\s*/, '')}</div>;
-                        }
-                        if (/^\d+\./.test(line)) {
-                          return <div key={idx} className="ml-4 text-white/80">{line}</div>;
-                        }
-                        if (line.includes('```')) return null;
-                        if (!line.trim()) return <div key={idx} className="h-2" />;
-                        const formattedLine = line
-                          .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>')
-                          .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-                          .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-white/10 rounded text-xs">$1</code>');
-                        return <div key={idx} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
-                      })}
-                    </div>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{sanitizeMessageText(msg.text)}</p>
+
+                    {/* MCQ Radio Buttons for Interview Mode */}
+                    {mode === 'interview' && awaitingAnswer && !msg.isUser && msg.id === messages[messages.length - 1].id && (
+                      <div className="mt-4 space-y-2">
+                        {['1', '2', '3', '4'].map(num => {
+                          const choiceMatch = msg.text.match(new RegExp(`${num}\\)\\s*([^\\n]+)`));
+                          if (choiceMatch) {
+                            return (
+                              <label key={num} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="interview-answer"
+                                  value={choiceMatch[1]}
+                                  onChange={(e) => handleAnswer(e.target.value)}
+                                  className="text-primary"
+                                />
+                                <span className="text-sm">{num}. {choiceMatch[1]}</span>
+                              </label>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
