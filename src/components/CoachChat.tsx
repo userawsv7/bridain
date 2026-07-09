@@ -12,7 +12,7 @@ interface Message {
 
 export function CoachChat() {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 0, text: "👋 Welcome to Coach Mode!\n\nI'll help you master ANY skill through:\n• Deep concept explanations\n• Day-to-day work fixes\n• Best practices & gotchas\n• Troubleshooting guidance\n\nWhat skill would you like to learn?", isUser: false }
+    { id: 0, text: "👋 Welcome to Coach Mode!\n\nI'll help you master any skill through deep concept explanations, practical fixes, best practices, and troubleshooting guidance. What skill would you like to learn?", isUser: false }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
