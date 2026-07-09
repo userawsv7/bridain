@@ -379,10 +379,10 @@ Include CORRECT: [number] for the new scenario.`,
 
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak the feedback with explanation and wait for completion
-        const feedbackText = feedbackMsg.text + ". " + explanation;
-        speak(feedbackText, isCorrect ? 0.9 : 0.85, () => {
-          // Generate next scenario only after speech completes
+        // Speak brief feedback then move to next question quickly
+        const shortFeedback = isCorrect ? "Correct!" : "Wrong. The answer is option " + correctAnswerIndex;
+        speak(shortFeedback, 0.9, () => {
+          // Generate next scenario immediately after brief speech
           if (selectedSkill) {
             generateScenario(selectedSkill);
           }

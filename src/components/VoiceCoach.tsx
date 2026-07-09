@@ -52,10 +52,10 @@ export function VoiceCoach() {
     // Enhanced sanitization that properly handles all markdown formatting
     return text
       .replace(/#{1,6}\s*/g, '') // Remove markdown headers like ###, ##, #
-      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold **text** but keep the content
-      .replace(/\*([^*]+)\*/g, '$1') // Remove italic *text* but keep the content
-      .replace(/_{1,2}([^_]+)_{1,2}/g, '$1') // Remove underscores with content
-      .replace(/`{1,3}([^`]+)`{1,3}/g, '$1') // Remove code markers but keep content
+      .replace(/\*\*/g, '') // Remove all ** markers
+      .replace(/\*/g, '') // Remove all * markers
+      .replace(/_{1,2}/g, '') // Remove all underscores
+      .replace(/`{1,3}/g, '') // Remove all code markers
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
   };
@@ -64,11 +64,10 @@ export function VoiceCoach() {
     // Enhanced sanitization that properly handles markdown formatting
     return text
       .replace(/#{1,6}\s*/g, '') // Remove markdown headers
-      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold **text** but keep the content
-      .replace(/\*([^*]+)\*/g, '$1') // Remove italic *text* but keep the content
-      .replace(/_{1,2}([^_]+)_{1,2}/g, '$1') // Remove underscores with content
-      .replace(/`{1,3}([^`]+)`{1,3}/g, '$1') // Remove code markers but keep content
-      .replace(/#{1,6}\s*/g, '') // Additional header cleanup
+      .replace(/\*\*/g, '') // Remove all ** markers
+      .replace(/\*/g, '') // Remove all * markers
+      .replace(/_{1,2}/g, '') // Remove all underscores
+      .replace(/`{1,3}/g, '') // Remove all code markers
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
   };
@@ -249,24 +248,25 @@ Format: CORRECT/INCORRECT: [explanation] NEXT: [next question with choices]`,
         const isCorrect = data.response.toLowerCase().includes('correct: yes') ||
                          data.response.toLowerCase().includes('correct answer');
 
+        // Short feedback only
+        const shortFeedback = isCorrect ? "Correct!" : `Wrong. ${answer} is not right.`;
         const feedbackMsg: Message = {
           id: Date.now() + 1,
-          text: data.response,
+          text: shortFeedback,
           isUser: false,
           isCorrect: isCorrect
         };
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak the feedback
-        const speechText = data.response.split('NEXT:')[0] || data.response;
-        speak(speechText, 0.9);
+        // Speak brief feedback only
+        speak(shortFeedback, 0.9);
 
-        // Ask next question after feedback
+        // Ask next question after brief feedback
         setTimeout(() => {
           if (selectedSkill) {
             askInterviewQuestion(selectedSkill);
           }
-        }, 3000);
+        }, 1500); // Quick transition to next question
       }
     } catch (error) {
       const errorMsg: Message = {
