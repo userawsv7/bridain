@@ -34,12 +34,24 @@ export function CoachChat() {
 
   const sanitizeText = (text: string): string => {
     return text
-      .replace(/#{1,6}\s*/g, '') // Remove markdown headers
-      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold **text**
-      .replace(/\*([^*]+)\*/g, '$1') // Remove italic *text*
-      .replace(/_{1,2}/g, '') // Remove underscores
-      .replace(/`{1,3}/g, '') // Remove code markers
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/#{1,6}\s*/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/_{1,2}/g, '')
+      .replace(/`{1,3}/g, '')
+      .replace(/^\s*[-•]\s*/gm, '• ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
+  const sanitizeForVoiceOnly = (text: string): string => {
+    return text
+      .replace(/#{1,6}\s*/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/_{1,2}/g, '')
+      .replace(/`{1,3}/g, '')
+      .replace(/^\s*[-•]\s*/gm, '')
       .trim();
   };
 
@@ -134,7 +146,7 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
         };
         setMessages(prev => [...prev, aiMsg]);
         // Speak the response
-        speak(sanitizedResponse, 0.9);
+        speak(sanitizeForVoiceOnly(data.response), 0.9);
       }
     } catch (error) {
       const aiMsg: Message = {
@@ -258,7 +270,11 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
                   className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`max-w-[85%] p-4 rounded-2xl ${msg.isUser ? 'bg-primary/20 border border-primary/30' : 'bg-white/10 border border-white/20'}`}>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{sanitizeText(msg.text)}</p>
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words space-y-1">
+                    {sanitizeText(msg.text).split('\n').map((line, idx) => (
+                      <div key={idx}>{line || ' '}</div>
+                    ))}
+                  </div>
                   </div>
                 </motion.div>
               ))}
