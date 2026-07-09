@@ -141,17 +141,35 @@ export function ProductionTroubleshooter() {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Victoria');
+  const [speechRate, setSpeechRate] = useState(0.90);
+
+  const voiceFlavors: { [key: string]: { name: string; pitch: number } } = {
+    Victoria: { name: 'Victoria', pitch: 1.15 },
+    Karen: { name: 'Karen', pitch: 1.12 },
+    Samantha: { name: 'Samantha', pitch: 1.18 },
+    Moira: { name: 'Moira', pitch: 1.08 },
+    Tessa: { name: 'Tessa', pitch: 1.10 }
+  };
+
   const speak = (text: string) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(
-      text.replace(/#{1,6}\s*/g, '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`/g, '').trim()
-    );
+    const voices = window.speechSynthesis.getVoices();
+    const flavor = voiceFlavors[selectedVoiceFlavor];
+    const female = voices.find(v =>
+      v.name.includes('Female') || v.name.includes(flavor.name) || v.name.includes('Karen') || v.name.includes('Victoria') || v.name.includes('Samantha')
+    ) || voices[0];
 
-    utterance.rate = 0.95;
-    utterance.pitch = useFemaleVoice ? 1.15 : 0.9;
-    utterance.volume = 0.8;
+    window.speechSynthesis.cancel();
+
+    const clean = text.replace(/#{1,6}\s*/g, '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`/g, '').trim();
+    const utterance = new SpeechSynthesisUtterance(clean);
+
+    utterance.rate = speechRate;
+    utterance.pitch = flavor.pitch;
+    utterance.voice = female;
+    utterance.volume = 0.85;
 
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
@@ -230,12 +248,31 @@ export function ProductionTroubleshooter() {
     setInput('');
     setIsLoading(true);
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     let response: Message;
     const lowerText = text.toLowerCase();
 
-    if (lowerText.includes('rca') || lowerText.includes('root cause')) {
+    // Auto detect issues from logs content
+    const detectIssue = (content: string) => {
+      const lc = content.toLowerCase();
+      if (lc.includes('crashloop') || lc.includes('exit code 1')) return 'CrashLoopBackOff - pod restarting constantly';
+      if (lc.includes('imagepull') || lc.includes('errimagepull')) return 'ImagePullBackOff - image not found';
+      if (lc.includes('memory') || lc.includes('oom')) return 'OutOfMemory - pod killed by OOM';
+      if (lc.includes('pending')) return 'Pending - scheduler cannot place pod';
+      if (lc.includes('connection refused') || lc.includes('timeout')) return 'Network connectivity or service down';
+      if (lc.includes('permission') || lc.includes('forbidden')) return 'RBAC/Permission denied';
+      return null;
+    };
+
+    const detected = detectIssue(text);
+    if (detected) {
+      response = {
+        id: Date.now() + 1,
+        text: `### 🔍 Auto-detected: ${detected}\n\n${rcaTemplate(text)}\n\n### ⚡ Immediate Fix\n\`\`\`bash\nkubectl get pods -o wide\nkubectl describe pod [pod-name]\nkubectl logs [pod-name] --previous\n\`\`\``,
+        isUser: false
+      };
+    } else if (lowerText.includes('rca') || lowerText.includes('root cause')) {
       response = { id: Date.now() + 1, text: rcaTemplate(text), isUser: false, category: 'rca' };
     } else if (selectedCategory) {
       response = {
@@ -247,7 +284,7 @@ export function ProductionTroubleshooter() {
     } else {
       response = {
         id: Date.now() + 1,
-        text: "Please select a category above or describe the specific symptoms you're seeing. I'll help with probing questions and systematic diagnosis.",
+        text: "Describe the issue, upload logs, or select a category. I'll detect problems automatically and give RCA + fixes.",
         isUser: false
       };
     }
@@ -407,15 +444,30 @@ export function ProductionTroubleshooter() {
 
           <div className="flex items-center justify-between mt-3 px-1">
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex items-center gap-3 text-xs">
+              <select
+                value={selectedVoiceFlavor}
+                onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-gray-300"
+              >
+                {Object.keys(voiceFlavors).map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1 text-gray-400">
+                <span>Rate</span>
                 <input
-                  type="checkbox"
-                  checked={useFemaleVoice}
-                  onChange={(e) => setUseFemaleVoice(e.target.checked)}
-                  className="rounded border-gray-600 bg-gray-700"
+                  type="range"
+                  min="0.6"
+                  max="1.6"
+                  step="0.05"
+                  value={speechRate}
+                  onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                  className="w-20 accent-orange-500"
                 />
-                <span className="text-xs text-gray-400">Female voice</span>
-              </label>
+                <span className="w-8 tabular-nums">{speechRate.toFixed(2)}x</span>
+              </div>
+            </div>
               <span className="text-xs text-gray-600">•</span>
               <span className="text-xs text-gray-400">Unlimited uploads • Real-time transcription</span>
             </div>
