@@ -110,7 +110,16 @@ export function ScenarioGame() {
     return anyVoice || voices.find(v => v.name.includes('Google')) || voices[0];
   };
 
-  const speak = (text: string, rate: number = 0.9, onComplete?: () => void) => {
+  // Update speech synthesis whenever rate or voice changes
+  React.useEffect(() => {
+    if (isSpeaking && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // Stop current speech and restart with new settings
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, [speechRate, selectedVoiceFlavor]);
+
+  const speak = (text: string, rate?: number, onComplete?: () => void) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     // Clean text for pleasant TTS experience
@@ -119,7 +128,7 @@ export function ScenarioGame() {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = speechRate;
+    utterance.rate = rate !== undefined ? rate : speechRate; // Use current rate dynamically
     utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
     utterance.volume = 0.85; // Pleasant volume level
 
@@ -257,10 +266,12 @@ Include the CORRECT answer number as: CORRECT: [number]`,
         const parsed = parseScenario(data.response);
         console.log('Parsed:', parsed); // Debug log
 
-        // Ensure we have content to show
-        let scenarioText = parsed.scenario || data.response || 'A technical scenario for you to solve:';
-    // Filter out CORRECT markers from displayed text
-    scenarioText = scenarioText.replace(/CORRECT:\s*\d/i, '').trim();
+        // Ensure we have content to show - sanitize special characters
+        let scenarioText = (parsed.scenario || data.response || 'A technical scenario for you to solve:')
+          .replace(/CORRECT:\s*\d/i, '')
+          .replace(/\*/g, '') // Remove asterisks
+          .replace(/#{1,6}\s*/g, '') // Remove markdown headers
+          .trim();
 
         const scenarioMsg: Message = {
           id: Date.now(),
@@ -465,7 +476,15 @@ Include CORRECT: [number] for the new scenario.`,
                     max="2.0"
                     step="0.1"
                     value={speechRate}
-                    onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                    onChange={(e) => {
+                      const newRate = parseFloat(e.target.value);
+                      setSpeechRate(newRate);
+                      // If currently speaking, restart with new rate
+                      if (isSpeaking && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                        window.speechSynthesis.cancel();
+                        // Re-speak current text with new rate (handled by useEffect)
+                      }
+                    }}
                     className="w-16"
                   />
                   <span className="text-xs w-8">{speechRate.toFixed(1)}x</span>
