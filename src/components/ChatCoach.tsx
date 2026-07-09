@@ -110,18 +110,51 @@ export function ChatCoach() {
     const utterance = new SpeechSynthesisUtterance(cleanText);
     const flavor = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors];
 
+    // Always use female voice by default
     utterance.rate = rate;
     utterance.pitch = flavor.pitch;
     utterance.volume = 0.85;
 
-    const femaleVoice = selectPreferredFemaleVoice();
-    if (femaleVoice) utterance.voice = femaleVoice;
+    // Ensure female voice is selected
+    const selectFemaleVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      // Female voice priority list
+      const femaleVoices = ['Samantha', 'Karen', 'Victoria', 'Susan', 'Allison', 'Ava', 'Moira', 'Fiona', 'Veena', 'Tessa'];
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
+      // Try to find a female voice
+      for (const name of femaleVoices) {
+        const voice = voices.find(v => v.name.includes(name));
+        if (voice) return voice;
+      }
 
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+      // Fallback to any female-indicated voice
+      const voice = voices.find(v =>
+        v.name.toLowerCase().includes('female') ||
+        v.name.toLowerCase().includes('woman') ||
+        v.name.includes('Google') && v.name.toLowerCase().includes('en')
+      );
+
+      return voice || voices[0];
+    };
+
+    // Load voices if needed
+    const setVoiceAndSpeak = () => {
+      const femaleVoice = selectFemaleVoice();
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+      }
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utteranceRef.current = utterance;
+      window.speechSynthesis.speak(utterance);
+    };
+
+    // Handle voices not loaded yet
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.onvoiceschanged = setVoiceAndSpeak;
+    } else {
+      setVoiceAndSpeak();
+    }
   };
 
   const toggleMute = () => {
