@@ -90,15 +90,35 @@ export function ChatCoach() {
       if (voice) return voice;
     }
 
-    // Then try any female voice indicators
-    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
+    // Then try any female voice indicators - strictly female only
+    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady', 'WOMAN', 'FEMALE'];
     for (const indicator of femaleIndicators) {
       const voice = voices.find(v => v.name.includes(indicator));
       if (voice) return voice;
     }
 
-    // Fallback to Google voices or first available
-    return voices.find(v => v.name.includes('Google')) || voices[0];
+    // Look for any voice that contains common female name patterns
+    const commonFemaleVoices = voices.filter(v =>
+      v.name.toLowerCase().includes('alice') ||
+      v.name.toLowerCase().includes('emma') ||
+      v.name.toLowerCase().includes('olivia') ||
+      v.name.toLowerCase().includes('sophia') ||
+      v.name.toLowerCase().includes('isabella') ||
+      v.name.toLowerCase().includes('mary') ||
+      v.name.toLowerCase().includes('patricia') ||
+      v.name.toLowerCase().includes('jennifer') ||
+      v.name.toLowerCase().includes('linda') ||
+      v.name.toLowerCase().includes('barbara')
+    );
+    if (commonFemaleVoices.length > 0) return commonFemaleVoices[0];
+
+    // Fallback to Google female voices specifically
+    const googleFemale = voices.find(v => v.name.includes('Google') && v.name.toLowerCase().includes('female'));
+    if (googleFemale) return googleFemale;
+
+    // Last resort: use any voice with explicitly female gender info if available
+    const anyVoice = voices.find(v => v.name.toLowerCase().includes('en') && !v.name.toLowerCase().includes('male'));
+    return anyVoice || voices.find(v => v.name.includes('Google')) || voices[0];
   };
 
   const speak = (text: string, rate: number = 0.9) => {
@@ -191,7 +211,11 @@ export function ChatCoach() {
 
       lines.forEach((line: string, index: number) => {
         if (line.startsWith('Q:')) question = line.replace('Q:', '').trim();
-        if (line.match(/^[A-D]\)/)) options.push(line);
+        if (line.match(/^[A-D]\)/)) {
+          // Clean up the option text and ensure proper spacing
+          const cleanOption = line.replace(/^[A-D]\)\s*/, '').trim();
+          options.push(cleanOption);
+        }
         if (line.startsWith('ANSWER:')) {
           const ans = line.replace('ANSWER:', '').trim().toUpperCase();
           correctAnswer = ans.charCodeAt(0) - 65; // Convert A->0, B->1, etc
@@ -494,7 +518,7 @@ export function ChatCoach() {
                           onClick={() => handleAnswer(optIndex, index)}
                           className="w-full p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-all"
                         >
-                          {option}
+                          <span className="font-medium mr-2">{String.fromCharCode(65 + optIndex)})</span> {option}
                         </button>
                       ))}
                     </div>
