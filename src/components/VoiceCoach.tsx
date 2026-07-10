@@ -364,13 +364,13 @@ Make it challenging but fair for a ${skill} role.`,
 Previous question: ${currentQuestion}
 User's answer: ${answer}
 
-CRITICAL: ALWAYS show the correct answer and explain it. Format MUST be:
+CRITICAL: ALWAYS show which choice (1,2,3, or 4) is correct. Format MUST be:
 
 STATUS: Correct or Wrong
-CONTRAST: The correct answer is X. Your answer Y was Wrong/Correct.
-EXPLANATION: Brief 1-2 sentence explanation why correct answer works. Use simple language.
+CONTRAST: The correct answer is choice X. Your answer was choice Y.
+EXPLANATION: Brief 1-2 sentence explanation why choice X is correct. Use simple language.
 
-Then ask the next interview question with 4 choices.`,
+Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
           skill: selectedSkill,
           mode: 'interview_feedback'
         })
@@ -420,6 +420,10 @@ Then ask the next interview question with 4 choices.`,
         const cleanContrast = contrast.replace(/[\*\_\`\#]/g, '').trim();
         const cleanExplanation = explanation.replace(/[\*\_\`\#]/g, '').trim();
 
+        // Extract which choice number (1,2,3,4) was the correct answer
+        const correctChoiceMatch = cleanContrast.match(/choice\s*(\d)/i);
+        const correctChoiceNum = correctChoiceMatch ? parseInt(correctChoiceMatch[1]) : null;
+
         const feedbackMsg: Message = {
           id: Date.now() + 1,
           text: `${status}: ${cleanContrast} ${cleanExplanation}`,
@@ -427,7 +431,8 @@ Then ask the next interview question with 4 choices.`,
           isCorrect: isCorrect,
           feedbackStatus: status,
           feedbackContrast: cleanContrast,
-          feedbackExplanation: cleanExplanation
+          feedbackExplanation: cleanExplanation,
+          correctAnswer: correctChoiceNum ? correctChoiceNum.toString() : undefined
         };
         setMessages(prev => [...prev, feedbackMsg]);
 
@@ -662,7 +667,7 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                     }`}
                     onClick={() => !msg.isUser && speak(sanitizeMessageText(msg.text), 0.85)}
                   >
-                    {/* Structured Feedback Display */}
+                    {/* Structured Feedback Display - Show correct answer with explanation */}
                     {msg.feedbackStatus && msg.feedbackContrast && msg.feedbackExplanation ? (
                       <div className="space-y-3">
                         {/* Status Badge */}
@@ -674,15 +679,15 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                           {msg.feedbackStatus}
                         </div>
 
-                        {/* Contrast Section */}
+                        {/* Contrast Section - Shows which choice is correct */}
                         <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                          <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Correct Answer vs Your Answer</div>
-                          <p className="text-sm text-white/90">{msg.feedbackContrast}</p>
+                          <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Correct Choice Revealed</div>
+                          <p className="text-sm text-white/90 font-medium">{msg.feedbackContrast}</p>
                         </div>
 
                         {/* Explanation Section */}
                         <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                          <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Explanation</div>
+                          <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Why This Is Correct</div>
                           <p className="text-sm text-white/90 leading-relaxed">{msg.feedbackExplanation}</p>
                         </div>
                       </div>
