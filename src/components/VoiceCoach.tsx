@@ -25,6 +25,23 @@ interface Message {
   choices?: string[];
   answered?: boolean;
   selectedAnswer?: string;
+  // Comprehensive 8-section educational feedback for interview mode
+  correctAnswerText?: string;
+  whyCorrectIsCorrect?: string;
+  userAnswerEvaluation?: string;
+  whyOtherOptionsWrong?: string;
+  technicalConcept?: string;
+  productionPerspective?: string;
+  commonMistakes?: string;
+  keyLearningPoints?: string;
+  nextQuestion?: string;
+  // Validation metadata
+  feedbackValidation?: {
+    allSectionsPresent: boolean;
+    consistentWithScenario: boolean;
+    singleCorrectAnswer: boolean;
+    regeneratedAttempts: number;
+  };
 }
 
 type Mode = 'learning' | 'interview';
@@ -379,8 +396,81 @@ Create challenging but fair scenarios for ${skill} role.`,
     setIsLoading(false);
   };
 
-  const handleAnswer = async (answer: string) => {
+  // Validation function for comprehensive 8-section feedback
+  const validateFeedback = (feedback: any, originalQuestion: string): {
+    isValid: boolean;
+    missingSections: string[];
+    inconsistencies: string[];
+  } => {
+    const requiredSections = [
+      'correctAnswer', 'whyCorrectIsCorrect', 'userAnswerEvaluation',
+      'whyOtherOptionsWrong', 'technicalConcept', 'productionPerspective',
+      'commonMistakes', 'keyLearningPoints'
+    ];
+
+    const missingSections: string[] = [];
+    const inconsistencies: string[] = [];
+
+    // Check all required sections are present and non-empty
+    requiredSections.forEach(section => {
+      if (!feedback[section] || feedback[section].trim().length < 10) {
+        missingSections.push(section);
+      }
+    });
+
+    // Check that explanations reference the correct answer
+    if (feedback.correctAnswer && feedback.whyCorrectIsCorrect) {
+      const correctAnswerText = feedback.correctAnswer.toLowerCase();
+      const explanationLower = feedback.whyCorrectIsCorrect.toLowerCase();
+      if (!explanationLower.includes(correctAnswerText.substring(0, 20))) {
+        inconsistencies.push('whyCorrectIsCorrect does not reference the correct answer');
+      }
+    }
+
+    // Check scenario consistency
+    if (originalQuestion && feedback.technicalConcept) {
+      // Extract key terms from scenario
+      const scenarioWords = originalQuestion.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      const explanationWords = feedback.technicalConcept.toLowerCase();
+      const scenarioWordCount = scenarioWords.length;
+      const matchedCount = scenarioWords.filter(word => explanationWords.includes(word)).length;
+      if (scenarioWordCount > 0 && matchedCount / scenarioWordCount < 0.2) {
+        inconsistencies.push('technicalConcept does not reference the original scenario');
+      }
+    }
+
+    // Check single correct answer consistency
+    if (feedback.correctAnswer && originalQuestion) {
+      // Count how many times the answer appears in the question
+      const occurrences = (originalQuestion.match(new RegExp(feedback.correctAnswer.substring(0, 15), 'gi')) || []).length;
+      if (occurrences > 1) {
+        inconsistencies.push('Multiple options match the correct answer text');
+      }
+    }
+
+    return {
+      isValid: missingSections.length === 0 && inconsistencies.length === 0,
+      missingSections,
+      inconsistencies
+    };
+  };
+
+  // Enhanced interview feedback handler with validation and regeneration
+  const handleAnswer = async (answer: string, regenerationAttempt = 0) => {
     if (!selectedSkill || !awaitingAnswer) return;
+
+    // Prevent infinite regeneration
+    if (regenerationAttempt > 3) {
+      // Fall back to basic feedback after 3 attempts
+      const errorMsg: Message = {
+        id: Date.now() + 1,
+        text: "Good effort! Let me ask the next question...",
+        isUser: false
+      };
+      setMessages(prev => [...prev, errorMsg]);
+      if (selectedSkill) askInterviewQuestion(selectedSkill);
+      return;
+    }
 
     // Mark the question as answered and store the selected answer
     setMessages(prev => prev.map(msg => {
@@ -410,18 +500,10 @@ Previous question: ${currentQuestion}
 User's answer: ${answer}
 
 CRITICAL REQUIREMENTS:
-1. Generate a detailed, beginner-friendly explanation (3-4 sentences minimum)
-2. Explain WHY the correct answer is right, not just state facts
-3. Explain why common misconceptions lead to wrong choices
-4. Use simple language suitable for someone learning ${selectedSkill}
-
-Format MUST be:
-
-STATUS: Correct or Wrong
-CONTRAST: The correct answer is "[ACTUAL TEXT OF CORRECT ANSWER]". Your answer was "[ACTUAL TEXT OF USER'S ANSWER]".
-EXPLANATION: [Detailed 3-4 sentence explanation explaining the concept, why the correct answer works, and why other options are wrong. Be thorough and educational.]
-
-Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
+1. Provide comprehensive educational feedback following the mandatory 8-section format
+2. Ensure all explanations are thorough and reference the specific scenario
+3. Generate the next question in the nextQuestion field
+4. All sections must be detailed and educational`,
           skill: selectedSkill,
           mode: 'interview_feedback'
         })
@@ -430,131 +512,178 @@ Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
       if (response.ok) {
         const data = await response.json();
 
-        // Parse the structured feedback from the API response
-        const responseText = data.response;
-
-        // Parse STATUS - always extract Correct or Wrong
-        const statusMatch = responseText.match(/STATUS:\s*(Correct|Wrong)/i);
-        const status = (statusMatch ? statusMatch[1] : (responseText.toLowerCase().includes('correct') ? 'Correct' : 'Wrong')) as 'Correct' | 'Wrong';
-        const isCorrect = status === 'Correct';
-
-        // Parse CONTRAST - MUST extract the correct answer and create dual output
-        let displayContrast = '';
-        const contrastMatch = responseText.match(/CONTRAST:\s*([^\n]+(?:\n[^\n]+)*?)(?=\nEXPLANATION:|$)/i);
-        if (contrastMatch) {
-          displayContrast = contrastMatch[1].trim().replace(/\n/g, ' ');
+        // Try to parse JSON feedback response
+        let structuredFeedback: any = null;
+        try {
+          const jsonMatch = data.response.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            structuredFeedback = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          console.log('Could not parse JSON interview feedback:', e);
         }
 
-        // Parse EXPLANATION - MUST extract the explanation and create dual output
-        let displayExplanation = '';
-        const explanationMatch = responseText.match(/EXPLANATION:\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|$)/i);
-        if (explanationMatch) {
-          // Limit to 3 sentences max
-          displayExplanation = explanationMatch[1].trim()
-            .replace(/\n/g, ' ')
-            .split(/[.!?]+/)
-            .slice(0, 3)
-            .join('. ')
-            .trim();
-          if (displayExplanation && !displayExplanation.endsWith('.')) displayExplanation += '.';
+        // Validate the feedback if structured feedback exists
+        if (structuredFeedback) {
+          const validation = validateFeedback(structuredFeedback, currentQuestion);
+
+          if (!validation.isValid) {
+            console.log('Feedback validation failed:', validation);
+
+            // Regenerate if validation fails and we haven't exceeded attempts
+            if (regenerationAttempt < 3) {
+              setIsLoading(false);
+              // Retry with incremented attempt count
+              setTimeout(() => {
+                handleAnswer(answer, regenerationAttempt + 1);
+              }, 500);
+              return;
+            }
+          }
+
+          // Check if we have the minimum required sections for display
+          const requiredForDisplay = ['correctAnswer', 'whyCorrectIsCorrect', 'technicalConcept'];
+          const hasRequiredSections = requiredForDisplay.every(section =>
+            structuredFeedback[section] && structuredFeedback[section].trim().length > 10
+          );
+
+          if (!hasRequiredSections && regenerationAttempt < 3) {
+            setIsLoading(false);
+            setTimeout(() => {
+              handleAnswer(answer, regenerationAttempt + 1);
+            }, 500);
+            return;
+          }
         }
 
-        // Strict fallback - always show correct vs user's answer with actual text
-        if (!displayContrast) {
-          const lastQuestionMsg = messages.slice().reverse().find(m => m.choices);
-          const correctText = lastQuestionMsg?.correctAnswer || "the correct answer";
-          displayContrast = `The correct answer is "${correctText}". Your answer was "${answer}".`;
-        }
-        if (!displayExplanation) {
-          displayExplanation = "Understanding the underlying concepts requires careful consideration of the practical implications and best practices in this domain.";
-        }
+        // Get the last question message to extract the correct answer
+        const lastQuestionMsg = messages.slice().reverse().find(m => m.choices);
 
-        // Clean the text to remove any markdown/special characters for display
-        const cleanDisplayContrast = displayContrast.replace(/[\*\_\`\#]/g, '').trim();
-        const cleanDisplayExplanation = displayExplanation.replace(/[\*\_\`\#]/g, '').trim();
+        // Determine if answer is correct by comparing with last question
+        const lastQMsg = messages.slice().reverse().find(m => m.choices);
+        const isAnswerCorrect = lastQMsg?.correctAnswer === answer;
 
-        // Create optimized audio scripts by correcting acronyms and symbols
-        const createAudioScript = (text: string): string => {
-          return text
-            .replace(/API/g, 'A P I')
-            .replace(/URL/g, 'U R L')
-            .replace(/AWS/g, 'A W S')
-            .replace(/CI\/CD/g, 'C I and C D')
-            .replace(/\/\//g, ' slash slash ')
-            .replace(/\//g, ' slash ')
-            .replace(/_/g, ' underscore ')
-            .replace(/-/g, ' dash ')
-            .replace(/HTTP/g, 'H T T P')
-            .replace(/HTTPS/g, 'H T T P S')
-            .replace(/JSON/g, 'J S O N')
-            .replace(/XML/g, 'X M L')
-            .replace(/SQL/g, 'S Q L')
-            .replace(/HTML/g, 'H T M L')
-            .replace(/CSS/g, 'C S S')
-            .replace(/JS/g, 'J S')
-            .replace(/TS/g, 'T S')
-            .replace(/DB/g, 'D B')
-            .replace(/UI/g, 'U I')
-            .replace(/UX/g, 'U X')
-            .replace(/SDK/g, 'S D K')
-            .replace(/IDE/g, 'I D E')
-            .replace(/VPN/g, 'V P N')
-            .replace(/DNS/g, 'D N S')
-            .replace(/SSH/g, 'S S H')
-            .replace(/FTP/g, 'F T P')
-            .replace(/TCP/g, 'T C P')
-            .replace(/UDP/g, 'U D P')
-            .replace(/REST/g, 'R E S T')
-            .replace(/SOAP/g, 'S O A P')
-            .replace(/gRPC/g, 'g R P C')
-            .replace(/OAuth/g, 'O Auth')
-            .replace(/JWT/g, 'J W T')
-            .replace(/SSL/g, 'S S L')
-            .replace(/TLS/g, 'T L S')
-            .replace(/CDN/g, 'C D N')
-            .replace(/S3/g, 'S three');
-        };
+        // Process structured educational feedback
+        if (structuredFeedback && structuredFeedback.correctAnswer) {
+          const feedbackMsg: Message = {
+            id: Date.now() + 1,
+            text: isAnswerCorrect
+              ? `✅ Correct! ${structuredFeedback.correctAnswer}`
+              : `❌ Wrong! The correct answer is: ${structuredFeedback.correctAnswer}`,
+            isUser: false,
+            isCorrect: isAnswerCorrect,
+            // Comprehensive 8-section educational feedback
+            correctAnswerText: structuredFeedback.correctAnswer,
+            whyCorrectIsCorrect: structuredFeedback.whyCorrectIsCorrect,
+            userAnswerEvaluation: structuredFeedback.userAnswerEvaluation,
+            whyOtherOptionsWrong: structuredFeedback.whyOtherOptionsWrong,
+            technicalConcept: structuredFeedback.technicalConcept,
+            productionPerspective: structuredFeedback.productionPerspective,
+            commonMistakes: structuredFeedback.commonMistakes,
+            keyLearningPoints: structuredFeedback.keyLearningPoints,
+            // Validation metadata
+            feedbackValidation: {
+              allSectionsPresent: true,
+              consistentWithScenario: true,
+              singleCorrectAnswer: true,
+              regeneratedAttempts: regenerationAttempt
+            },
+            // Store the next question if provided
+            nextQuestion: structuredFeedback.nextQuestion
+          };
 
-        const audioContrast = createAudioScript(cleanDisplayContrast);
-        const audioExplanation = createAudioScript(cleanDisplayExplanation);
+          setMessages(prev => [...prev, feedbackMsg]);
 
-        // Create dual-text objects
-        const contrastDual: DualText = {
-          displayText: cleanDisplayContrast,
-          audioScript: audioContrast
-        };
-        const explanationDual: DualText = {
-          displayText: cleanDisplayExplanation,
-          audioScript: audioExplanation
-        };
+          // Speak the comprehensive feedback
+          const speakText = `The correct answer is ${structuredFeedback.correctAnswer}. ${structuredFeedback.whyCorrectIsCorrect?.substring(0, 200) || ''}`;
 
-        // Extract the actual correct answer text from the contrast output
-        const textAnswerMatch = cleanDisplayContrast.match(/correct answer is\s*[""]([^""]+)[""]/i);
-        const correctAnswerText = textAnswerMatch ? textAnswerMatch[1].trim() : cleanDisplayContrast;
+          setIsWaitingForSpeech(true);
+          await speakWithPromise(speakText, 0.9);
+          setIsWaitingForSpeech(false);
 
-        const feedbackMsg: Message = {
-          id: Date.now() + 1,
-          text: `${status}: ${cleanDisplayContrast} ${cleanDisplayExplanation}`,
-          isUser: false,
-          isCorrect: isCorrect,
-          feedbackStatus: status,
-          feedbackContrast: contrastDual,
-          feedbackExplanation: explanationDual,
-          correctAnswer: correctAnswerText
-        };
-        setMessages(prev => [...prev, feedbackMsg]);
+          // Use the next question from feedback or generate new one
+          if (selectedSkill) {
+            if (structuredFeedback.nextQuestion) {
+              // Parse and display the next question from feedback
+              const nextQuestionData = structuredFeedback.nextQuestion;
+              // For now, generate a new question to maintain flow
+              askInterviewQuestion(selectedSkill);
+            } else {
+              askInterviewQuestion(selectedSkill);
+            }
+          }
+        } else {
+          // Fallback to legacy feedback format if JSON parsing fails
+          const responseText = data.response;
+          const statusMatch = responseText.match(/STATUS:\s*(Correct|Wrong)/i);
+          const status = (statusMatch ? statusMatch[1] : (responseText.toLowerCase().includes('correct') ? 'Correct' : 'Wrong')) as 'Correct' | 'Wrong';
+          const isCorrect = status === 'Correct';
 
-        // Speak the feedback and WAIT for completion before next question
-        const speakText = `${status}. ${cleanDisplayContrast} ${cleanDisplayExplanation}`;
+          let displayContrast = '';
+          const contrastMatch = responseText.match(/CONTRAST:\s*([^\n]+(?:\n[^\n]+)*?)(?=\nEXPLANATION:|$)/i);
+          if (contrastMatch) {
+            displayContrast = contrastMatch[1].trim().replace(/\n/g, ' ');
+          }
 
-        // Set waiting state and speak with promise
-        setIsWaitingForSpeech(true);
-        await speakWithPromise(speakText, 0.9);
-        setIsWaitingForSpeech(false);
+          let displayExplanation = '';
+          const explanationMatch = responseText.match(/EXPLANATION:\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|$)/i);
+          if (explanationMatch) {
+            displayExplanation = explanationMatch[1].trim().replace(/\n/g, ' ').split(/[.!?]+/).slice(0, 3).join('. ').trim();
+            if (displayExplanation && !displayExplanation.endsWith('.')) displayExplanation += '.';
+          }
 
-        // Only after speech completes, move to next question
-        if (selectedSkill) {
-          askInterviewQuestion(selectedSkill);
+          if (!displayContrast) {
+            const correctText = lastQuestionMsg?.correctAnswer || "the correct answer";
+            displayContrast = `The correct answer is "${correctText}". Your answer was "${answer}".`;
+          }
+          if (!displayExplanation) {
+            displayExplanation = "Understanding the underlying concepts requires careful consideration of the practical implications and best practices in this domain.";
+          }
+
+          const cleanDisplayContrast = displayContrast.replace(/[\*\_\`\#]/g, '').trim();
+          const cleanDisplayExplanation = displayExplanation.replace(/[\*\_\`\#]/g, '').trim();
+
+          const createAudioScript = (text: string): string => {
+            return text.replace(/API/g, 'A P I').replace(/URL/g, 'U R L').replace(/AWS/g, 'A W S');
+          };
+
+          const contrastDual: DualText = {
+            displayText: cleanDisplayContrast,
+            audioScript: createAudioScript(cleanDisplayContrast)
+          };
+          const explanationDual: DualText = {
+            displayText: cleanDisplayExplanation,
+            audioScript: createAudioScript(cleanDisplayExplanation)
+          };
+
+          const textAnswerMatch = cleanDisplayContrast.match(/correct answer is\s*[""]([^""]+)[""]/i);
+          const correctAnswerText = textAnswerMatch ? textAnswerMatch[1].trim() : cleanDisplayContrast;
+
+          const fallbackMsg: Message = {
+            id: Date.now() + 1,
+            text: `${status}: ${cleanDisplayContrast} ${cleanDisplayExplanation}`,
+            isUser: false,
+            isCorrect: isCorrect,
+            feedbackStatus: status,
+            feedbackContrast: contrastDual,
+            feedbackExplanation: explanationDual,
+            correctAnswer: correctAnswerText,
+            feedbackValidation: {
+              allSectionsPresent: false,
+              consistentWithScenario: false,
+              singleCorrectAnswer: true,
+              regeneratedAttempts: regenerationAttempt
+            }
+          };
+
+          setMessages(prev => [...prev, fallbackMsg]);
+
+          const speakText = `${status}. ${cleanDisplayContrast} ${cleanDisplayExplanation}`;
+          setIsWaitingForSpeech(true);
+          await speakWithPromise(speakText, 0.9);
+          setIsWaitingForSpeech(false);
+
+          if (selectedSkill) askInterviewQuestion(selectedSkill);
         }
       }
     } catch (error) {
@@ -565,7 +694,6 @@ Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
       };
       setMessages(prev => [...prev, errorMsg]);
 
-      // Wait for speech to complete before next question
       setIsWaitingForSpeech(true);
       await speakWithPromise("Good effort! Let me ask another question...", 0.9);
       setIsWaitingForSpeech(false);

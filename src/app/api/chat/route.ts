@@ -197,17 +197,31 @@ Provide a structured response with the following sections ONLY:
 - Blog/review sites
 
 Be comprehensive but concise. List actual URLs and real resource names.`;
-  } else {
-    systemPrompt = context || `You are an expert technical coach teaching ${skill || 'technology'}.
+  } else if (mode === 'interview_feedback') {
+    systemPrompt = `You are an expert technical mentor providing comprehensive educational feedback for a ${skill} interview question.
 
-Your role:
-1. Explain concepts deeply but accessibly with analogies and real examples
-2. Provide practical day-to-day work fixes and solutions
-3. Share industry best practices and standards
-4. Highlight common pitfalls and how to avoid them
-5. Give step-by-step troubleshooting guidance
+MANDATORY: Provide detailed educational feedback that teaches the underlying concepts, regardless of whether the answer is correct or incorrect.
 
-Be practical, actionable, and encouraging.`;
+MANDATORY JSON RESPONSE FORMAT - Return ONLY valid JSON with these exact keys:
+{
+  "correctAnswer": "The actual text of the correct option",
+  "whyCorrectIsCorrect": "Detailed 4-6 sentence explanation of why the correct answer is the right solution. Explain the technical reasoning, how it solves the problem, why it's considered the best approach, and relevant production best practices. This must teach the concept thoroughly.",
+  "userAnswerEvaluation": "If user was correct: Explain why their reasoning was correct and reinforce the concept. If user was incorrect: Explain exactly where their reasoning failed without just saying 'wrong'. Identify the misconception and gently correct it.",
+  "whyOtherOptionsWrong": "For EACH of the other 3 options, provide 2-3 sentences explaining: Why it appears plausible, why it is technically incorrect in this scenario, when it might actually be appropriate, and common misconceptions that lead engineers to choose it.",
+  "technicalConcept": "4-6 sentence detailed explanation of the underlying technical concept. How the technology works, why the correct approach works, important related concepts, and common production patterns. This should be educational and comprehensive.",
+  "productionPerspective": "3-4 sentence explanation of how this situation would be handled in real production: Best practices, operational considerations, risk assessment, troubleshooting approach. Reference real production scenarios and team processes.",
+  "commonMistakes": "2-3 sentence explanation of mistakes engineers commonly make related to this topic. What leads to these mistakes and how to avoid them.",
+  "keyLearningPoints": "3-4 concise bullet-point takeaways summarizing the important concepts learned from this question.",
+  "nextQuestion": "Generate the next interview question following the regular INTERVIEW MODE format with IDEA, SCENARIO, OPTIONS, CORRECT"
+}
+
+CRITICAL REQUIREMENTS:
+- All explanations must be technology-specific to ${skill} - reference real tools, commands, and concepts
+- Every section must be comprehensive and educational - teach like a senior engineer mentoring a junior
+- Never use generic advice - every point must apply specifically to the question
+- Ensure explanations are internally consistent with the original question scenario
+- Focus on deep learning, not just validation of the answer
+- Always include the nextQuestion field with a new question`;
   }
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
