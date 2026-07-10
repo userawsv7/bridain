@@ -59,7 +59,7 @@ const scenarios: Scenario[] = [
     ],
     correct: 1,
     explanation: {
-      verdict: "✅ Correct",
+      verdict: { displayText: "✅ Correct", audioScript: "Correct" },
       why: [
         "Port 8080 is actively used by process PID 4521",
         "Container can't bind to an occupied port",
@@ -94,7 +94,7 @@ const scenarios: Scenario[] = [
     ],
     correct: 1,
     explanation: {
-      verdict: "✅ Correct",
+      verdict: { displayText: "✅ Correct", audioScript: "Correct" },
       why: [
         "Logs reveal the actual error causing the restart loop",
         "CrashLoopBackOff means the container is failing repeatedly",
@@ -141,7 +141,7 @@ const scenarios: Scenario[] = [
     ],
     correct: 1,
     explanation: {
-      verdict: "✅ Correct",
+      verdict: { displayText: "✅ Correct", audioScript: "Correct" },
       why: [
         "CI environment may have different dependency versions",
         "Missing './config' module suggests incomplete setup",
@@ -176,7 +176,7 @@ const scenarios: Scenario[] = [
     ],
     correct: 0,
     explanation: {
-      verdict: "✅ Correct",
+      verdict: { displayText: "✅ Correct", audioScript: "Correct" },
       why: [
         "Private registries require authentication credentials",
         "ImagePullBackOff means Kubernetes can't pull the image",
@@ -220,7 +220,7 @@ const scenarios: Scenario[] = [
     ],
     correct: 1,
     explanation: {
-      verdict: "✅ Correct",
+      verdict: { displayText: "✅ Correct", audioScript: "Correct" },
       why: [
         "API rate limits prevent server overload",
         "Exponential backoff gives servers time to recover",
