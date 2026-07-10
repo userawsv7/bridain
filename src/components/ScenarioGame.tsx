@@ -390,7 +390,9 @@ Rules:
         }
 
         // Get actual choice texts
-        const correctChoiceText = currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`;
+        const correctChoiceText = correctAnswerIndex !== null
+          ? currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`
+          : `Option ${correctAnswerIndex}`;
 
         // Create feedback message with structured data
         const feedbackMsg: Message = {
@@ -400,7 +402,7 @@ Rules:
             : `❌ Wrong! The correct answer is: ${correctChoiceText}`,
           isUser: false,
           selectedAnswer: choiceIndex,
-          correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0,
+          correctAnswer: correctAnswerIndex !== null ? correctAnswerIndex - 1 : 0,
           isCorrect: isCorrect,
           coreExplanation: structuredFeedback?.coreExplanation,
           commonPitfall: structuredFeedback?.commonPitfall,
