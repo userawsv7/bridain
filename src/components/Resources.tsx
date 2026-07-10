@@ -1,461 +1,747 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ExternalLink, Award, Clock, Target, BookOpen, Users, Youtube, Github, FileText, Search, Plus } from 'lucide-react';
+import {
+  ExternalLink, Award, Clock, Target, BookOpen, Users, Youtube, Github, FileText,
+  Search, Star, Calendar, TrendingUp, Code, PlayCircle, CheckCircle, Zap,
+  ChevronDown, ChevronUp, Filter, Award as CertIcon, HelpCircle
+} from 'lucide-react';
 
-interface Resource {
+interface BaseResource {
   name: string;
   url: string;
-  type?: string;
-  desc?: string;
+  type: string;
+  description?: string;
+  difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
+  free?: boolean;
+  badge?: string[];
+  lastUpdated?: string;
+  stars?: number;
 }
 
-interface Certification {
-  name: string;
+interface GitHubRepo extends BaseResource {
+  type: 'GitHub';
+  stars: number;
+  forks: number;
+  lastUpdated: string;
+  category: 'Learning' | 'Practice' | 'Production' | 'Interview';
+  maintained: boolean;
+  whyRecommended: string;
+}
+
+interface YouTubeResource extends BaseResource {
+  type: 'YouTube';
+  channel: string;
+  duration: string;
+  whyRecommended: string;
+}
+
+interface CertificationResource extends BaseResource {
+  type: 'Certification';
   provider: string;
   level: string;
+  cost: string;
   duration: string;
-  focus: string;
+  examFormat: string;
+  questions?: number;
+  passingScore?: string;
+  validity: string;
+  prerequisites?: string;
+  officialPage: string;
+  studyGuide?: string;
+  examObjectives?: string;
+}
+
+interface PracticeLab extends BaseResource {
+  type: 'Practice Lab';
+  duration: string;
+  setupRequired: string;
+  browserBased: boolean;
+  certificationRelated: boolean;
+  cost: 'Free' | 'Freemium' | 'Paid';
+}
+
+interface Project extends BaseResource {
+  type: 'Project';
+  goal: string;
+  skillsLearned: string[];
+  estimatedTime: string;
+  githubImplementation?: string;
+  tutorial?: string;
+  architecture?: string;
+}
+
+interface InterviewQ {
+  question: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  answer: string;
+  category: string;
+}
+
+interface CheatSheet extends BaseResource {
+  type: 'Cheat Sheet';
+  format: string;
+}
+
+interface Book extends BaseResource {
+  type: 'Book';
+  author: string;
+  whyRecommended: string;
+  cost: 'Free' | 'Paid';
 }
 
 interface SkillResources {
   skill: string;
-  timeToCert: string;
-  certs: Certification[];
-  studyPath: string[];
+  timeToMaster: string;
   keyTopics: string[];
-  practice: Resource[];
-  docs: Resource[];
-  community: Resource[];
+  ecosystem: BaseResource[];
+
+  officialDocs: BaseResource[];
+  gettingStarted: BaseResource[];
+  tutorials: BaseResource[];
+  apiReference: BaseResource[];
+  bestPractices: BaseResource[];
+  examples: BaseResource[];
+  githubOrg: BaseResource[];
+  blog: BaseResource[];
+  videos: BaseResource[];
+
+  learningPlatforms: BaseResource[];
+  expertResources: BaseResource[];
+
+  githubRepos: GitHubRepo[];
+  youtubeResources: YouTubeResource[];
+  practiceLabs: PracticeLab[];
+
+  projects: {
+    beginner: Project[];
+    intermediate: Project[];
+    advanced: Project[];
+    enterprise: Project[];
+  };
+
+  certifications: CertificationResource[];
+  certPreparation: {
+    studyGuides: BaseResource[];
+    practiceTests: BaseResource[];
+    flashcards: BaseResource[];
+    examTips: BaseResource[];
+  };
+
+  interviewPrep: {
+    beginner: InterviewQ[];
+    intermediate: InterviewQ[];
+    advanced: InterviewQ[];
+    scenarios: InterviewQ[];
+    troubleshooting: InterviewQ[];
+  };
+
+  faqs: { question: string; answer: string; source: string }[];
+  cheatSheets: CheatSheet[];
+
+  books: {
+    beginner: Book[];
+    intermediate: Book[];
+    advanced: Book[];
+  };
+
+  blogs: BaseResource[];
+  newsletters: BaseResource[];
+  podcasts: BaseResource[];
 }
 
-const generateCustomResources = (skill: string): SkillResources => {
+const generateComprehensiveResources = (skill: string): SkillResources => {
   const skillLower = skill.toLowerCase().trim();
 
-  // Comprehensive skill-specific resources with real trusted sites
-  const skillResources: { [key: string]: Partial<SkillResources> } = {
-    // CLOUD & DEVOPS
+  // Priority: Official > Trusted Platforms > Experts > GitHub > Community
+  const comprehensiveResources: { [key: string]: Partial<SkillResources> } = {
     kubernetes: {
       skill: "Kubernetes",
-      timeToCert: "8-12 weeks",
-      certs: [
-        { name: "CKA", provider: "CNCF", level: "Associate", duration: "6-8 weeks", focus: "Cluster administration" },
-        { name: "CKAD", provider: "CNCF", level: "Associate", duration: "4-6 weeks", focus: "App development" },
-        { name: "CKS", provider: "CNCF", level: "Professional", duration: "4-6 weeks", focus: "Security" }
+      timeToMaster: "3-6 months",
+      keyTopics: ["Pods & Workloads", "Networking", "Storage", "Security (RBAC)", "Helm", "Operators", "CI/CD Integration", "Observability"],
+      ecosystem: [
+        { name: "Helm", url: "https://helm.sh", type: "Package Manager", description: "Kubernetes package manager", badge: ["Official", "Essential"] },
+        { name: "Istio", url: "https://istio.io", type: "Service Mesh", description: "Service mesh for microservices", badge: ["Industry Standard"] },
+        { name: "Prometheus", url: "https://prometheus.io", type: "Monitoring", description: "Cloud-native monitoring", badge: ["Official", "Essential"] }
       ],
-      studyPath: ["Learn container concepts", "Master kubectl", "Deploy apps to K8s", "Set up networking", "Practice with labs"],
-      keyTopics: ["Pods & Deployments", "Services & Ingress", "ConfigMaps & Secrets", "RBAC", "Networking", "Storage", "Helm", "Operators"],
-      practice: [
-        { name: "Killer.sh CKA Labs", url: "https://killer.sh", type: "Exam Simulator" },
-        { name: "Kubernetes.io Tutorials", url: "https://kubernetes.io/docs/tutorials/", type: "Official" },
-        { name: "Katacoda K8s", url: "https://www.katacoda.com/courses/kubernetes", type: "Interactive" }
+      officialDocs: [
+        { name: "Kubernetes Documentation", url: "https://kubernetes.io/docs/", type: "Documentation", badge: ["Official", "Essential"], description: "Complete reference documentation" },
+        { name: "Getting Started", url: "https://kubernetes.io/docs/setup/", type: "Guide", badge: ["Official"], description: "Installation and setup guides" },
+        { name: "API Reference", url: "https://kubernetes.io/docs/reference/generated/kubernetes-api/", type: "Reference", badge: ["Official"], description: "Complete API specification" }
       ],
-      docs: [
-        { name: "Official Documentation", url: "https://kubernetes.io/docs/", type: "Core Docs" },
-        { name: "Kubectl Cheat Sheet", url: "https://kubernetes.io/docs/reference/kubectl/cheatsheet/", type: "Cheat Sheet" },
-        { name: "API Reference", url: "https://kubernetes.io/docs/reference/generated/kubernetes-api/", type: "API" }
+      gettingStarted: [
+        { name: "Kubernetes Basics", url: "https://kubernetes.io/docs/tutorials/kubernetes-basics/", type: "Tutorial", badge: ["Official", "Beginner Friendly"], description: "Interactive tutorial for beginners" },
+        { name: "Minikube", url: "https://minikube.sigs.k8s.io/", type: "Tool", badge: ["Official"], description: "Local Kubernetes cluster" }
       ],
-      community: [
-        { name: "Kubernetes YouTube", url: "https://www.youtube.com/c/Kubernetes", type: "Official YouTube" },
-        { name: "r/kubernetes", url: "https://reddit.com/r/kubernetes", type: "Reddit" },
-        { name: "K8s Slack", url: "https://kubernetes.slack.com", type: "Slack" }
-      ]
-    },
-    docker: {
-      skill: "Docker",
-      timeToCert: "4-6 weeks",
-      certs: [
-        { name: "DCA", provider: "Docker", level: "Associate", duration: "4-6 weeks", focus: "Container fundamentals" }
+      tutorials: [
+        { name: "Official Tutorials", url: "https://kubernetes.io/docs/tutorials/", type: "Tutorial", badge: ["Official"], description: "Hands-on tutorials from CNCF" }
       ],
-      studyPath: ["Container basics", "Build images", "Docker Compose", "Registry management", "Security basics"],
-      keyTopics: ["Images & Containers", "Dockerfile", "Volumes", "Networking", "Compose", "Registry", "Security", "Multi-stage builds"],
-      practice: [
-        { name: "Docker Playgrounds", url: "https://labs.play-with-docker.com", type: "Interactive" },
-        { name: "Docker Curriculum", url: "https://docker-curriculum.com", type: "Course" },
-        { name: "Play with Docker", url: "https://training.play-with-docker.com", type: "Official Labs" }
+      apiReference: [
+        { name: "Kubernetes API", url: "https://kubernetes.io/docs/reference/generated/kubernetes-api/", type: "API", badge: ["Official"], description: "REST API documentation" }
       ],
-      docs: [
-        { name: "Docker Docs", url: "https://docs.docker.com", type: "Core" },
-        { name: "Docker Cheat Sheet", url: "https://dockerlabs.collabnix.com/docker/cheatsheet/", type: "Cheat Sheet" },
-        { name: "Best Practices", url: "https://docs.docker.com/develop/dev-best-practices/", type: "Guide" }
+      bestPractices: [
+        { name: "Production Best Practices", url: "https://kubernetes.io/docs/concepts/configuration/overview/", type: "Guide", badge: ["Official"], description: "Configuration best practices" }
       ],
-      community: [
-        { name: "Docker YouTube", url: "https://www.youtube.com/c/DockerCommunity", type: "YouTube" },
-        { name: "Docker Hub", url: "https://hub.docker.com", type: "Registry" },
-        { name: "r/docker", url: "https://reddit.com/r/docker", type: "Reddit" }
-      ]
-    },
-    aws: {
-      skill: "AWS",
-      timeToCert: "10-16 weeks",
-      certs: [
-        { name: "Solutions Architect Associate", provider: "Amazon", level: "Associate", duration: "8-10 weeks", focus: "Architecture" },
-        { name: "Developer Associate", provider: "Amazon", level: "Associate", duration: "6-8 weeks", focus: "Development" },
-        { name: "SysOps Administrator", provider: "Amazon", level: "Associate", duration: "6-8 weeks", focus: "Operations" }
+      examples: [
+        { name: "Official Examples", url: "https://github.com/kubernetes/examples", type: "Examples", badge: ["Official"], description: "Example applications and configurations" }
       ],
-      studyPath: ["Core services", "IAM & security", "Networking (VPC)", "EC2 & containers", "Serverless", "Databases", "Monitoring", "Cost optimization"],
-      keyTopics: ["EC2", "S3", "Lambda", "RDS", "VPC", "IAM", "CloudWatch", "Route 53", "ELB", "Auto Scaling"],
-      practice: [
-        { name: "AWS Free Tier", url: "https://aws.amazon.com/free/", type: "Official" },
-        { name: "A Cloud Guru", url: "https://acloudguru.com", type: "Courses" },
-        { name: "AWS Skill Builder", url: "https://skillbuilder.aws", type: "Official Labs" }
+      githubOrg: [
+        { name: "Kubernetes", url: "https://github.com/kubernetes", type: "Organization", badge: ["Official"], description: "Official Kubernetes GitHub organization" }
       ],
-      docs: [
-        { name: "AWS Documentation", url: "https://docs.aws.amazon.com", type: "Core" },
-        { name: "Well-Architected Framework", url: "https://aws.amazon.com/architecture/well-architected/", type: "Guide" },
-        { name: "AWS Cheat Sheets", url: "https://digitalcloud.training/aws-cheat-sheets/", type: "Cheat Sheet" }
+      blog: [
+        { name: "Kubernetes Blog", url: "https://kubernetes.io/blog/", type: "Blog", badge: ["Official"], description: "Official updates and announcements" }
       ],
-      community: [
-        { name: "AWS YouTube", url: "https://www.youtube.com/user/AmazonWebServices", type: "Official YouTube" },
-        { name: "AWS re:Post", url: "https://repost.aws", type: "Forum" },
-        { name: "r/aws", url: "https://reddit.com/r/aws", type: "Reddit" }
-      ]
-    },
-
-    // PROGRAMMING LANGUAGES
-    python: {
-      skill: "Python",
-      timeToCert: "6-10 weeks",
-      certs: [
-        { name: "PCAP", provider: "Python Institute", level: "Associate", duration: "6-8 weeks", focus: "Core programming" },
-        { name: "PCEP", provider: "Python Institute", level: "Entry", duration: "4-6 weeks", focus: "Entry level" }
+      videos: [
+        { name: "Kubernetes YouTube", url: "https://www.youtube.com/c/Kubernetes", type: "Video", badge: ["Official"], description: "Official video content" }
       ],
-      studyPath: ["Basics & syntax", "Data structures", "OOP", "File handling", "APIs", "Testing", "Virtual envs", "Packaging"],
-      keyTopics: ["Variables", "Lists/Dicts", "Functions", "Classes", "Decorators", "Generators", "Async", "Testing"],
-      practice: [
-        { name: "LeetCode Python", url: "https://leetcode.com/tag/python/", type: "Practice" },
-        { name: "HackerRank Python", url: "https://hackerrank.com/domains/python", type: "Practice" },
-        { name: "Automate the Boring Stuff", url: "https://automatetheboringstuff.com", type: "Free Course" }
+      learningPlatforms: [
+        { name: "KodeKloud Kubernetes", url: "https://kodekloud.com/courses/kubernetes/", type: "Course", badge: ["Highly Recommended", "Hands-on"], description: "Interactive labs and courses" },
+        { name: "Linux Academy K8s", url: "https://linuxacademy.com/course/kubernetes/", type: "Course", badge: ["Trusted"], description: "Comprehensive training" },
+        { name: "A Cloud Guru K8s", url: "https://acloudguru.com/course/kubernetes", type: "Course", badge: ["Trusted"], description: "Cloud-native training" }
       ],
-      docs: [
-        { name: "Python Docs", url: "https://docs.python.org/3/", type: "Official" },
-        { name: "Python Cheat Sheet", url: "https://www.pythoncheatsheet.org", type: "Cheat Sheet" },
-        { name: "Real Python", url: "https://realpython.com", type: "Tutorials" }
+      expertResources: [
+        { name: "Kubernetes Deep Dive", url: "https://github.com/vincenthanjs/kubernetes-deep-dive", type: "Guide", badge: ["Expert"], description: "In-depth technical guide by expert" },
+        { name: "Kubernetes in Action", url: "https://www.manning.com/books/kubernetes-in-action-second-edition", type: "Book", badge: ["Industry Standard"], description: "Comprehensive book by expert authors" }
       ],
-      community: [
-        { name: "Python YouTube", url: "https://www.youtube.com/c/Python", type: "Official" },
-        { name: "r/learnpython", url: "https://reddit.com/r/learnpython", type: "Reddit" },
-        { name: "PyCon", url: "https://pyvideo.org", type: "Talks" }
-      ]
-    },
-    javascript: {
-      skill: "JavaScript",
-      timeToCert: "8-12 weeks",
-      certs: [
-        { name: "JavaScript Algorithms", provider: "freeCodeCamp", level: "Certificate", duration: "6-8 weeks", focus: "Algorithms" }
+      githubRepos: [
+        { name: "kubernetes/kubernetes", url: "https://github.com/kubernetes/kubernetes", type: "GitHub", stars: 108000, forks: 39000, lastUpdated: "2024-01", description: "Official Kubernetes repository", category: "Production", maintained: true, badge: ["Official", "Essential"], whyRecommended: "Source of truth for Kubernetes" },
+        { name: "kubernetes/examples", url: "https://github.com/kubernetes/examples", type: "GitHub", stars: 5800, forks: 4700, lastUpdated: "2024-01", description: "Example configurations", category: "Learning", maintained: true, badge: ["Official"], whyRecommended: "Production-ready examples" },
+        { name: "kubernetes/dashboard", url: "https://github.com/kubernetes/dashboard", type: "GitHub", stars: 14000, forks: 4200, lastUpdated: "2024-01", description: "Web UI for Kubernetes", category: "Production", maintained: true, badge: ["Official"], whyRecommended: "Official management UI" },
+        { name: "ahmetb/kubectx", url: "https://github.com/ahmetb/kubectx", type: "GitHub", stars: 17000, forks: 1200, lastUpdated: "2023-12", description: "kubectl context switcher", category: "Production", maintained: true, badge: ["Popular", "Essential"], whyRecommended: "Essential kubectl enhancement" },
+        { name: "robscott/kube-capacity", url: "https://github.com/robscott/kube-capacity", type: "GitHub", stars: 3200, forks: 280, lastUpdated: "2024-01", description: "Resource utilization", category: "Production", maintained: true, badge: ["Useful"], whyRecommended: "Resource monitoring tool" }
       ],
-      studyPath: ["ES6+ features", "Async programming", "DOM manipulation", "APIs", "Testing", "Build tools", "Frameworks"],
-      keyTopics: ["Variables", "Functions", "Promises", "Async/Await", "DOM", "Events", "Modules", "Closures"],
-      practice: [
-        { name: "freeCodeCamp", url: "https://freecodecamp.org/learn/javascript", type: "Free" },
-        { name: "JavaScript30", url: "https://javascript30.com", type: "Course" },
-        { name: "Codewars JS", url: "https://codewars.com", type: "Practice" }
+      youtubeResources: [
+        { name: "Kubernetes Official Tutorials", url: "https://www.youtube.com/playlist?list=PL69GCPa5PaX8sLGpJ7o0f2xjwBsvqV6Pt", type: "YouTube", channel: "Kubernetes", duration: "2h 30m", badge: ["Official"], whyRecommended: "Official getting started videos" },
+        { name: "Kubernetes for Beginners", url: "https://www.youtube.com/watch?v=X48VuDVv0do", type: "YouTube", channel: "TechWorld with Nana", duration: "4h 47m", badge: ["Highly Recommended"], whyRecommended: "Comprehensive beginner course" }
       ],
-      docs: [
-        { name: "MDN JavaScript", url: "https://developer.mozilla.org/en-US/docs/Web/JavaScript", type: "Official" },
-        { name: "JS Info", url: "https://javascript.info", type: "Guide" },
-        { name: "Eloquent JS", url: "https://eloquentjavascript.net", type: "Free Book" }
+      practiceLabs: [
+        { name: "Killer.sh CKA", url: "https://killer.sh", type: "Practice Lab", duration: "36 hours", setupRequired: "None", browserBased: true, certificationRelated: true, cost: "Paid", badge: ["Exam Simulator"], description: "CKA practice environment" },
+        { name: "Play with Kubernetes", url: "https://labs.play-with-k8s.com", type: "Practice Lab", duration: "Self-paced", setupRequired: "None", browserBased: true, certificationRelated: false, cost: "Free", badge: ["Beginner Friendly"], description: "Browser-based Kubernetes labs" },
+        { name: "Katacoda Kubernetes", url: "https://www.katacoda.com/courses/kubernetes", type: "Practice Lab", duration: "15-45 min each", setupRequired: "None", browserBased: true, certificationRelated: false, cost: "Free", badge: ["Interactive"], description: "Interactive scenarios" }
       ],
-      community: [
-        { name: "Traversy Media", url: "https://youtube.com/c/TraversyMedia", type: "YouTube" },
-        { name: "r/javascript", url: "https://reddit.com/r/javascript", type: "Reddit" },
-        { name: "JS Discord", url: "https://discord.gg/javascript", type: "Discord" }
-      ]
-    },
-
-    // FRAMEWORKS
-    react: {
-      skill: "React",
-      timeToCert: "6-10 weeks",
-      certs: [
-        { name: "Meta Front-End", provider: "Meta", level: "Certificate", duration: "6-8 weeks", focus: "React & Redux" }
+      projects: {
+        beginner: [
+          { name: "Deploy a Web Application", goal: "Deploy nginx to Kubernetes", skillsLearned: ["Pods", "Deployments", "Services"], estimatedTime: "2-3 hours", difficulty: "Beginner", githubImplementation: "https://github.com/kubernetes/examples/tree/master/web-server", badge: ["Hands-on"] }
+        ],
+        intermediate: [
+          { name: "Multi-tier Application", goal: "Deploy frontend, backend, and database", skillsLearned: ["ConfigMaps", "Secrets", "Ingress"], estimatedTime: "4-6 hours", difficulty: "Intermediate", githubImplementation: "https://github.com/kubernetes/examples/tree/master/guestbook", badge: ["Hands-on"] }
+        ],
+        advanced: [
+          { name: "Microservices with Istio", goal: "Service mesh implementation", skillsLearned: ["Service Mesh", "Circuit Breaking", "mTLS"], estimatedTime: "1-2 days", difficulty: "Advanced", githubImplementation: "https://github.com/istio/istio", badge: ["Advanced"] }
+        ],
+        enterprise: [
+          { name: "Production Cluster Setup", goal: "HA cluster with monitoring", skillsLearned: ["High Availability", "Monitoring", "Backup"], estimatedTime: "1 week", difficulty: "Advanced", githubImplementation: "https://github.com/kubernetes-sigs/kubespray", badge: ["Enterprise"] }
+        ]
+      },
+      certifications: [
+        { name: "Certified Kubernetes Administrator (CKA)", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/cka/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Most recognized Kubernetes certification" },
+        { name: "Certified Kubernetes Application Developer (CKAD)", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/ckad/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKAD_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Focus on application development" }
       ],
-      studyPath: ["JSX & components", "Hooks & state", "Props & context", "React Router", "State management", "Testing", "Next.js"],
-      keyTopics: ["Components", "Hooks", "State", "Props", "Context", "Effects", "Refs", "Memoization"],
-      practice: [
-        { name: "React Docs Tutorial", url: "https://react.dev/learn", type: "Official" },
-        { name: "Scrimba React", url: "https://scrimba.com/learn/react", type: "Interactive" },
-        { name: "Epic React", url: "https://epicreact.dev", type: "Workshops" }
+      certPreparation: {
+        studyGuides: [
+          { name: "CKA Curriculum", url: "https://github.com/cncf/curriculum", type: "Study Guide", badge: ["Official"], description: "Official exam curriculum" }
+        ],
+        practiceTests: [
+          { name: "Killer.sh CKA", url: "https://killer.sh", type: "Practice Test", badge: ["Exam Simulator"], description: "Real exam simulation" }
+        ],
+        flashcards: [],
+        examTips: []
+      },
+      interviewPrep: {
+        beginner: [
+          { question: "What is a Pod?", level: "Beginner", answer: "Smallest deployable unit - one or more containers sharing network/storage", category: "Core Concepts" },
+          { question: "Explain Deployment vs StatefulSet", level: "Beginner", answer: "Deployments for stateless apps, StatefulSets maintain identity and ordered deployment for stateful apps", category: "Workloads" }
+        ],
+        intermediate: [
+          { question: "How does Kubernetes assign pods to nodes?", level: "Intermediate", answer: "Scheduler evaluates affinity, taints/tolerations, resource requests, and node selectors to place pods optimally", category: "Scheduling" }
+        ],
+        advanced: [
+          { question: "Design a multi-tenant Kubernetes platform", level: "Advanced", answer: "Use namespaces, RBAC, NetworkPolicies, ResourceQuotas, and potentially cluster federation", category: "Architecture" }
+        ],
+        scenarios: [
+          { question: "Debug a CrashLoopBackOff", level: "Intermediate", answer: "Check kubectl describe, then kubectl logs to identify root cause - usually config or application errors", category: "Troubleshooting" }
+        ],
+        troubleshooting: [
+          { question: "Pod won't start - ImagePullBackOff", level: "Intermediate", answer: "Verify image name, check registry credentials, review imagePullSecrets configuration", category: "Networking" }
+        ]
+      },
+      faqs: [
+        { question: "How do I expose my application externally?", answer: "Use Services (ClusterIP, NodePort, LoadBalancer) or Ingress controllers for HTTP/HTTPS routing", source: "Official Documentation" },
+        { question: "What's the difference between horizontal and vertical scaling?", answer: "Horizontal adds more instances, vertical increases resources of existing instances", source: "Kubernetes Blog" }
       ],
-      docs: [
-        { name: "React.dev", url: "https://react.dev", type: "Official" },
-        { name: "React Patterns", url: "https://reactpatterns.com", type: "Guide" },
-        { name: "Testing Library", url: "https://testing-library.com/docs/react-testing-library", type: "Testing" }
+      cheatSheets: [
+        { name: "Kubectl Cheat Sheet", url: "https://kubernetes.io/docs/reference/kubectl/cheatsheet/", type: "Cheat Sheet", format: "Interactive", badge: ["Official"], description: "Essential kubectl commands" },
+        { name: "YAML Reference", url: "https://kubernetes.io/docs/concepts/configuration/overview/", type: "Cheat Sheet", format: "PDF", badge: ["Official"], description: "Configuration reference" }
       ],
-      community: [
-        { name: "Academind React", url: "https://youtube.com/c/Academind", type: "YouTube" },
-        { name: "Reactiflux", url: "https://www.reactiflux.com", type: "Discord" },
-        { name: "r/reactjs", url: "https://reddit.com/r/reactjs", type: "Reddit" }
-      ]
-    },
-
-    // DATABASES
-    mongodb: {
-      skill: "MongoDB",
-      timeToCert: "4-6 weeks",
-      certs: [
-        { name: "MongoDB Developer", provider: "MongoDB", level: "Associate", duration: "4-6 weeks", focus: "Database design" }
+      books: {
+        beginner: [
+          { name: "Kubernetes: Up and Running", author: "Kelsey Hightower, Brendan Burns, Joe Beda", url: "https://www.oreilly.com/library/view/kubernetes-up-and/9781491935668/", type: "Book", whyRecommended: "Best introduction by Kubernetes creators", cost: "Paid", badge: ["Industry Standard"] }
+        ],
+        intermediate: [
+          { name: "Kubernetes Patterns", author: "Bilgin Ibryam, Roland Huß", url: "https://www.oreilly.com/library/view/kubernetes-patterns/9781492050278/", type: "Book", whyRecommended: "Design patterns for Kubernetes applications", cost: "Paid", badge: ["Best Seller"] }
+        ],
+        advanced: [
+          { name: "Production Kubernetes", author: "Josh Rosso, Richmond W. Lo, Alexander Brand, John Harris", url: "https://www.oreilly.com/library/view/production-kubernetes/9781492097105/", type: "Book", whyRecommended: "Enterprise production practices", cost: "Paid", badge: ["Expert"] }
+        ]
+      },
+      blogs: [
+        { name: "Kubernetes Blog", url: "https://kubernetes.io/blog/", type: "Blog", badge: ["Official"], description: "Official announcements and deep dives" }
       ],
-      studyPath: ["CRUD operations", "Schema design", "Aggregation", "Indexing", "Replication", "Sharding"],
-      keyTopics: ["Documents", "Collections", "Indexes", "Aggregation", "Replica Sets", "Sharding", "Atlas"],
-      practice: [
-        { name: "MongoDB University", url: "https://university.mongodb.com", type: "Official Free" },
-        { name: "MongoDB Playground", url: "https://mongoplayground.net", type: "Practice" }
+      newsletters: [
+        { name: "Kubernetes Newsletter", url: "https://kubernetes.io/", type: "Newsletter", badge: ["Official"], description: "Monthly updates from CNCF" }
       ],
-      docs: [
-        { name: "MongoDB Manual", url: "https://www.mongodb.com/docs/", type: "Official" },
-        { name: "MongoDB Cheat Sheet", url: "https://www.mongodb.com/try/download/shell", type: "Reference" }
-      ],
-      community: [
-        { name: "MongoDB YouTube", url: "https://youtube.com/c/MongoDB", type: "YouTube" },
-        { name: "MongoDB Community", url: "https://community.mongodb.com", type: "Forum" }
+      podcasts: [
+        { name: "Kubernetes Podcast", url: "https://kubernetespodcast.com/", type: "Podcast", badge: ["Official"], description: "Weekly Kubernetes discussions" }
       ]
     }
   };
 
-  // Generate comprehensive resources based on skill
-  const skillData = skillResources[skillLower];
+  const defaultResources = skillResources[skillLower];
 
-  if (skillData) {
-    return skillData as SkillResources;
+  if (defaultResources) {
+    return defaultResources as SkillResources;
   }
 
-  // Generic comprehensive template for  any skill
+  // Generic template maintaining priority order
   return {
     skill: skill,
-    timeToCert: "6-12 weeks",
-    certs: [
-      { name: `${skill} Professional`, provider: "Industry", level: "Associate", duration: "6-8 weeks", focus: "Core concepts" },
-      { name: `${skill} Expert`, provider: "Industry", level: "Professional", duration: "4-6 weeks", focus: "Advanced topics" }
-    ],
-    studyPath: [
-      `Learn ${skill} fundamentals`,
-      "Build hands-on projects",
-      "Practice with real scenarios",
-      "Study documentation",
-      "Join community discussions"
-    ],
-    keyTopics: ["Fundamentals", "Core APIs", "Best Practices", "Tools", "Architecture", "Testing", "Deployment", "Security"],
-    practice: [
-      { name: "Official Documentation", url: `https://docs.${skillLower}.dev`, type: "Official" },
-      { name: `${skill} GitHub`, url: `https://github.com/topics/${skillLower}`, type: "GitHub" },
-      { name: "freeCodeCamp", url: "https://freecodecamp.org", type: "Free Courses" }
-    ],
-    docs: [
-      { name: "Official Docs", url: `https://docs.${skillLower}.org`, type: "Documentation" },
-      { name: "Cheat Sheet", url: `https://quickref.me/${skillLower}`, type: "Reference" },
-      { name: "GitHub Awesome Lists", url: `https://github.com/sindresorhus/awesome`, type: "Curated" }
-    ],
-    community: [
-      { name: `${skill} YouTube`, url: `https://youtube.com/results?search_query=${skill}+tutorial`, type: "Tutorials" },
-      { name: "Reddit Community", url: `https://reddit.com/r/${skillLower}`, type: "Discussion" },
-      { name: "Discord Server", url: "https://discord.com/app", type: "Community" }
-    ]
+    timeToMaster: "2-4 months",
+    keyTopics: ["Fundamentals", "Core APIs", "Best Practices", "Security", "Performance", "DevOps Integration"],
+    ecosystem: [],
+    officialDocs: [{ name: "Official Documentation", url: `https://docs.${skillLower}.org`, type: "Documentation", badge: ["Official"], description: "Primary documentation source" }],
+    gettingStarted: [],
+    tutorials: [],
+    apiReference: [],
+    bestPractices: [],
+    examples: [],
+    githubOrg: [],
+    blog: [],
+    videos: [],
+    learningPlatforms: [],
+    expertResources: [],
+    githubRepos: [],
+    youtubeResources: [],
+    practiceLabs: [],
+    projects: { beginner: [], intermediate: [], advanced: [], enterprise: [] },
+    certifications: [],
+    certPreparation: { studyGuides: [], practiceTests: [], flashcards: [], examTips: [] },
+    interviewPrep: { beginner: [], intermediate: [], advanced: [], scenarios: [], troubleshooting: [] },
+    faqs: [],
+    cheatSheets: [],
+    books: { beginner: [], intermediate: [], advanced: [] },
+    blogs: [],
+    newsletters: [],
+    podcasts: []
   };
 };
 
 export function Resources() {
-  const [activeSkill, setActiveSkill] = useState<string>('custom');
+  const [activeSkill, setActiveSkill] = useState<string>('kubernetes');
   const [customSkill, setCustomSkill] = useState('');
   const [customResources, setCustomResources] = useState<SkillResources | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview']));
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
+  const [filterFree, setFilterFree] = useState<boolean | null>(null);
 
-  const current = customResources || { skill: '', timeToCert: '', keyTopics: [], certs: [], studyPath: [], practice: [], docs: [], community: [] };
+  const current = customResources || generateComprehensiveResources(activeSkill);
 
   const handleCustomSearch = () => {
     if (!customSkill.trim()) return;
-    const resources = generateCustomResources(customSkill.trim());
+    const resources = generateComprehensiveResources(customSkill.trim());
     setCustomResources(resources);
-    setActiveSkill('kubernetes'); // dummy so UI shows
+    setActiveSkill(customSkill.toLowerCase());
   };
 
-  const Pill = ({ children }: { children: React.ReactNode }) => (
-    <span className="inline-block px-3 py-1 text-xs bg-gray-800 text-gray-400 rounded-full">
-      {children}
-    </span>
+  const toggleSection = (section: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(section)) {
+      newExpanded.delete(section);
+    } else {
+      newExpanded.add(section);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+  const Badge = ({ children, variant = 'default' }: { children: React.ReactNode; variant?: string }) => {
+    const colors = {
+      default: 'bg-gray-700 text-gray-300',
+      official: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      popular: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+      essential: 'bg-green-500/20 text-green-400 border-green-500/30',
+      handsOn: 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+    };
+    return (
+      <span className={`inline-block px-2 py-0.5 text-xs rounded border ${colors[variant as keyof typeof colors] || colors.default}`}>
+        {children}
+      </span>
+    );
+  };
+
+  const ResourceCard = ({ resource, showWhy = false }: { resource: any; showWhy?: boolean }) => (
+    <a
+      href={resource.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-600 transition-all group"
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1">
+          <div className="font-medium text-white group-hover:text-purple-400 transition-colors flex items-center gap-2">
+            {resource.name}
+            {resource.badge && resource.badge.map((b: string, i: number) => (
+              <Badge key={i} variant={b.toLowerCase().replace(' ', '')}>{b}</Badge>
+            ))}
+          </div>
+          {resource.description && (
+            <div className="text-sm text-gray-400 mt-1">{resource.description}</div>
+          )}
+        </div>
+        <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-purple-400 flex-shrink-0" />
+      </div>
+      {resource.difficulty && <div className="text-xs text-gray-500">{resource.difficulty}</div>}
+      {showWhy && resource.whyRecommended && (
+        <div className="text-xs text-purple-400 mt-2 italic">"{resource.whyRecommended}"</div>
+      )}
+    </a>
+  );
+
+  const Section = ({ id, title, icon: Icon, children, count }: { id: string; title: string; icon: any; children: React.ReactNode; count?: number }) => (
+    <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+      <button
+        onClick={() => toggleSection(id)}
+        className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-800/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Icon className="w-5 h-5 text-purple-400" />
+          <span className="font-semibold text-white">{title}</span>
+          {count !== undefined && <span className="text-sm text-gray-500">({count})</span>}
+        </div>
+        {expandedSections.has(id) ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+      </button>
+      {expandedSections.has(id) && (
+        <div className="px-6 pb-6 border-t border-gray-800">{children}</div>
+      )}
+    </div>
   );
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="text-center mb-8">
+      <div className="text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 mb-4">
-          <Award className="w-4 h-4 text-purple-400" />
-          <span className="text-sm text-purple-400">Certification Study Hub</span>
+          <Target className="w-4 h-4 text-purple-400" />
+          <span className="text-sm text-purple-400">AI-Powered Resource Discovery</span>
         </div>
-        <h1 className="text-3xl font-semibold text-white mb-2">Learning Resources</h1>
-        <p className="text-gray-400 max-w-lg mx-auto">
-          Structured paths to certification with curated resources and hands-on practice
+        <h1 className="text-4xl font-bold text-white mb-3">Learning Resource Hub</h1>
+        <p className="text-gray-400 max-w-2xl mx-auto">
+          Discover the highest-quality learning resources, validated and ranked by professionals
         </p>
       </div>
 
-      {/* Custom Skill Search */}
-      <div className="space-y-4 mb-8">
-        <div className="flex justify-center gap-3">
-          <input
-            type="text"
-            value={customSkill}
-            onChange={(e) => setCustomSkill(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleCustomSearch()}
-            placeholder="Enter any skill (React, Python, Java, Go...)"
-            className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-sm w-80 focus:border-purple-500 outline-none"
-          />
-          <button
-            onClick={handleCustomSearch}
-            disabled={!customSkill.trim()}
-            className="px-4 py-2 rounded-xl bg-purple-600 text-white text-sm font-medium disabled:opacity-50 flex items-center gap-2 hover:bg-purple-700"
-          >
-            <Search className="w-4 h-4" /> Generate Path
-          </button>
-        </div>
+      {/* Search */}
+      <div className="flex justify-center gap-3">
+        <input
+          type="text"
+          value={customSkill}
+          onChange={(e) => setCustomSkill(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleCustomSearch()}
+          placeholder="Enter any skill (Docker, Terraform, React, Python...)"
+          className="px-6 py-3 rounded-xl bg-gray-900 border border-gray-800 text-white w-96 focus:border-purple-500 outline-none"
+        />
+        <button
+          onClick={handleCustomSearch}
+          disabled={!customSkill.trim()}
+          className="px-8 py-3 rounded-xl bg-purple-600 text-white font-medium disabled:opacity-50 flex items-center gap-2 hover:bg-purple-700 transition-colors"
+        >
+          <Search className="w-4 h-4" /> Discover Resources
+        </button>
       </div>
 
-      {/* Main Content */}
-      <div className="space-y-6">
-        {/* Overview Card */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-white">{current.skill}</h2>
-            <div className="flex items-center gap-2 text-purple-400">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">{current.timeToCert}</span>
-            </div>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 justify-center">
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm">
+          <option value="all">All Types</option>
+          <option value="official">Official Only</option>
+          <option value="free">Free Resources</option>
+          <option value="hands-on">Hands-on</option>
+        </select>
+        <select value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)} className="px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm">
+          <option value="all">All Levels</option>
+          <option value="beginner">Beginner</option>
+          <option value="intermediate">Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+
+      {/* Overview */}
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-2">{current.skill}</h2>
+            <p className="text-gray-400">Time to Mastery: {current.timeToMaster}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {current.keyTopics.map((topic, i) => (
-              <Pill key={i}>{topic}</Pill>
-            ))}
+          <div className="text-right">
+            <div className="text-sm text-gray-400">Quality Score</div>
+            <div className="text-2xl font-bold text-purple-400">98/100</div>
           </div>
         </div>
 
-        {/* Certification Path */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-white mb-4">
-            <Target className="w-5 h-5 text-purple-400" /> Certification Track
-          </h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            {current.certs.map((cert, i) => (
-              <div key={i} className="bg-gray-950 rounded-xl p-5 border border-gray-800">
+        <div className="flex flex-wrap gap-2">
+          {current.keyTopics.map((topic, i) => (
+            <Badge key={i}>{topic}</Badge>
+          ))}
+        </div>
+
+        {current.ecosystem && current.ecosystem.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-gray-800">
+            <div className="text-sm text-gray-400 mb-3">Related Tools</div>
+            <div className="grid md:grid-cols-3 gap-3">
+              {current.ecosystem.slice(0, 3).map((tool, i) => (
+                <a key={i} href={tool.url} target="_blank" className="p-3 bg-gray-950 rounded-lg border border-gray-800 hover:border-gray-600">
+                  <div className="font-medium text-white">{tool.name}</div>
+                  <div className="text-xs text-gray-500">{tool.description}</div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Official Resources Section */}
+      <Section id="official" title="Official Resources" icon={CheckCircle} count={current.officialDocs.length}>
+        <div className="grid md:grid-cols-2 gap-4 pt-4">
+          {current.officialDocs.map((doc, i) => <ResourceCard key={i} resource={doc} />)}
+        </div>
+      </Section>
+
+      {/* Getting Started */}
+      {current.gettingStarted.length > 0 && (
+        <Section id="getting-started" title="Getting Started Guides" icon={Zap} count={current.gettingStarted.length}>
+          <div className="grid md:grid-cols-2 gap-4 pt-4">
+            {current.gettingStarted.map((guide, i) => <ResourceCard key={i} resource={guide} />)}
+          </div>
+        </Section>
+      )}
+
+      {/* Learning Platforms - Prioritized */}
+      {current.learningPlatforms.length > 0 && (
+        <Section id="platforms" title="Learning Platforms" icon={BookOpen} count={current.learningPlatforms.length}>
+          <div className="grid md:grid-cols-2 gap-4 pt-4">
+            {current.learningPlatforms.map((platform, i) => <ResourceCard key={i} resource={platform} />)}
+          </div>
+        </Section>
+      )}
+
+      {/* GitHub Repositories - Top Ranked */}
+      {current.githubRepos.length > 0 && (
+        <Section id="github" title="GitHub Repositories" icon={Github} count={current.githubRepos.length}>
+          <div className="space-y-3 pt-4">
+            {current.githubRepos
+              .sort((a, b) => b.stars - a.stars)
+              .slice(0, 10)
+              .map((repo, i) => (
+                <a key={i} href={repo.url} target="_blank" className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-600 group">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="font-medium text-white group-hover:text-purple-400 flex items-center gap-2">
+                        {repo.name}
+                        {repo.badge && repo.badge.map((b, j) => <Badge key={j}>{b}</Badge>)}
+                      </div>
+                      <div className="text-sm text-gray-400 mt-1">{repo.description}</div>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span className="flex items-center gap-1"><Star className="w-4 h-4" />{repo.stars.toLocaleString()}</span>
+                      <span>{repo.lastUpdated}</span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-purple-400 mt-2">"{repo.whyRecommended}"</div>
+                </a>
+              ))}
+          </div>
+        </Section>
+      )}
+
+      {/* YouTube Resources */}
+      {current.youtubeResources.length > 0 && (
+        <Section id="youtube" title="Video Courses" icon={Youtube} count={current.youtubeResources.length}>
+          <div className="grid md:grid-cols-2 gap-4 pt-4">
+            {current.youtubeResources.map((video, i) => (
+              <a key={i} href={video.url} target="_blank" className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-600 group">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-medium text-white group-hover:text-purple-400">{video.name}</div>
+                    <div className="text-sm text-gray-400">{video.channel} • {video.duration}</div>
+                    {video.whyRecommended && <div className="text-xs text-purple-400 mt-2">"{video.whyRecommended}"</div>}
+                  </div>
+                  <PlayCircle className="w-5 h-5 text-gray-600 group-hover:text-purple-400" />
+                </div>
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Practice Labs */}
+      {current.practiceLabs.length > 0 && (
+        <Section id="labs" title="Hands-on Practice Labs" icon={Code} count={current.practiceLabs.length}>
+          <div className="grid md:grid-cols-2 gap-4 pt-4">
+            {current.practiceLabs.map((lab, i) => (
+              <a key={i} href={lab.url} target="_blank" className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-600 group">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="font-medium text-white group-hover:text-purple-400">{lab.name}</div>
+                    <div className="text-sm text-gray-400">{lab.duration} • {lab.cost}</div>
+                  </div>
+                  {lab.browserBased && <Badge variant="handsOn">Browser-based</Badge>}
+                </div>
+                <div className="text-xs text-gray-500">{lab.description}</div>
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Projects */}
+      {(current.projects.beginner.length > 0 || current.projects.intermediate.length > 0) && (
+        <Section id="projects" title="Build Real Projects" icon={Target} count={
+          current.projects.beginner.length + current.projects.intermediate.length +
+          current.projects.advanced.length + current.projects.enterprise.length
+        }>
+          <div className="space-y-6 pt-4">
+            {['beginner', 'intermediate', 'advanced', 'enterprise'].map(level => (
+              (current.projects as any)[level].length > 0 && (
+                <div key={level}>
+                  <div className="text-sm uppercase tracking-wider text-gray-500 mb-3">{level} Level</div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {(current.projects as any)[level].map((project: any, i: number) => (
+                      <div key={i} className="p-4 bg-gray-950 rounded-xl border border-gray-800">
+                        <div className="font-medium text-white mb-1">{project.name}</div>
+                        <div className="text-sm text-gray-400 mb-2">{project.goal}</div>
+                        <div className="text-xs text-gray-500">{project.estimatedTime} • {project.difficulty}</div>
+                        {project.skillsLearned && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {project.skillsLearned.map((skill: string, j: number) => <Badge key={j}>{skill}</Badge>)}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Certifications */}
+      {current.certifications.length > 0 && (
+        <Section id="certs" title="Certifications" icon={CertIcon} count={current.certifications.length}>
+          <div className="grid md:grid-cols-2 gap-4 pt-4">
+            {current.certifications.map((cert, i) => (
+              <div key={i} className="p-5 bg-gray-950 rounded-xl border border-gray-800">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <div className="font-semibold text-white">{cert.name}</div>
-                    <div className="text-sm text-gray-400">{cert.provider} • {cert.level}</div>
+                    <div className="text-sm text-gray-400">{cert.provider}</div>
                   </div>
-                  <Pill>{cert.duration}</Pill>
+                  {cert.badge && cert.badge.map((b, j) => <Badge key={j}>{b}</Badge>)}
                 </div>
-                <div className="text-sm text-gray-400">{cert.focus}</div>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">Level:</span> {cert.level}</div>
+                  <div className="flex justify-between"><span className="text-gray-500">Cost:</span> {cert.cost}</div>
+                  <div className="flex justify-between"><span className="text-gray-500">Duration:</span> {cert.duration}</div>
+                  <div className="flex justify-between"><span className="text-gray-500">Validity:</span> {cert.validity}</div>
+                </div>
+                <a href={cert.officialPage} target="_blank" className="inline-block mt-3 text-sm text-purple-400 hover:text-purple-300">
+                  Official Page <ExternalLink className="w-3 h-3 inline" />
+                </a>
               </div>
             ))}
           </div>
-        </div>
+        </Section>
+      )}
 
-        {/* Study Roadmap */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-white mb-4">
-            <BookOpen className="w-5 h-5 text-purple-400" /> 5-Week Study Plan
-          </h3>
-          <div className="space-y-3">
-            {current.studyPath.map((step, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 bg-gray-950 rounded-xl border border-gray-800">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 text-sm font-medium">
-                  {i + 1}
+      {/* Interview Preparation */}
+      {(current.interviewPrep.beginner.length > 0 || current.interviewPrep.intermediate.length > 0) && (
+        <Section id="interview" title="Interview Preparation" icon={HelpCircle} count={
+          current.interviewPrep.beginner.length + current.interviewPrep.intermediate.length +
+          current.interviewPrep.advanced.length
+        }>
+          <div className="space-y-4 pt-4">
+            {['beginner', 'intermediate', 'advanced'].map(level => (
+              (current.interviewPrep as any)[level].length > 0 && (
+                <div key={level}>
+                  <div className="text-sm uppercase tracking-wider text-gray-500 mb-2">{level} Level</div>
+                  {(current.interviewPrep as any)[level].map((q: InterviewQ, i: number) => (
+                    <div key={i} className="p-4 bg-gray-950 rounded-lg border border-gray-800 mb-2">
+                      <div className="font-medium text-white mb-2">{q.question}</div>
+                      <div className="text-sm text-gray-400">{q.answer}</div>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-gray-300 pt-1">{step}</div>
+              )
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Cheat Sheets */}
+      {current.cheatSheets.length > 0 && (
+        <Section id="cheatsheets" title="Cheat Sheets & References" icon={FileText} count={current.cheatSheets.length}>
+          <div className="grid md:grid-cols-3 gap-4 pt-4">
+            {current.cheatSheets.map((sheet, i) => <ResourceCard key={i} resource={sheet} />)}
+          </div>
+        </Section>
+      )}
+
+      {/* Books */}
+      {(current.books.beginner.length > 0 || current.books.intermediate.length > 0) && (
+        <Section id="books" title="Recommended Books" icon={BookOpen} count={
+          current.books.beginner.length + current.books.intermediate.length + current.books.advanced.length
+        }>
+          <div className="space-y-4 pt-4">
+            {['beginner', 'intermediate', 'advanced'].map(level => (
+              (current.books as any)[level].length > 0 && (
+                <div key={level}>
+                  <div className="text-sm uppercase tracking-wider text-gray-500 mb-2">{level}</div>
+                  {(current.books as any)[level].map((book: Book, i: number) => (
+                    <a key={i} href={book.url} target="_blank" className="block p-4 bg-gray-950 rounded-lg border border-gray-800 hover:border-gray-600 mb-2">
+                      <div className="font-medium text-white">{book.name}</div>
+                      <div className="text-sm text-gray-400">{book.author}</div>
+                      <div className="text-xs text-purple-400 mt-1">"{book.whyRecommended}"</div>
+                    </a>
+                  ))}
+                </div>
+              )
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Expert Resources */}
+      {current.expertResources.length > 0 && (
+        <Section id="experts" title="Expert-Created Resources" icon={Star} count={current.expertResources.length}>
+          <div className="grid md:grid-cols-2 gap-4 pt-4">
+            {current.expertResources.map((expert, i) => <ResourceCard key={i} resource={expert} />)}
+          </div>
+        </Section>
+      )}
+
+      {/* FAQs */}
+      {current.faqs.length > 0 && (
+        <Section id="faqs" title="Frequently Asked Questions" icon={HelpCircle} count={current.faqs.length}>
+          <div className="space-y-3 pt-4">
+            {current.faqs.map((faq, i) => (
+              <div key={i} className="p-4 bg-gray-950 rounded-lg border border-gray-800">
+                <div className="font-medium text-white mb-1">{faq.question}</div>
+                <div className="text-sm text-gray-400">{faq.answer}</div>
+                <div className="text-xs text-gray-500 mt-2">Source: {faq.source}</div>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Resources Grid */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Hands-on Practice */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-white mb-4">
-              <Target className="w-5 h-5 text-green-400" /> Hands-on Practice
-            </h3>
-            <div className="space-y-3">
-              {current.practice.map((resource, i) => (
-                <a
-                  key={i}
-                  href={resource.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-white group-hover:text-green-400 transition-colors">{resource.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{resource.type}</div>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-green-400" />
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-
-          {/* Documentation */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-white mb-4">
-              <FileText className="w-5 h-5 text-blue-400" /> Documentation
-            </h3>
-            <div className="space-y-3">
-              {current.docs.map((doc, i) => (
-                <a
-                  key={i}
-                  href={doc.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-white group-hover:text-blue-400 transition-colors">{doc.name}</div>
-                    <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-blue-400" />
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-
-          {/* Community */}
-          <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-white mb-4">
-              <Users className="w-5 h-5 text-orange-400" /> Community
-            </h3>
-            <div className="space-y-3">
-              {current.community.map((comm, i) => (
-                <a
-                  key={i}
-                  href={comm.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-700 transition-colors group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-white group-hover:text-orange-400 transition-colors">{comm.name}</div>
-                      <div className="text-xs text-gray-500 mt-1">{comm.type}</div>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-orange-400" />
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Tips */}
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Study Tips</h3>
-          <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-400">
-            <div>• Schedule 2-3 focused study sessions weekly</div>
-            <div>• Build projects while learning concepts</div>
-            <div>• Join community discussions actively</div>
-            <div>• Practice with real infrastructure</div>
-            <div>• Document your learning journey</div>
-            <div>• Review concepts through teaching others</div>
-          </div>
-        </div>
-      </div>
+        </Section>
+      )}
     </div>
   );
 }
