@@ -14,6 +14,11 @@ interface Message {
   correctAnswer?: number;
   explanation?: string;
   isCorrect?: boolean;
+  coreExplanation?: string;
+  commonPitfall?: string;
+  proTip?: string;
+  displayText?: string;
+  audioScript?: string;
 }
 
 export function ScenarioGame() {
@@ -348,8 +353,20 @@ Include the CORRECT answer number as: CORRECT: [number]`,
 User selected option ${choiceIndex + 1}, correct answer was option ${correctAnswerIndex}.
 ${isCorrect ? 'User was correct!' : 'User was wrong.'}
 
-Provide brief feedback and generate the next scenario continuing this storyline.
-Include CORRECT: [number] for the new scenario.`,
+You MUST respond with ONLY a JSON object in this exact format:
+{
+  "coreExplanation": "2-3 concise sentences explaining WHY the correct answer works technically. Be precise and factual only.",
+  "commonPitfall": "Brief description of the usual mistake people make in this scenario",
+  "proTip": "How to avoid the common pitfall",
+  "displayText": "Clean text for UI - no markdown, no special characters",
+  "audioScript": "TTS text - space out acronyms like A P I, replace symbols with words",
+  "nextCorrectAnswer": [number 1-4]
+}
+
+Rules:
+- coreExplanation: Maximum 2-3 sentences explaining the exact technical mechanism
+- No fluff, guessing, or hallucinations - only accurate technical explanations
+- Keep responses concise and scannable`,
           skill: selectedSkill,
           mode: 'scenario_feedback',
           previousChoice: choiceText
@@ -359,12 +376,18 @@ Include CORRECT: [number] for the new scenario.`,
       if (response.ok) {
         const data = await response.json();
 
-        // Use the API response as the explanation
-        const explanation = data.response || (isCorrect
-          ? "Great decision! This shows you understand the proper approach."
-          : `Option ${correctAnswerIndex} is the recommended solution.`);
+        // Try to parse JSON response from LLM
+        let structuredFeedback: any = null;
+        try {
+          const jsonMatch = data.response.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            structuredFeedback = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          console.log('Could not parse JSON feedback:', e);
+        }
 
-        // Create feedback message showing the correct answer with proper explanation
+        // Create feedback message with structured data
         const feedbackMsg: Message = {
           id: Date.now() + 1,
           text: isCorrect
@@ -372,23 +395,28 @@ Include CORRECT: [number] for the new scenario.`,
             : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
           isUser: false,
           selectedAnswer: choiceIndex,
-          correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0, // Convert to 0-indexed for display
+          correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0,
           isCorrect: isCorrect,
-          explanation: explanation
+          coreExplanation: structuredFeedback?.coreExplanation,
+          commonPitfall: structuredFeedback?.commonPitfall,
+          proTip: structuredFeedback?.proTip,
+          displayText: structuredFeedback?.displayText,
+          audioScript: structuredFeedback?.audioScript,
+          explanation: data.response // fallback
         };
 
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak brief feedback then move to next question quickly
-        const shortFeedback = isCorrect ? "Correct!" : "Wrong. The answer is option " + correctAnswerIndex;
-        speak(shortFeedback, 0.9, () => {
-          // Generate next scenario immediately after brief speech
-          if (selectedSkill) {
-            generateScenario(selectedSkill);
-          }
-        });
+        // Speak using audioScript if available, otherwise fallback
+        const speakText = structuredFeedback?.audioScript ||
+          (isCorrect ? "Correct!" : "Wrong. The answer is option " + correctAnswerIndex);
+        speak(speakText, 0.9);
       }
     } catch (error) {
+      const fallbackExplanation = isCorrect
+        ? "Great decision! This approach works correctly."
+        : `Option ${correctAnswerIndex} is correct because it properly addresses the issue at its source.`;
+
       const feedbackMsg: Message = {
         id: Date.now() + 1,
         text: isCorrect
@@ -398,20 +426,13 @@ Include CORRECT: [number] for the new scenario.`,
         selectedAnswer: choiceIndex,
         correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0,
         isCorrect: isCorrect,
-        explanation: isCorrect
-          ? "Great decision!"
-          : `Option ${correctAnswerIndex} addresses the root cause systematically.`
+        coreExplanation: fallbackExplanation,
+        commonPitfall: "Rushing to apply a fix without understanding the root cause",
+        proTip: "Always analyze the situation thoroughly before taking action"
       };
 
       setMessages(prev => [...prev, feedbackMsg]);
-      speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
-
-      // Generate next scenario after showing the explanation (longer delay for reading)
-      setTimeout(() => {
-        if (selectedSkill) {
-          generateScenario(selectedSkill);
-        }
-      }, 4000);
+      speak(feedbackMsg.text + ". " + fallbackExplanation, isCorrect ? 0.9 : 0.85);
     }
 
     // Update score
@@ -549,27 +570,71 @@ Include CORRECT: [number] for the new scenario.`,
 
                     {/* Feedback display showing correct answer */}
                     {msg.selectedAnswer !== undefined && msg.correctAnswer !== undefined && (
-                      <div className="mt-4 space-y-2">
-                        <div className="p-3 rounded-xl bg-white/5 border border-white/20">
-                          <p className="text-sm">
-                            <span className="font-medium">Your answer:</span> Option {msg.selectedAnswer + 1}
-                            {msg.isCorrect ? (
-                              <span className="ml-2 text-green-400">✓ Correct!</span>
-                            ) : (
-                              <span className="ml-2 text-red-400">✗ Wrong</span>
-                            )}
-                          </p>
-                          <p className="text-sm mt-1">
-                            <span className="font-medium text-green-400">Correct answer:</span> Option {msg.correctAnswer + 1}
-                          </p>
+                      <div className="mt-4">
+                        {/* Visual correctness indicator */}
+                        <div className={`p-4 rounded-xl border ${msg.isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm">
+                                <span className="font-medium">Your answer:</span> Option {msg.selectedAnswer + 1}
+                                {msg.isCorrect ? (
+                                  <span className="ml-2 text-green-400 font-bold">✓ Correct!</span>
+                                ) : (
+                                  <span className="ml-2 text-red-400 font-bold">✗ Wrong</span>
+                                )}
+                              </p>
+                              {!msg.isCorrect && (
+                                <p className="text-sm mt-1">
+                                  <span className="font-medium text-green-400">Correct answer:</span> Option {msg.correctAnswer + 1}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {msg.explanation && (
-                          <div className="p-3 rounded-xl bg-white/5 border border-white/20">
-                            <p className="text-sm text-white/80">
-                              <span className="font-medium text-primary">Explanation:</span> {msg.explanation}
-                            </p>
+
+                        {/* Structured feedback sections */}
+                        {(msg.coreExplanation || msg.commonPitfall || msg.proTip) && (
+                          <div className="mt-4 space-y-3 p-4 rounded-xl bg-white/5 border border-white/20">
+                            {/* Core Explanation */}
+                            {msg.coreExplanation && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">CORE EXPLANATION</span>
+                                </div>
+                                <p className="text-sm text-white/90">{msg.coreExplanation}</p>
+                              </div>
+                            )}
+
+                            {/* Common Pitfall & Pro Tip */}
+                            {(msg.commonPitfall || msg.proTip) && (
+                              <div className="pt-2 border-t border-white/10">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-medium">⚠️ COMMON PITFALL</span>
+                                </div>
+                                <p className="text-sm text-white/80 mb-3">{msg.commonPitfall}</p>
+
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">💡 PRO TIP</span>
+                                </div>
+                                <p className="text-sm text-white/80">{msg.proTip}</p>
+                              </div>
+                            )}
                           </div>
                         )}
+
+                        {/* Next Scenario Button */}
+                        <div className="mt-4 flex justify-center">
+                          <button
+                            onClick={() => {
+                              if (selectedSkill) {
+                                generateScenario(selectedSkill);
+                              }
+                            }}
+                            className="px-6 py-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-sm font-medium hover:opacity-90 transition-opacity"
+                          >
+                            Next Scenario →
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
