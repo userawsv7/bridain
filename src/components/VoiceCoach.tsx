@@ -18,6 +18,8 @@ interface Message {
   // Separate question text from choices for clean display
   questionText?: string;
   choices?: string[];
+  answered?: boolean;
+  selectedAnswer?: string;
 }
 
 type Mode = 'learning' | 'interview';
@@ -321,8 +323,8 @@ Create challenging but fair scenarios for ${skill} role.`,
           isUser: false,
           questionText: idea,
           choices: options.length > 0 ? options : undefined,
-          // Store additional data for feedback
-          correctAnswer: correct.toString()
+          // Store correct answer TEXT (not index) for proper feedback display
+          correctAnswer: options[correct] || ''
         };
         setMessages(prev => [...prev, questionMsg]);
         setCurrentQuestion(sanitizedResponse);
@@ -347,7 +349,7 @@ Create challenging but fair scenarios for ${skill} role.`,
         isUser: false,
         questionText: fallbackIdea,
         choices: fallbackOptions,
-        correctAnswer: fallbackCorrect.toString()
+        correctAnswer: fallbackOptions[fallbackCorrect]
       };
       setMessages(prev => [...prev, fallbackQuestion]);
       setCurrentQuestion(fallbackQuestion.text);
@@ -360,6 +362,14 @@ Create challenging but fair scenarios for ${skill} role.`,
 
   const handleAnswer = async (answer: string) => {
     if (!selectedSkill || !awaitingAnswer) return;
+
+    // Mark the question as answered and store the selected answer
+    setMessages(prev => prev.map(msg => {
+      if (msg.choices && !msg.answered) {
+        return { ...msg, answered: true, selectedAnswer: answer };
+      }
+      return msg;
+    }));
 
     const userMsg: Message = {
       id: Date.now(),
@@ -380,11 +390,17 @@ Create challenging but fair scenarios for ${skill} role.`,
 Previous question: ${currentQuestion}
 User's answer: ${answer}
 
-CRITICAL: ALWAYS show which choice (1,2,3, or 4) is correct. Format MUST be:
+CRITICAL REQUIREMENTS:
+1. Generate a detailed, beginner-friendly explanation (3-4 sentences minimum)
+2. Explain WHY the correct answer is right, not just state facts
+3. Explain why common misconceptions lead to wrong choices
+4. Use simple language suitable for someone learning ${selectedSkill}
+
+Format MUST be:
 
 STATUS: Correct or Wrong
-CONTRAST: The correct answer is choice X. Your answer was choice Y.
-EXPLANATION: Brief 1-2 sentence explanation why choice X is correct. Use simple language.
+CONTRAST: The correct answer is "[ACTUAL TEXT OF CORRECT ANSWER]". Your answer was "[ACTUAL TEXT OF USER'S ANSWER]".
+EXPLANATION: [Detailed 3-4 sentence explanation explaining the concept, why the correct answer works, and why other options are wrong. Be thorough and educational.]
 
 Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
           skill: selectedSkill,
@@ -424,21 +440,24 @@ Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
           if (explanation && !explanation.endsWith('.')) explanation += '.';
         }
 
-        // Strict fallback - always show correct vs user's answer
+        // Strict fallback - always show correct vs user's answer with actual text
         if (!contrast) {
-          contrast = `The correct answer is displayed. Your answer "${answer}" was ${status === 'Correct' ? 'correct' : 'incorrect'}.`;
+          const lastQuestionMsg = messages.slice().reverse().find(m => m.choices);
+          const correctText = lastQuestionMsg?.correctAnswer || "the correct answer";
+          contrast = `The correct answer is "${correctText}". Your answer was "${answer}".`;
         }
         if (!explanation) {
-          explanation = "The correct answer demonstrates proper understanding of the underlying concepts and best practices.";
+          explanation = "Understanding the underlying concepts requires careful consideration of the practical implications and best practices in this domain.";
         }
 
         // Clean the text to remove any markdown/special characters
         const cleanContrast = contrast.replace(/[\*\_\`\#]/g, '').trim();
         const cleanExplanation = explanation.replace(/[\*\_\`\#]/g, '').trim();
 
-        // Extract which choice number (1,2,3,4) was the correct answer
-        const correctChoiceMatch = cleanContrast.match(/choice\s*(\d)/i);
-        const correctChoiceNum = correctChoiceMatch ? parseInt(correctChoiceMatch[1]) : null;
+        // Extract the actual correct answer text from the contrast output
+        // Pattern: "The correct answer is "[ACTUAL TEXT]""
+        const textAnswerMatch = cleanContrast.match(/correct answer is\s*[""]([^""]+)[""]/i);
+        const correctAnswerText = textAnswerMatch ? textAnswerMatch[1].trim() : cleanContrast;
 
         const feedbackMsg: Message = {
           id: Date.now() + 1,
@@ -448,7 +467,7 @@ Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
           feedbackStatus: status,
           feedbackContrast: cleanContrast,
           feedbackExplanation: cleanExplanation,
-          correctAnswer: correctChoiceNum ? correctChoiceNum.toString() : undefined
+          correctAnswer: correctAnswerText
         };
         setMessages(prev => [...prev, feedbackMsg]);
 
@@ -714,44 +733,44 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                       </p>
                     )}
 
-                    {/* MCQ Radio Buttons for Interview Mode - Only render radio buttons, no duplicate text */}
-                    {mode === 'interview' && awaitingAnswer && !msg.isUser && msg.id === messages[messages.length - 1].id && (
+                    {/* MCQ Radio Buttons for Interview Mode - Keep visible after answering, only disable */}
+                    {mode === 'interview' && !msg.isUser && msg.choices && (
                       <div className="mt-4 space-y-2">
-                        {/* Render choices from parsed data if available */}
-                        {msg.choices && msg.choices.length > 0 ? (
-                          msg.choices.map((choice, index) => (
-                            <label key={index} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer">
+                        {msg.choices.map((choice, index) => {
+                          const isAnswered = msg.answered === true;
+                          const isSelected = msg.selectedAnswer === choice;
+                          const isCorrect = isAnswered && msg.correctAnswer === choice;
+
+                          return (
+                            <label
+                              key={index}
+                              className={`flex items-center gap-2 p-2 rounded-lg transition-all ${
+                                isAnswered
+                                  ? isCorrect
+                                    ? 'bg-green-500/20 border border-green-500/50'
+                                    : isSelected
+                                      ? 'bg-red-500/20 border border-red-500/50'
+                                      : 'bg-white/5'
+                                  : 'bg-white/5 hover:bg-white/10 cursor-pointer'
+                              }`}
+                            >
                               <input
                                 type="radio"
-                                name="interview-answer"
+                                name={`interview-answer-${msg.id}`}
                                 value={choice}
-                                onChange={(e) => handleAnswer(e.target.value)}
+                                checked={isSelected}
+                                onChange={(e) => !isAnswered && handleAnswer(e.target.value)}
+                                disabled={isAnswered}
                                 className="text-primary"
                               />
-                              <span className="text-sm">{index + 1}. {choice}</span>
+                              <span className="text-sm">
+                                {index + 1}. {choice}
+                                {isAnswered && isCorrect && " ✓"}
+                                {isAnswered && isSelected && !isCorrect && " ✗"}
+                              </span>
                             </label>
-                          ))
-                        ) : (
-                          /* Fallback: Parse from text if choices not pre-parsed */
-                          ['1', '2', '3', '4'].map(num => {
-                            const choiceMatch = msg.text.match(new RegExp(`${num}\\)\\s*([^\\n]+)`));
-                            if (choiceMatch) {
-                              return (
-                                <label key={num} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    name="interview-answer"
-                                    value={choiceMatch[1]}
-                                    onChange={(e) => handleAnswer(e.target.value)}
-                                    className="text-primary"
-                                  />
-                                  <span className="text-sm">{num}. {choiceMatch[1]}</span>
-                                </label>
-                              );
-                            }
-                            return null;
-                          })
-                        )}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
