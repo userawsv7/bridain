@@ -9,15 +9,20 @@ interface DiagramStep {
   id: number;
   label: string;
   type: string;
-  step?: number;
-  title?: string;
-  desc?: string;
+}
+
+interface DiagramData {
+  title: string;
+  steps: DiagramStep[];
+  relationships?: string[];
 }
 
 interface ExplanationStructure {
   verdict: string;
-  explanation: string;
-  diagram: DiagramStep[];
+  explanation?: string;
+  why?: string[];
+  diagram: DiagramData;
+  keyConcept?: string;
   whyOthersWrong: string[];
   remember: string;
   bestPractice: string;
