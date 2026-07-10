@@ -802,7 +802,7 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                     ) : (
                       /* Display only question text if available, hide raw choices text */
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {msg.questionText || sanitizeMessageText(msg.text)}
+                        {(msg.questionText?.displayText) || sanitizeMessageText(msg.text)}
                       </p>
                     )}
 
