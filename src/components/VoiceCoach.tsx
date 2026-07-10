@@ -4,6 +4,11 @@ import React, { useState, useRef } from 'react';
 import { Send, Loader2, Mic, MicOff, Volume2, VolumeX, Target, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+interface DualText {
+  displayText: string;
+  audioScript: string;
+}
+
 interface Message {
   id: number;
   text: string;
@@ -11,12 +16,12 @@ interface Message {
   isCorrect?: boolean;
   showAnswer?: boolean;
   correctAnswer?: string;
-  explanation?: string;
+  explanation?: DualText;
   feedbackStatus?: 'Correct' | 'Wrong';
-  feedbackContrast?: string;
-  feedbackExplanation?: string;
+  feedbackContrast?: DualText;
+  feedbackExplanation?: DualText;
   // Separate question text from choices for clean display
-  questionText?: string;
+  questionText?: DualText;
   choices?: string[];
   answered?: boolean;
   selectedAnswer?: string;
@@ -317,15 +322,29 @@ Create challenging but fair scenarios for ${skill} role.`,
         const options = optionsText.match(/\d+\)\s*([^\n]+)/g)?.map(o => o.replace(/^\d+\)\s*/, '')) || [];
 
         // Store the full response for context but display structured
-        const questionMsg: Message = {
-          id: Date.now(),
-          text: sanitizedResponse,
-          isUser: false,
-          questionText: idea,
-          choices: options.length > 0 ? options : undefined,
-          // Store correct answer TEXT (not index) for proper feedback display
-          correctAnswer: options[correct] || ''
-        };
+        // Create dual-text objects for display and audio
+          const ideaDual: DualText = {
+            displayText: idea,
+            audioScript: idea
+              .replace(/API/g, 'A P I')
+              .replace(/URL/g, 'U R L')
+              .replace(/AWS/g, 'A W S')
+              .replace(/CI\/CD/g, 'C I and C D')
+              .replace(/\/\//g, ' slash slash ')
+              .replace(/\//g, ' slash ')
+              .replace(/_/g, ' underscore ')
+              .replace(/-/g, ' dash ')
+          };
+
+          const questionMsg: Message = {
+            id: Date.now(),
+            text: sanitizedResponse,
+            isUser: false,
+            questionText: ideaDual,
+            choices: options.length > 0 ? options : undefined,
+            // Store correct answer TEXT (not index) for proper feedback display
+            correctAnswer: options[correct] || ''
+          };
         setMessages(prev => [...prev, questionMsg]);
         setCurrentQuestion(sanitizedResponse);
         setAwaitingAnswer(true);
@@ -419,54 +438,108 @@ Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
         const status = (statusMatch ? statusMatch[1] : (responseText.toLowerCase().includes('correct') ? 'Correct' : 'Wrong')) as 'Correct' | 'Wrong';
         const isCorrect = status === 'Correct';
 
-        // Parse CONTRAST - MUST extract the correct answer
-        let contrast = '';
+        // Parse CONTRAST - MUST extract the correct answer and create dual output
+        let displayContrast = '';
         const contrastMatch = responseText.match(/CONTRAST:\s*([^\n]+(?:\n[^\n]+)*?)(?=\nEXPLANATION:|$)/i);
         if (contrastMatch) {
-          contrast = contrastMatch[1].trim().replace(/\n/g, ' ');
+          displayContrast = contrastMatch[1].trim().replace(/\n/g, ' ');
         }
 
-        // Parse EXPLANATION - MUST extract the explanation
-        let explanation = '';
+        // Parse EXPLANATION - MUST extract the explanation and create dual output
+        let displayExplanation = '';
         const explanationMatch = responseText.match(/EXPLANATION:\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|$)/i);
         if (explanationMatch) {
           // Limit to 3 sentences max
-          explanation = explanationMatch[1].trim()
+          displayExplanation = explanationMatch[1].trim()
             .replace(/\n/g, ' ')
             .split(/[.!?]+/)
             .slice(0, 3)
             .join('. ')
             .trim();
-          if (explanation && !explanation.endsWith('.')) explanation += '.';
+          if (displayExplanation && !displayExplanation.endsWith('.')) displayExplanation += '.';
         }
 
         // Strict fallback - always show correct vs user's answer with actual text
-        if (!contrast) {
+        if (!displayContrast) {
           const lastQuestionMsg = messages.slice().reverse().find(m => m.choices);
           const correctText = lastQuestionMsg?.correctAnswer || "the correct answer";
-          contrast = `The correct answer is "${correctText}". Your answer was "${answer}".`;
+          displayContrast = `The correct answer is "${correctText}". Your answer was "${answer}".`;
         }
-        if (!explanation) {
-          explanation = "Understanding the underlying concepts requires careful consideration of the practical implications and best practices in this domain.";
+        if (!displayExplanation) {
+          displayExplanation = "Understanding the underlying concepts requires careful consideration of the practical implications and best practices in this domain.";
         }
 
-        // Clean the text to remove any markdown/special characters
-        const cleanContrast = contrast.replace(/[\*\_\`\#]/g, '').trim();
-        const cleanExplanation = explanation.replace(/[\*\_\`\#]/g, '').trim();
+        // Clean the text to remove any markdown/special characters for display
+        const cleanDisplayContrast = displayContrast.replace(/[\*\_\`\#]/g, '').trim();
+        const cleanDisplayExplanation = displayExplanation.replace(/[\*\_\`\#]/g, '').trim();
+
+        // Create optimized audio scripts by correcting acronyms and symbols
+        const createAudioScript = (text: string): string => {
+          return text
+            .replace(/API/g, 'A P I')
+            .replace(/URL/g, 'U R L')
+            .replace(/AWS/g, 'A W S')
+            .replace(/CI\/CD/g, 'C I and C D')
+            .replace(/\/\//g, ' slash slash ')
+            .replace(/\//g, ' slash ')
+            .replace(/_/g, ' underscore ')
+            .replace(/-/g, ' dash ')
+            .replace(/HTTP/g, 'H T T P')
+            .replace(/HTTPS/g, 'H T T P S')
+            .replace(/JSON/g, 'J S O N')
+            .replace(/XML/g, 'X M L')
+            .replace(/SQL/g, 'S Q L')
+            .replace(/HTML/g, 'H T M L')
+            .replace(/CSS/g, 'C S S')
+            .replace(/JS/g, 'J S')
+            .replace(/TS/g, 'T S')
+            .replace(/DB/g, 'D B')
+            .replace(/UI/g, 'U I')
+            .replace(/UX/g, 'U X')
+            .replace(/SDK/g, 'S D K')
+            .replace(/IDE/g, 'I D E')
+            .replace(/VPN/g, 'V P N')
+            .replace(/DNS/g, 'D N S')
+            .replace(/SSH/g, 'S S H')
+            .replace(/FTP/g, 'F T P')
+            .replace(/TCP/g, 'T C P')
+            .replace(/UDP/g, 'U D P')
+            .replace(/REST/g, 'R E S T')
+            .replace(/SOAP/g, 'S O A P')
+            .replace(/gRPC/g, 'g R P C')
+            .replace(/OAuth/g, 'O Auth')
+            .replace(/JWT/g, 'J W T')
+            .replace(/SSL/g, 'S S L')
+            .replace(/TLS/g, 'T L S')
+            .replace(/CDN/g, 'C D N')
+            .replace(/S3/g, 'S three');
+        };
+
+        const audioContrast = createAudioScript(cleanDisplayContrast);
+        const audioExplanation = createAudioScript(cleanDisplayExplanation);
+
+        // Create dual-text objects
+        const contrastDual: DualText = {
+          displayText: cleanDisplayContrast,
+          audioScript: audioContrast
+        };
+        const explanationDual: DualText = {
+          displayText: cleanDisplayExplanation,
+          audioScript: audioExplanation
+        };
 
         // Extract the actual correct answer text from the contrast output
-        // Pattern: "The correct answer is "[ACTUAL TEXT]""
-        const textAnswerMatch = cleanContrast.match(/correct answer is\s*[""]([^""]+)[""]/i);
-        const correctAnswerText = textAnswerMatch ? textAnswerMatch[1].trim() : cleanContrast;
+        const textAnswerMatch = cleanDisplayContrast.match(/correct answer is\s*[""]([^""]+)[""]/i);
+        const correctAnswerText = textAnswerMatch ? textAnswerMatch[1].trim() : cleanDisplayContrast;
 
         const feedbackMsg: Message = {
           id: Date.now() + 1,
-          text: `${status}: ${cleanContrast} ${cleanExplanation}`,
+          text: `${status}: ${cleanDisplayContrast} ${cleanDisplayExplanation}`,
           isUser: false,
           isCorrect: isCorrect,
           feedbackStatus: status,
-          feedbackContrast: cleanContrast,
-          feedbackExplanation: cleanExplanation,
+          feedbackContrast: contrastDual,
+          feedbackExplanation: explanationDual,
           correctAnswer: correctAnswerText
         };
         setMessages(prev => [...prev, feedbackMsg]);
