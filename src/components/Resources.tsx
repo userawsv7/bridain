@@ -141,8 +141,8 @@ Return ONLY the JSON object, nothing else.`,
           };
         }
 
-        // Ensure optional arrays exist
-        if (!parsedData.resources.examDumpsOrStudyGuidesUrls) {
+        // Ensure optional arrays exist on certifications
+        if (parsedData.resources.certifications) {
           parsedData.resources.certifications = parsedData.resources.certifications.map(cert => ({
             ...cert,
             examDumpsOrStudyGuidesUrls: cert.examDumpsOrStudyGuidesUrls || [],
