@@ -101,6 +101,11 @@ interface CertificationResource extends BaseResource {
   officialPage: string;
   studyGuide?: string;
   examObjectives?: string;
+  // New advanced fields - optional for dynamic LLM responses
+  practiceExams?: { name: string; url: string }[];
+  studyGuides?: { name: string; url: string }[];
+  examDumps?: { name: string; url: string }[];
+  faqs?: { question: string; answer: string }[];
 }
 
 interface PracticeLab extends BaseResource {
@@ -296,8 +301,8 @@ const generateComprehensiveResources = (skill: string): SkillResources => {
         ]
       },
       certifications: [
-        { name: "Certified Kubernetes Administrator (CKA)", url: "https://www.cncf.io/certification/cka/", type: "Certification", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/cka/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Most recognized Kubernetes certification" } as const,
-        { name: "Certified Kubernetes Application Developer (CKAD)", url: "https://www.cncf.io/certification/ckad/", type: "Certification", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/ckad/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKAD_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Focus on application development" } as const
+        { name: "Certified Kubernetes Administrator (CKA)", url: "https://www.cncf.io/certification/cka/", type: "Certification", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/cka/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Most recognized Kubernetes certification", practiceExams: [], studyGuides: [], examDumps: [], faqs: [] } as const,
+        { name: "Certified Kubernetes Application Developer (CKAD)", url: "https://www.cncf.io/certification/ckad/", type: "Certification", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/ckad/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKAD_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Focus on application development", practiceExams: [], studyGuides: [], examDumps: [], faqs: [] } as const
       ],
       certPreparation: {
         studyGuides: [
@@ -922,7 +927,7 @@ export function Resources() {
                 </div>
 
                 {/* Practice Exams */}
-                {cert.practiceExams.length > 0 && (
+                {cert.practiceExams && cert.practiceExams.length > 0 && (
                   <div className="mb-3">
                     <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Practice Exams</div>
                     <div className="flex flex-wrap gap-2">
@@ -936,7 +941,7 @@ export function Resources() {
                 )}
 
                 {/* Study Guides */}
-                {cert.studyGuides.length > 0 && (
+                {cert.studyGuides && cert.studyGuides.length > 0 && (
                   <div className="mb-3">
                     <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Study Guides</div>
                     <div className="flex flex-wrap gap-2">
@@ -950,7 +955,7 @@ export function Resources() {
                 )}
 
                 {/* Exam Dumps */}
-                {cert.examDumps.length > 0 && (
+                {cert.examDumps && cert.examDumps.length > 0 && (
                   <div className="mb-3">
                     <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Community Resources</div>
                     <div className="flex flex-wrap gap-2">
@@ -964,7 +969,7 @@ export function Resources() {
                 )}
 
                 {/* FAQs */}
-                {cert.faqs.length > 0 && (
+                {cert.faqs && cert.faqs.length > 0 && (
                   <div>
                     <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Frequently Asked Questions</div>
                     <div className="space-y-2">
