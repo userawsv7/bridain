@@ -35,6 +35,7 @@ export function ScenarioGame() {
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(null);
   const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
   const [speechRate, setSpeechRate] = useState(0.85);
+  const [currentChoices, setCurrentChoices] = useState<string[]>([]);
 
   const voiceFlavors = {
     Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
@@ -293,6 +294,7 @@ Include the CORRECT answer number as: CORRECT: [number]`,
           choices: parsed.choices
         };
 
+        setCurrentChoices(parsed.choices);
         setMessages(prev => [...prev, scenarioMsg, choicesMsg]);
 
         // Speak the scenario
@@ -387,12 +389,15 @@ Rules:
           console.log('Could not parse JSON feedback:', e);
         }
 
+        // Get actual choice texts
+        const correctChoiceText = currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`;
+
         // Create feedback message with structured data
         const feedbackMsg: Message = {
           id: Date.now() + 1,
           text: isCorrect
-            ? `✅ Correct! Option ${correctAnswerIndex} was the right choice.`
-            : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
+            ? `✅ Correct! ${correctChoiceText}`
+            : `❌ Wrong! The correct answer is: ${correctChoiceText}`,
           isUser: false,
           selectedAnswer: choiceIndex,
           correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0,
@@ -402,37 +407,55 @@ Rules:
           proTip: structuredFeedback?.proTip,
           displayText: structuredFeedback?.displayText,
           audioScript: structuredFeedback?.audioScript,
+          choices: currentChoices, // Keep choices visible
           explanation: data.response // fallback
         };
 
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak using audioScript if available, otherwise fallback
+        // Speak using audioScript if available, otherwise use the actual correct answer text
         const speakText = structuredFeedback?.audioScript ||
-          (isCorrect ? "Correct!" : "Wrong. The answer is option " + correctAnswerIndex);
-        speak(speakText, 0.9);
+          (isCorrect ? `Correct! ${correctChoiceText}` : `Wrong. The correct answer is: ${correctChoiceText}`);
+
+        speak(speakText, 0.9, () => {
+          // Auto-advance to next scenario only after voice completes
+          setTimeout(() => {
+            if (selectedSkill) {
+              generateScenario(selectedSkill);
+            }
+          }, 500); // Small delay after audio ends
+        });
       }
     } catch (error) {
+      const correctChoiceText = currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`;
       const fallbackExplanation = isCorrect
         ? "Great decision! This approach works correctly."
-        : `Option ${correctAnswerIndex} is correct because it properly addresses the issue at its source.`;
+        : `${correctChoiceText} is correct because it properly addresses the issue at its source.`;
 
       const feedbackMsg: Message = {
         id: Date.now() + 1,
         text: isCorrect
-          ? `✅ Correct! Option ${correctAnswerIndex} was the right choice.`
-          : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
+          ? `✅ Correct! ${correctChoiceText}`
+          : `❌ Wrong! The correct answer is: ${correctChoiceText}`,
         isUser: false,
         selectedAnswer: choiceIndex,
         correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0,
         isCorrect: isCorrect,
         coreExplanation: fallbackExplanation,
         commonPitfall: "Rushing to apply a fix without understanding the root cause",
-        proTip: "Always analyze the situation thoroughly before taking action"
+        proTip: "Always analyze the situation thoroughly before taking action",
+        choices: currentChoices // Keep choices visible
       };
 
       setMessages(prev => [...prev, feedbackMsg]);
-      speak(feedbackMsg.text + ". " + fallbackExplanation, isCorrect ? 0.9 : 0.85);
+      speak(feedbackMsg.text + ". " + fallbackExplanation, isCorrect ? 0.9 : 0.85, () => {
+        // Auto-advance after fallback speech completes
+        setTimeout(() => {
+          if (selectedSkill) {
+            generateScenario(selectedSkill);
+          }
+        }, 500);
+      });
     }
 
     // Update score
@@ -553,23 +576,59 @@ Rules:
                   <div className={`max-w-[85%] p-4 rounded-2xl ${msg.isUser ? 'bg-primary/20 border border-primary/30' : 'bg-white/10 border border-white/20'}`}>
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
 
-                    {/* Choice buttons */}
-                    {msg.type === 'choices' && msg.choices && (
+                    {/* Choice buttons - always shown, disabled after selection */}
+                    {(msg.type === 'choices' || msg.choices) && msg.choices && (
                       <div className="mt-4 space-y-2">
-                        {msg.choices.map((choice, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleChoice(idx, choice)}
-                            className="w-full text-left p-3 rounded-xl bg-white/5 border border-white/20 hover:bg-white/10 hover:border-primary/50 transition-all"
-                          >
-                            <span className="font-medium mr-2">{idx + 1}.</span> {choice}
-                          </button>
-                        ))}
+                        {msg.choices.map((choice, idx) => {
+                          // Determine styling based on selection state
+                          let choiceStyle = "w-full text-left p-3 rounded-xl border transition-all ";
+
+                          if (msg.selectedAnswer !== undefined) {
+                            // After selection - disable and color-code
+                            choiceStyle += "cursor-not-allowed ";
+
+                            if (idx === msg.selectedAnswer) {
+                              // User's selected answer
+                              choiceStyle += msg.isCorrect
+                                ? "bg-green-500/20 border-green-500/50 text-white"
+                                : "bg-red-500/20 border-red-500/50 text-white";
+                            } else if (idx === msg.correctAnswer && !msg.isCorrect) {
+                              // Correct answer when user was wrong
+                              choiceStyle += "bg-green-500/20 border-green-500/50 text-white";
+                            } else {
+                              // Other unselected choices
+                              choiceStyle += "bg-white/5 border-white/20 opacity-60";
+                            }
+                          } else {
+                            // Before selection - hoverable
+                            choiceStyle += "bg-white/5 border-white/20 hover:bg-white/10 hover:border-primary/50";
+                          }
+
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => msg.selectedAnswer === undefined && handleChoice(idx, choice)}
+                              disabled={msg.selectedAnswer !== undefined}
+                              className={choiceStyle}
+                            >
+                              <span className="font-medium mr-2">{idx + 1}.</span> {choice}
+                              {msg.selectedAnswer !== undefined && idx === msg.selectedAnswer && msg.isCorrect && (
+                                <span className="ml-2 text-green-400">✓</span>
+                              )}
+                              {msg.selectedAnswer !== undefined && idx === msg.selectedAnswer && !msg.isCorrect && (
+                                <span className="ml-2 text-red-400">✗</span>
+                              )}
+                              {msg.selectedAnswer !== undefined && idx === msg.correctAnswer && !msg.isCorrect && (
+                                <span className="ml-2 text-green-400">✓ Correct</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
 
-                    {/* Feedback display showing correct answer */}
-                    {msg.selectedAnswer !== undefined && msg.correctAnswer !== undefined && (
+                    {/* Feedback display showing correct answer - simplified */}
+                    {msg.selectedAnswer !== undefined && msg.correctAnswer !== undefined && !msg.choices && (
                       <div className="mt-4">
                         {/* Visual correctness indicator */}
                         <div className={`p-4 rounded-xl border ${msg.isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
