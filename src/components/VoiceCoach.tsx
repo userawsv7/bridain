@@ -790,13 +790,13 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                         {/* Contrast Section - Shows which choice is correct */}
                         <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                           <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Correct Choice Revealed</div>
-                          <p className="text-sm text-white/90 font-medium">{msg.feedbackContrast}</p>
+                          <p className="text-sm text-white/90 font-medium">{msg.feedbackContrast?.displayText}</p>
                         </div>
 
                         {/* Explanation Section */}
                         <div className="bg-white/5 rounded-lg p-3 border border-white/10">
                           <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Why This Is Correct</div>
-                          <p className="text-sm text-white/90 leading-relaxed">{msg.feedbackExplanation}</p>
+                          <p className="text-sm text-white/90 leading-relaxed">{msg.feedbackExplanation?.displayText}</p>
                         </div>
                       </div>
                     ) : (
