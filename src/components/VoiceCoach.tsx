@@ -366,7 +366,7 @@ Create challenging but fair scenarios for ${skill} role.`,
         id: Date.now(),
         text: `IDEA: ${fallbackIdea}\nSCENARIO: ${fallbackScenario}\nOPTIONS:\n1) ${fallbackOptions[0]}\n2) ${fallbackOptions[1]}\n3) ${fallbackOptions[2]}\n4) ${fallbackOptions[3]}\nCORRECT: ${fallbackCorrect + 1}`,
         isUser: false,
-        questionText: fallbackIdea,
+        questionText: { displayText: fallbackIdea, audioScript: fallbackIdea },
         choices: fallbackOptions,
         correctAnswer: fallbackOptions[fallbackCorrect]
       };
