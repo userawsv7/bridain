@@ -12,6 +12,9 @@ interface Message {
   showAnswer?: boolean;
   correctAnswer?: string;
   explanation?: string;
+  feedbackStatus?: 'Correct' | 'Wrong';
+  feedbackContrast?: string;
+  feedbackExplanation?: string;
 }
 
 type Mode = 'learning' | 'interview';
@@ -297,13 +300,18 @@ Make it challenging but fair for a ${skill} role.`,
 Previous question: ${currentQuestion}
 User's answer: ${answer}
 
-Provide feedback:
-1. Is their answer correct? (Yes/No)
-2. If wrong, explain the correct answer
-3. Give a brief explanation
-4. Move to next question
+Provide structured feedback with EXACTLY these three components:
+1. STATUS: Correct or Wrong
+2. CONTRAST: State the correct answer and specifically point out what was wrong with the user's answer "${answer}"
+3. EXPLANATION: Why the correct answer is right (2-3 short sentences)
 
-Format: CORRECT/INCORRECT: [explanation] NEXT: [next question with choices]`,
+CRITICAL: Return clean text only. NO markdown, NO asterisks, NO special characters. Use plain text format.
+Format exactly as:
+STATUS: [Correct/Wrong]
+CONTRAST: [text without any special characters]
+EXPLANATION: [text without any special characters]
+
+Then provide the next question with choices.`,
           skill: selectedSkill,
           mode: 'interview_feedback'
         })
@@ -311,28 +319,62 @@ Format: CORRECT/INCORRECT: [explanation] NEXT: [next question with choices]`,
 
       if (response.ok) {
         const data = await response.json();
-        const isCorrect = data.response.toLowerCase().includes('correct: yes') ||
-                         data.response.toLowerCase().includes('correct answer');
 
-        // Short feedback only
-        const shortFeedback = isCorrect ? "Correct!" : `Wrong. ${answer} is not right.`;
+        // Parse the structured feedback from the API response
+        const responseText = data.response;
+        const isCorrect = responseText.toLowerCase().includes('correct: yes') ||
+                         responseText.toLowerCase().includes('status: correct');
+
+        // Extract structured feedback components
+        const status = isCorrect ? 'Correct' : 'Wrong' as const;
+
+        // Parse contrast and explanation from response (with fallback)
+        let contrast = '';
+        let explanation = '';
+
+        const contrastMatch = responseText.match(/contrast[:\s]+([^\n]+)/i);
+        const explanationMatch = responseText.match(/explanation[:\s]+([^\n]+(?:\n[^\n]+)*)/i);
+
+        if (contrastMatch) contrast = contrastMatch[1].trim();
+        if (explanationMatch) explanation = explanationMatch[1].trim();
+
+        // Fallback structured feedback format
+        if (!contrast) {
+          const correctAnswerMatch = responseText.match(/correct answer[:\s]+([^\n]+)/i);
+          contrast = correctAnswerMatch
+            ? `The correct answer is: ${correctAnswerMatch[1].trim()}. Your answer "${answer}" was not correct.`
+            : `The correct answer differs from "${answer}".`;
+        }
+
+        if (!explanation) {
+          explanation = "Understanding the underlying concepts and best practices for this skill area.";
+        }
+
+        // Clean the text to remove any markdown/special characters
+        const cleanContrast = contrast.replace(/[\*\_\`\#]/g, '').trim();
+        const cleanExplanation = explanation.replace(/[\*\_\`\#]/g, '').trim();
+
         const feedbackMsg: Message = {
           id: Date.now() + 1,
-          text: shortFeedback,
+          text: `${status}: ${cleanContrast} ${cleanExplanation}`,
           isUser: false,
-          isCorrect: isCorrect
+          isCorrect: isCorrect,
+          feedbackStatus: status,
+          feedbackContrast: cleanContrast,
+          feedbackExplanation: cleanExplanation
         };
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak brief feedback only
-        speak(shortFeedback, 0.9);
+        // Speak the feedback
+        const speakText = `${status}. ${cleanContrast} ${cleanExplanation}`;
+        speak(speakText, 0.9);
 
-        // Ask next question after brief feedback
+        // Ask next question after feedback
         setTimeout(() => {
           if (selectedSkill) {
             askInterviewQuestion(selectedSkill);
           }
-        }, 1500); // Quick transition to next question
+        }, 4000); // Allow time to read the structured feedback
       }
     } catch (error) {
       const errorMsg: Message = {
@@ -548,7 +590,33 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                     }`}
                     onClick={() => !msg.isUser && speak(sanitizeMessageText(msg.text), 0.85)}
                   >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{sanitizeMessageText(msg.text)}</p>
+                    {/* Structured Feedback Display */}
+                    {msg.feedbackStatus && msg.feedbackContrast && msg.feedbackExplanation ? (
+                      <div className="space-y-3">
+                        {/* Status Badge */}
+                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          msg.feedbackStatus === 'Correct'
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        }`}>
+                          {msg.feedbackStatus}
+                        </div>
+
+                        {/* Contrast Section */}
+                        <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                          <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Correct Answer vs Your Answer</div>
+                          <p className="text-sm text-white/90">{msg.feedbackContrast}</p>
+                        </div>
+
+                        {/* Explanation Section */}
+                        <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                          <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Explanation</div>
+                          <p className="text-sm text-white/90 leading-relaxed">{msg.feedbackExplanation}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{sanitizeMessageText(msg.text)}</p>
+                    )}
 
                     {/* MCQ Radio Buttons for Interview Mode */}
                     {mode === 'interview' && awaitingAnswer && !msg.isUser && msg.id === messages[messages.length - 1].id && (
