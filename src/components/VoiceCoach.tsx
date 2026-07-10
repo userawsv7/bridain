@@ -15,6 +15,9 @@ interface Message {
   feedbackStatus?: 'Correct' | 'Wrong';
   feedbackContrast?: string;
   feedbackExplanation?: string;
+  // Separate question text from choices for clean display
+  questionText?: string;
+  choices?: string[];
 }
 
 type Mode = 'learning' | 'interview';
@@ -35,6 +38,7 @@ export function VoiceCoach() {
   const [speechRate, setSpeechRate] = useState(0.85);
   const [preferredVoice, setPreferredVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const [isWaitingForSpeech, setIsWaitingForSpeech] = useState(false);
 
   const voiceFlavors = {
     Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
@@ -136,47 +140,89 @@ export function VoiceCoach() {
     initVoice();
   }, []);
 
+  // Speak with promise support for awaiting completion
+  const speakWithPromise = (text: string, rate: number = 0.9): Promise<void> => {
+    return new Promise((resolve) => {
+      if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        resolve();
+        return;
+      }
+
+      // Stop any current speech immediately
+      stopSpeaking();
+
+      // Clean text for pleasant TTS experience
+      const cleanText = sanitizeForTTS(text);
+
+      // Create a local function to select voice
+      const selectVoiceLocally = async (): Promise<SpeechSynthesisVoice | null> => {
+        let voices = window.speechSynthesis.getVoices();
+
+        if (voices.length === 0) {
+          await new Promise<void>((resolve) => {
+            const handleVoicesChanged = () => {
+              window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+              resolve();
+            };
+            window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+            setTimeout(() => {
+              window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+              resolve();
+            }, 1000);
+          });
+          voices = window.speechSynthesis.getVoices();
+        }
+
+        const premiumVoices = ['Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira', 'Tessa', 'Veena', 'Fiona', 'Serena'];
+        for (const voiceName of premiumVoices) {
+          const voice = voices.find(v => v.name.includes(voiceName));
+          if (voice) return voice;
+        }
+        const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
+        for (const indicator of femaleIndicators) {
+          const voice = voices.find(v => v.name.includes(indicator));
+          if (voice) return voice;
+        }
+        return voices.find(v => v.name.includes('Google')) || voices[0] || null;
+      };
+
+      selectVoiceLocally().then(voiceToUse => {
+        if (voiceToUse && !preferredVoice) {
+          setPreferredVoice(voiceToUse);
+        }
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.rate = speechRate;
+        utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
+        utterance.volume = 0.85;
+
+        const voice = voiceToUse || preferredVoice;
+        if (voice) {
+          utterance.voice = voice;
+        }
+
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          currentUtteranceRef.current = null;
+          resolve();
+        };
+        utterance.onerror = () => {
+          setIsSpeaking(false);
+          currentUtteranceRef.current = null;
+          resolve();
+        };
+
+        currentUtteranceRef.current = utterance;
+        utteranceRef.current = utterance;
+        setIsSpeaking(true);
+        window.speechSynthesis.speak(utterance);
+      });
+    });
+  };
+
   const speak = async (text: string, rate: number = 0.9) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    // Stop any current speech immediately
-    stopSpeaking();
-
-    // Clean text for pleasant TTS experience
-    const cleanText = sanitizeForTTS(text);
-
-    // Ensure we have a female voice - wait if necessary
-    let voiceToUse = preferredVoice;
-    if (!voiceToUse) {
-      voiceToUse = await selectAndCacheFemaleVoice();
-      if (voiceToUse) {
-        setPreferredVoice(voiceToUse);
-      }
-    }
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = speechRate;
-    utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
-    utterance.volume = 0.85;
-
-    // Always use the cached female voice
-    if (voiceToUse) {
-      utterance.voice = voiceToUse;
-    }
-
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      currentUtteranceRef.current = null;
-    };
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      currentUtteranceRef.current = null;
-    };
-
-    currentUtteranceRef.current = utterance;
-    utteranceRef.current = utterance;
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
+    await speakWithPromise(text, rate);
   };
 
   const stopSpeaking = () => {
@@ -251,28 +297,46 @@ Make it challenging but fair for a ${skill} role.`,
       if (response.ok) {
         const data = await response.json();
         const sanitizedResponse = sanitizeMessageText(data.response);
+
+        // Parse question and choices separately for clean UI
+        const parts = sanitizedResponse.split('CHOICES:');
+        const questionText = parts[0].replace('QUESTION:', '').trim();
+        const choicesText = parts[1] || '';
+        const choices = choicesText.match(/\d+\)\s*([^\n]+)/g)?.map(c => c.replace(/^\d+\)\s*/, '')) || [];
+
         const questionMsg: Message = {
           id: Date.now(),
           text: sanitizedResponse,
-          isUser: false
+          isUser: false,
+          questionText: questionText,
+          choices: choices.length > 0 ? choices : undefined
         };
         setMessages(prev => [...prev, questionMsg]);
         setCurrentQuestion(sanitizedResponse);
         setAwaitingAnswer(true);
 
-        // Speak the question
-        speak(sanitizedResponse.split('CHOICES:')[0], 0.85);
+        // Speak only the question, not the choices
+        speak(questionText, 0.85);
       }
     } catch (error) {
+      const fallbackQuestionText = `How would you handle a memory leak in a ${skill} application?`;
+      const fallbackChoices = [
+        "Restart the application periodically",
+        "Use memory profiling tools to identify the source",
+        "Increase the available memory",
+        "Ignore it until it crashes"
+      ];
       const fallbackQuestion: Message = {
         id: Date.now(),
-        text: `QUESTION: How would you handle a memory leak in a ${skill} application?\n\nCHOICES:\n1) Restart the application periodically\n2) Use memory profiling tools to identify the source\n3) Increase the available memory\n4) Ignore it until it crashes`,
-        isUser: false
+        text: `QUESTION: ${fallbackQuestionText}\n\nCHOICES:\n1) ${fallbackChoices[0]}\n2) ${fallbackChoices[1]}\n3) ${fallbackChoices[2]}\n4) ${fallbackChoices[3]}`,
+        isUser: false,
+        questionText: fallbackQuestionText,
+        choices: fallbackChoices
       };
       setMessages(prev => [...prev, fallbackQuestion]);
       setCurrentQuestion(fallbackQuestion.text);
       setAwaitingAnswer(true);
-      speak("How would you handle a memory leak in a " + skill + " application?", 0.85);
+      speak(fallbackQuestionText, 0.85);
     }
 
     setIsLoading(false);
@@ -303,13 +367,16 @@ User's answer: ${answer}
 Provide structured feedback with EXACTLY these three components:
 1. STATUS: Correct or Wrong
 2. CONTRAST: State the correct answer and specifically point out what was wrong with the user's answer "${answer}"
-3. EXPLANATION: Why the correct answer is right (2-3 short sentences)
+3. EXPLANATION: Explain WHY the correct answer is right using BEGINNER-FRIENDLY language. Use simple, relatable analogies. Avoid technical jargon or explain it simply if needed. Use conversational tone like explaining to a friend. Keep it concise (2-3 short sentences maximum).
 
-CRITICAL: Return clean text only. NO markdown, NO asterisks, NO special characters. Use plain text format.
-Format exactly as:
+CRITICAL INSTRUCTIONS:
+- Return clean text only. NO markdown, NO asterisks, NO special characters. Use plain text format.
+- Make explanations accessible to absolute beginners
+- Use everyday analogies to explain complex concepts
+- Format exactly as:
 STATUS: [Correct/Wrong]
 CONTRAST: [text without any special characters]
-EXPLANATION: [text without any special characters]
+EXPLANATION: [beginner-friendly text without any special characters]
 
 Then provide the next question with choices.`,
           skill: selectedSkill,
@@ -365,16 +432,18 @@ Then provide the next question with choices.`,
         };
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak the feedback
+        // Speak the feedback and WAIT for completion before next question
         const speakText = `${status}. ${cleanContrast} ${cleanExplanation}`;
-        speak(speakText, 0.9);
 
-        // Ask next question after feedback
-        setTimeout(() => {
-          if (selectedSkill) {
-            askInterviewQuestion(selectedSkill);
-          }
-        }, 4000); // Allow time to read the structured feedback
+        // Set waiting state and speak with promise
+        setIsWaitingForSpeech(true);
+        await speakWithPromise(speakText, 0.9);
+        setIsWaitingForSpeech(false);
+
+        // Only after speech completes, move to next question
+        if (selectedSkill) {
+          askInterviewQuestion(selectedSkill);
+        }
       }
     } catch (error) {
       const errorMsg: Message = {
@@ -383,9 +452,13 @@ Then provide the next question with choices.`,
         isUser: false
       };
       setMessages(prev => [...prev, errorMsg]);
-      setTimeout(() => {
-        if (selectedSkill) askInterviewQuestion(selectedSkill);
-      }, 2000);
+
+      // Wait for speech to complete before next question
+      setIsWaitingForSpeech(true);
+      await speakWithPromise("Good effort! Let me ask another question...", 0.9);
+      setIsWaitingForSpeech(false);
+
+      if (selectedSkill) askInterviewQuestion(selectedSkill);
     }
 
     setIsLoading(false);
@@ -615,30 +688,50 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{sanitizeMessageText(msg.text)}</p>
+                      /* Display only question text if available, hide raw choices text */
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {msg.questionText || sanitizeMessageText(msg.text)}
+                      </p>
                     )}
 
-                    {/* MCQ Radio Buttons for Interview Mode */}
+                    {/* MCQ Radio Buttons for Interview Mode - Only render radio buttons, no duplicate text */}
                     {mode === 'interview' && awaitingAnswer && !msg.isUser && msg.id === messages[messages.length - 1].id && (
                       <div className="mt-4 space-y-2">
-                        {['1', '2', '3', '4'].map(num => {
-                          const choiceMatch = msg.text.match(new RegExp(`${num}\\)\\s*([^\\n]+)`));
-                          if (choiceMatch) {
-                            return (
-                              <label key={num} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="interview-answer"
-                                  value={choiceMatch[1]}
-                                  onChange={(e) => handleAnswer(e.target.value)}
-                                  className="text-primary"
-                                />
-                                <span className="text-sm">{num}. {choiceMatch[1]}</span>
-                              </label>
-                            );
-                          }
-                          return null;
-                        })}
+                        {/* Render choices from parsed data if available */}
+                        {msg.choices && msg.choices.length > 0 ? (
+                          msg.choices.map((choice, index) => (
+                            <label key={index} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="interview-answer"
+                                value={choice}
+                                onChange={(e) => handleAnswer(e.target.value)}
+                                className="text-primary"
+                              />
+                              <span className="text-sm">{index + 1}. {choice}</span>
+                            </label>
+                          ))
+                        ) : (
+                          /* Fallback: Parse from text if choices not pre-parsed */
+                          ['1', '2', '3', '4'].map(num => {
+                            const choiceMatch = msg.text.match(new RegExp(`${num}\\)\\s*([^\\n]+)`));
+                            if (choiceMatch) {
+                              return (
+                                <label key={num} className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name="interview-answer"
+                                    value={choiceMatch[1]}
+                                    onChange={(e) => handleAnswer(e.target.value)}
+                                    className="text-primary"
+                                  />
+                                  <span className="text-sm">{num}. {choiceMatch[1]}</span>
+                                </label>
+                              );
+                            }
+                            return null;
+                          })
+                        )}
                       </div>
                     )}
                   </div>
