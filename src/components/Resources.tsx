@@ -155,18 +155,31 @@ STRICT RULES:
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const response = await response.json();
+        console.log("GROQ RESPONSE:", response);
 
-        // Parse JSON from API response - updated for Groq schema
+        // Parse JSON from API response - handle markdown code blocks
         let parsedData: GroqResourcesData;
         try {
-          const jsonMatch = data.response.match(/\{[\s\S]*\}/);
+          let jsonString = response.response;
+
+          // Strip markdown code blocks if present
+          if (jsonString.includes('```')) {
+            // Remove ```json and ``` markers
+            jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
+          }
+
+          // Find JSON object in the response
+          const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             parsedData = JSON.parse(jsonMatch[0]);
           } else {
-            parsedData = JSON.parse(data.response);
+            parsedData = JSON.parse(jsonString);
           }
-        } catch {
+          console.log("PARSED DATA:", parsedData);
+        } catch (parseError) {
+          console.error("JSON PARSE ERROR:", parseError);
+          setError(`Failed to parse response: ${parseError}`);
           // Fallback structure if parsing fails
           parsedData = {
             coreConcepts: [],
@@ -184,9 +197,14 @@ STRICT RULES:
         }
 
         setResourceData(parsedData);
+      } else {
+        console.error("API RESPONSE NOT OK:", response.status);
+        setError(`API request failed with status: ${response.status}`);
       }
     } catch (err) {
-      setError('Failed to fetch resources. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch resources. Please try again.';
+      console.error("FETCH ERROR:", err);
+      setError(errorMessage);
     }
 
     setIsLoading(false);
@@ -666,6 +684,11 @@ STRICT RULES:
             </div>
           )}
         </>
+      )}
+      {!resourceData && !isLoading && (
+        <div className="text-center p-8 bg-white/5 rounded-2xl border border-white/10">
+          <p className="text-white/60">Enter a skill above and click "Discover Resources" to load comprehensive career guidance.</p>
+        </div>
       )}
     </div>
   );
