@@ -394,7 +394,7 @@ Rules:
           ? currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`
           : `Option ${correctAnswerIndex}`;
 
-        // Create feedback message with structured data
+        // Create feedback message with enhanced structured data
         const feedbackMsg: Message = {
           id: Date.now() + 1,
           text: isCorrect
@@ -405,8 +405,11 @@ Rules:
           correctAnswer: correctAnswerIndex !== null ? correctAnswerIndex - 1 : 0,
           isCorrect: isCorrect,
           coreExplanation: structuredFeedback?.coreExplanation,
-          commonPitfall: structuredFeedback?.commonPitfall,
-          proTip: structuredFeedback?.proTip,
+          whyOthersWrong: structuredFeedback?.whyOthersWrong,
+          productionReasoning: structuredFeedback?.productionReasoning,
+          consequences: structuredFeedback?.consequences,
+          bestPractices: structuredFeedback?.bestPractices,
+          keyLearning: structuredFeedback?.keyLearning,
           displayText: structuredFeedback?.displayText,
           audioScript: structuredFeedback?.audioScript,
           choices: currentChoices, // Keep choices visible
@@ -655,31 +658,66 @@ Rules:
                           </div>
                         </div>
 
-                        {/* Structured feedback sections */}
-                        {(msg.coreExplanation || msg.commonPitfall || msg.proTip) && (
-                          <div className="mt-4 space-y-3 p-4 rounded-xl bg-white/5 border border-white/20">
-                            {/* Core Explanation */}
+                        {/* Enhanced structured feedback sections */}
+                        {(msg.coreExplanation || msg.whyOthersWrong || msg.productionReasoning || msg.consequences || msg.bestPractices || msg.keyLearning) && (
+                          <div className="mt-4 space-y-4 p-4 rounded-xl bg-white/5 border border-white/20">
+                            {/* Core Explanation - Why Correct */}
                             {msg.coreExplanation && (
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">CORE EXPLANATION</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">✓ WHY CORRECT</span>
                                 </div>
                                 <p className="text-sm text-white/90">{msg.coreExplanation}</p>
                               </div>
                             )}
 
-                            {/* Common Pitfall & Pro Tip */}
-                            {(msg.commonPitfall || msg.proTip) && (
-                              <div className="pt-2 border-t border-white/10">
+                            {/* Why Others Are Wrong */}
+                            {msg.whyOthersWrong && (
+                              <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-medium">⚠️ COMMON PITFALL</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">✗ WHY OTHERS FAIL</span>
                                 </div>
-                                <p className="text-sm text-white/80 mb-3">{msg.commonPitfall}</p>
+                                <p className="text-sm text-white/80">{msg.whyOthersWrong}</p>
+                              </div>
+                            )}
 
+                            {/* Production Reasoning */}
+                            {msg.productionReasoning && (
+                              <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">💡 PRO TIP</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">🏭 PRODUCTION IMPACT</span>
                                 </div>
-                                <p className="text-sm text-white/80">{msg.proTip}</p>
+                                <p className="text-sm text-white/80">{msg.productionReasoning}</p>
+                              </div>
+                            )}
+
+                            {/* Consequences */}
+                            {msg.consequences && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium">⚠️ CONSEQUENCES</span>
+                                </div>
+                                <p className="text-sm text-white/80">{msg.consequences}</p>
+                              </div>
+                            )}
+
+                            {/* Best Practices */}
+                            {msg.bestPractices && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">📋 BEST PRACTICES</span>
+                                </div>
+                                <p className="text-sm text-white/80">{msg.bestPractices}</p>
+                              </div>
+                            )}
+
+                            {/* Key Learning */}
+                            {msg.keyLearning && (
+                              <div className="pt-3 border-t border-white/10">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">💡 KEY LEARNING</span>
+                                </div>
+                                <p className="text-sm text-white/90 font-medium">{msg.keyLearning}</p>
                               </div>
                             )}
                           </div>

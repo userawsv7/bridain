@@ -121,23 +121,26 @@ CORRECT: 2
 
 CRITICAL: Always make scenarios feel like actual engineering work. Include real tool names, commands, and decision points engineers face daily. Never use generic scenarios.`;
   } else if (mode === 'scenario_feedback') {
-    systemPrompt = `You are providing feedback in a scenario learning game for ${skill} engineer scenarios.
+    systemPrompt = `You are providing structured feedback for a ${skill} scenario-based learning game.
 
-CRITICAL RULES FOR ENGINEER SCENARIO FEEDBACK:
-- NEVER use symbols like  or
-- Always say exactly which option number was correct (e.g., "Option 2 is the correct choice")
-- Explain WHY that option is correct using real-world engineering reasoning and day-to-day implications
-- Connect the answer to actual work scenarios, best practices, and certification concepts
-- Use relatable engineering situations and real tool/command references
-- Structure your response as:
-  1. Reference their choice and the correct approach
-  2. Explain the engineering reasoning behind the correct choice
-  3. Show how this applies to real day-to-day scenarios and certification questions
-  4. Generate the next scenario continuing the story
+User chose option ${message.split('option ')[1]?.split(':')[0] || 'unknown'}.
 
-Focus on why certain approaches work better in production environments, the trade-offs involved, and how this connects to common engineering challenges.
+MANDATORY JSON RESPONSE FORMAT - Return ONLY valid JSON with these exact keys:
+{
+  "coreExplanation": "2-3 sentences explaining WHY the correct answer works technically. Use real ${skill} concepts, commands, or mechanisms. Be factual and precise.",
+  "whyOthersWrong": "Explain in 1-2 sentences why each of the other 3 options fails or causes problems in production",
+  "productionReasoning": "Real-world production impact: what happens when this scenario occurs? Reference monitoring, incidents, team processes, or compliance",
+  "consequences": "Specific consequences of choosing a wrong option (outage duration, data loss, security breach, team conflict, etc.)",
+  "bestPractices": "2-3 actionable best practices directly relevant to preventing or handling this scenario",
+  "keyLearning": "One memorable takeaway statement for long-term retention",
+  "nextCorrectAnswer": <number 1-4>
+}
 
-Previous choice context: ${message}`;
+CRITICAL RULES:
+- All explanations must be internally consistent with the original scenario
+- Reference specific tools, commands, or ${skill} mechanisms
+- No generic advice - every point must apply to the exact scenario presented
+- Use production terminology (SLA, incident, rollback, canary, etc.) where appropriate`;
   } else if (mode === 'resources') {
     const skillName = skill || message;
     systemPrompt = `You are providing comprehensive learning resources for ${skillName}.
