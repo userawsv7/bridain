@@ -14,6 +14,7 @@ interface Message {
   correctAnswer?: number;
   explanation?: string;
   isCorrect?: boolean;
+  // Legacy 6-section feedback fields
   coreExplanation?: string;
   whyOthersWrong?: string;
   productionReasoning?: string;
@@ -24,6 +25,15 @@ interface Message {
   proTip?: string;
   displayText?: string;
   audioScript?: string;
+  // New comprehensive 8-section educational feedback fields
+  correctAnswerText?: string;
+  whyCorrectIsCorrect?: string;
+  userAnswerEvaluation?: string;
+  whyOtherOptionsWrong?: string;
+  technicalConcept?: string;
+  productionPerspective?: string;
+  commonMistakes?: string;
+  keyLearningPoints?: string;
 }
 
 export function ScenarioGame() {
@@ -360,20 +370,7 @@ Include the CORRECT answer number as: CORRECT: [number]`,
 User selected option ${choiceIndex + 1}, correct answer was option ${correctAnswerIndex}.
 ${isCorrect ? 'User was correct!' : 'User was wrong.'}
 
-You MUST respond with ONLY a JSON object in this exact format:
-{
-  "coreExplanation": "2-3 concise sentences explaining WHY the correct answer works technically. Be precise and factual only.",
-  "commonPitfall": "Brief description of the usual mistake people make in this scenario",
-  "proTip": "How to avoid the common pitfall",
-  "displayText": "Clean text for UI - no markdown, no special characters",
-  "audioScript": "TTS text - space out acronyms like A P I, replace symbols with words",
-  "nextCorrectAnswer": [number 1-4]
-}
-
-Rules:
-- coreExplanation: Maximum 2-3 sentences explaining the exact technical mechanism
-- No fluff, guessing, or hallucinations - only accurate technical explanations
-- Keep responses concise and scannable`,
+Provide comprehensive educational feedback following the mandatory format with all 8 required sections.`,
           skill: selectedSkill,
           mode: 'scenario_feedback',
           previousChoice: choiceText
@@ -399,7 +396,7 @@ Rules:
           ? currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`
           : `Option ${correctAnswerIndex}`;
 
-        // Create feedback message with enhanced structured data
+        // Create feedback message with comprehensive 8-section educational feedback
         const feedbackMsg: Message = {
           id: Date.now() + 1,
           text: isCorrect
@@ -409,12 +406,22 @@ Rules:
           selectedAnswer: choiceIndex,
           correctAnswer: correctAnswerIndex !== null ? correctAnswerIndex - 1 : 0,
           isCorrect: isCorrect,
-          coreExplanation: structuredFeedback?.coreExplanation,
-          whyOthersWrong: structuredFeedback?.whyOthersWrong,
-          productionReasoning: structuredFeedback?.productionReasoning,
+          // Map new 8-section feedback structure
+          correctAnswerText: structuredFeedback?.correctAnswer,
+          whyCorrectIsCorrect: structuredFeedback?.whyCorrectIsCorrect,
+          userAnswerEvaluation: structuredFeedback?.userAnswerEvaluation,
+          whyOtherOptionsWrong: structuredFeedback?.whyOtherOptionsWrong,
+          technicalConcept: structuredFeedback?.technicalConcept,
+          productionPerspective: structuredFeedback?.productionPerspective,
+          commonMistakes: structuredFeedback?.commonMistakes,
+          keyLearningPoints: structuredFeedback?.keyLearningPoints,
+          // Keep legacy fields for compatibility
+          coreExplanation: structuredFeedback?.coreExplanation || structuredFeedback?.whyCorrectIsCorrect,
+          whyOthersWrong: structuredFeedback?.whyOthersWrong || structuredFeedback?.whyOtherOptionsWrong,
+          productionReasoning: structuredFeedback?.productionReasoning || structuredFeedback?.productionPerspective,
           consequences: structuredFeedback?.consequences,
           bestPractices: structuredFeedback?.bestPractices,
-          keyLearning: structuredFeedback?.keyLearning,
+          keyLearning: structuredFeedback?.keyLearning || structuredFeedback?.keyLearningPoints,
           displayText: structuredFeedback?.displayText,
           audioScript: structuredFeedback?.audioScript,
           choices: currentChoices, // Keep choices visible
@@ -663,68 +670,90 @@ Rules:
                           </div>
                         </div>
 
-                        {/* Enhanced structured feedback sections */}
-                        {(msg.coreExplanation || msg.whyOthersWrong || msg.productionReasoning || msg.consequences || msg.bestPractices || msg.keyLearning) && (
+                        {/* Comprehensive 8-section educational feedback */}
+                        {(msg.whyCorrectIsCorrect || msg.coreExplanation || msg.userAnswerEvaluation || msg.whyOtherOptionsWrong || msg.whyOthersWrong || msg.technicalConcept || msg.productionPerspective || msg.productionReasoning || msg.commonMistakes || msg.keyLearningPoints || msg.keyLearning) && (
                           <div className="mt-4 space-y-4 p-4 rounded-xl bg-white/5 border border-white/20">
-                            {/* Core Explanation - Why Correct */}
-                            {msg.coreExplanation && (
+
+                            {/* Section 1: Correct Answer */}
+                            {(msg.correctAnswerText || msg.coreExplanation) && (
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">✓ WHY CORRECT</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">✓ CORRECT ANSWER</span>
                                 </div>
-                                <p className="text-sm text-white/90">{msg.coreExplanation}</p>
+                                <p className="text-sm text-white/90">{msg.correctAnswerText || msg.coreExplanation}</p>
                               </div>
                             )}
 
-                            {/* Why Others Are Wrong */}
-                            {msg.whyOthersWrong && (
+                            {/* Section 2: Why Correct is Correct */}
+                            {(msg.whyCorrectIsCorrect || msg.coreExplanation) && (
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">✗ WHY OTHERS FAIL</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-medium">✓ WHY CORRECT IS CORRECT</span>
                                 </div>
-                                <p className="text-sm text-white/80">{msg.whyOthersWrong}</p>
+                                <p className="text-sm text-white/90">{msg.whyCorrectIsCorrect || msg.coreExplanation}</p>
                               </div>
                             )}
 
-                            {/* Production Reasoning */}
-                            {msg.productionReasoning && (
+                            {/* Section 3: User Answer Evaluation */}
+                            {msg.userAnswerEvaluation && (
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">🏭 PRODUCTION IMPACT</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">🎯 YOUR ANSWER EVALUATION</span>
                                 </div>
-                                <p className="text-sm text-white/80">{msg.productionReasoning}</p>
+                                <p className="text-sm text-white/80">{msg.userAnswerEvaluation}</p>
                               </div>
                             )}
 
-                            {/* Consequences */}
-                            {msg.consequences && (
+                            {/* Section 4: Why Other Options are Wrong */}
+                            {(msg.whyOtherOptionsWrong || msg.whyOthersWrong) && (
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium">⚠️ CONSEQUENCES</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">✗ WHY OTHER OPTIONS ARE WRONG</span>
                                 </div>
-                                <p className="text-sm text-white/80">{msg.consequences}</p>
+                                <p className="text-sm text-white/80">{msg.whyOtherOptionsWrong || msg.whyOthersWrong}</p>
                               </div>
                             )}
 
-                            {/* Best Practices */}
-                            {msg.bestPractices && (
+                            {/* Section 5: Technical Concept */}
+                            {msg.technicalConcept && (
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">📋 BEST PRACTICES</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">🔧 TECHNICAL CONCEPT</span>
                                 </div>
-                                <p className="text-sm text-white/80">{msg.bestPractices}</p>
+                                <p className="text-sm text-white/80">{msg.technicalConcept}</p>
                               </div>
                             )}
 
-                            {/* Key Learning */}
-                            {msg.keyLearning && (
+                            {/* Section 6: Production Perspective */}
+                            {(msg.productionPerspective || msg.productionReasoning) && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">🏭 PRODUCTION PERSPECTIVE</span>
+                                </div>
+                                <p className="text-sm text-white/80">{msg.productionPerspective || msg.productionReasoning}</p>
+                              </div>
+                            )}
+
+                            {/* Section 7: Common Mistakes */}
+                            {msg.commonMistakes && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 font-medium">⚠️ COMMON MISTAKES</span>
+                                </div>
+                                <p className="text-sm text-white/80">{msg.commonMistakes}</p>
+                              </div>
+                            )}
+
+                            {/* Section 8: Key Learning Points */}
+                            {(msg.keyLearningPoints || msg.keyLearning) && (
                               <div className="pt-3 border-t border-white/10">
                                 <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">💡 KEY LEARNING</span>
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 font-medium">💡 KEY LEARNING POINTS</span>
                                 </div>
-                                <p className="text-sm text-white/90 font-medium">{msg.keyLearning}</p>
+                                <p className="text-sm text-white/90 font-medium">{msg.keyLearningPoints || msg.keyLearning}</p>
                               </div>
                             )}
+
                           </div>
                         )}
 

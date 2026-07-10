@@ -121,26 +121,28 @@ CORRECT: 2
 
 CRITICAL: Always make scenarios feel like actual engineering work. Include real tool names, commands, and decision points engineers face daily. Never use generic scenarios.`;
   } else if (mode === 'scenario_feedback') {
-    systemPrompt = `You are providing structured feedback for a ${skill} scenario-based learning game.
+    systemPrompt = `You are an expert technical mentor providing comprehensive educational feedback for a ${skill} scenario-based learning game.
 
-User chose option ${message.split('option ')[1]?.split(':')[0] || 'unknown'}.
+MANDATORY: Provide detailed educational feedback that teaches the underlying concepts, regardless of whether the answer is correct or incorrect.
 
 MANDATORY JSON RESPONSE FORMAT - Return ONLY valid JSON with these exact keys:
 {
-  "coreExplanation": "2-3 sentences explaining WHY the correct answer works technically. Use real ${skill} concepts, commands, or mechanisms. Be factual and precise.",
-  "whyOthersWrong": "Explain in 1-2 sentences why each of the other 3 options fails or causes problems in production",
-  "productionReasoning": "Real-world production impact: what happens when this scenario occurs? Reference monitoring, incidents, team processes, or compliance",
-  "consequences": "Specific consequences of choosing a wrong option (outage duration, data loss, security breach, team conflict, etc.)",
-  "bestPractices": "2-3 actionable best practices directly relevant to preventing or handling this scenario",
-  "keyLearning": "One memorable takeaway statement for long-term retention",
-  "nextCorrectAnswer": <number 1-4>
+  "correctAnswer": "The actual text of the correct option",
+  "whyCorrectIsCorrect": "Detailed 4-6 sentence explanation of why the correct answer is the right solution. Explain the technical reasoning, how it solves the problem, why it's considered the best approach, and relevant production best practices. This must teach the concept thoroughly.",
+  "userAnswerEvaluation": "If user was correct: Explain why their reasoning was correct and reinforce the concept. If user was incorrect: Explain exactly where their reasoning failed without just saying 'wrong'. Identify the misconception and gently correct it.",
+  "whyOtherOptionsWrong": "For EACH of the other 3 options, provide 2-3 sentences explaining: Why it appears plausible, why it is technically incorrect in this scenario, when it might actually be appropriate, and common misconceptions that lead engineers to choose it.",
+  "technicalConcept": "4-6 sentence detailed explanation of the underlying technical concept. How the technology works, why the correct approach works, important related concepts, and common production patterns. This should be educational and comprehensive.",
+  "productionPerspective": "3-4 sentence explanation of how this situation would be handled in real production: Best practices, operational considerations, risk assessment, troubleshooting approach. Reference real production scenarios and team processes.",
+  "commonMistakes": "2-3 sentence explanation of mistakes engineers commonly make related to this topic. What leads to these mistakes and how to avoid them.",
+  "keyLearningPoints": "3-4 concise bullet-point takeaways summarizing the important concepts learned from this question."
 }
 
-CRITICAL RULES:
-- All explanations must be internally consistent with the original scenario
-- Reference specific tools, commands, or ${skill} mechanisms
-- No generic advice - every point must apply to the exact scenario presented
-- Use production terminology (SLA, incident, rollback, canary, etc.) where appropriate`;
+CRITICAL REQUIREMENTS:
+- All explanations must be technology-specific to ${skill} - reference real tools, commands, and concepts
+- Every section must be comprehensive and educational - teach like a senior engineer mentoring a junior
+- Never use generic advice - every point must apply specifically to the scenario
+- Ensure explanations are internally consistent with the original scenario presented
+- Focus on deep learning, not just validation of the answer`;
   } else if (mode === 'resources') {
     const skillName = skill || message;
     systemPrompt = `You are providing comprehensive learning resources for ${skillName}.
