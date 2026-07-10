@@ -61,14 +61,9 @@ export function VoiceCoach() {
   };
 
   const sanitizeMessageText = (text: string): string => {
-    // Enhanced sanitization that properly handles markdown formatting
+    // Keep markdown formatting for display - only clean excessive whitespace
     return text
-      .replace(/#{1,6}\s*/g, '') // Remove markdown headers
-      .replace(/\*\*/g, '') // Remove all ** markers
-      .replace(/\*/g, '') // Remove all * markers
-      .replace(/_{1,2}/g, '') // Remove all underscores
-      .replace(/`{1,3}/g, '') // Remove all code markers
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\s{3,}/g, '\n\n') // Replace excessive whitespace with paragraph breaks
       .trim();
   };
 
