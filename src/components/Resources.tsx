@@ -155,13 +155,13 @@ STRICT RULES:
       });
 
       if (response.ok) {
-        const response = await response.json();
-        console.log("GROQ RESPONSE:", response);
+        const data = await response.json();
+        console.log("GROQ RESPONSE:", data);
 
         // Parse JSON from API response - handle markdown code blocks
         let parsedData: GroqResourcesData;
         try {
-          let jsonString = response.response;
+          let jsonString = data.response;
 
           // Strip markdown code blocks if present
           if (jsonString.includes('```')) {
