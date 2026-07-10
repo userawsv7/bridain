@@ -6,9 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 interface DiagramStep {
-  step: number;
-  title: string;
-  desc: string;
+  id: number;
+  label: string;
+  type: string;
+  step?: number;
+  title?: string;
+  desc?: string;
 }
 
 interface ExplanationStructure {
