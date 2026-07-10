@@ -221,16 +221,16 @@ const generateComprehensiveResources = (skill: string): SkillResources => {
       ],
       projects: {
         beginner: [
-          { name: "Deploy a Web Application", goal: "Deploy nginx to Kubernetes", skillsLearned: ["Pods", "Deployments", "Services"], estimatedTime: "2-3 hours", difficulty: "Beginner", githubImplementation: "https://github.com/kubernetes/examples/tree/master/web-server", badge: ["Hands-on"] }
+          { name: "Deploy a Web Application", url: "https://github.com/kubernetes/examples", type: "Project", goal: "Deploy nginx to Kubernetes", skillsLearned: ["Pods", "Deployments", "Services"], estimatedTime: "2-3 hours", difficulty: "Beginner", githubImplementation: "https://github.com/kubernetes/examples/tree/master/web-server", badge: ["Hands-on"] }
         ],
         intermediate: [
-          { name: "Multi-tier Application", goal: "Deploy frontend, backend, and database", skillsLearned: ["ConfigMaps", "Secrets", "Ingress"], estimatedTime: "4-6 hours", difficulty: "Intermediate", githubImplementation: "https://github.com/kubernetes/examples/tree/master/guestbook", badge: ["Hands-on"] }
+          { name: "Multi-tier Application", url: "https://github.com/kubernetes/examples", type: "Project", goal: "Deploy frontend, backend, and database", skillsLearned: ["ConfigMaps", "Secrets", "Ingress"], estimatedTime: "4-6 hours", difficulty: "Intermediate", githubImplementation: "https://github.com/kubernetes/examples/tree/master/guestbook", badge: ["Hands-on"] }
         ],
         advanced: [
-          { name: "Microservices with Istio", goal: "Service mesh implementation", skillsLearned: ["Service Mesh", "Circuit Breaking", "mTLS"], estimatedTime: "1-2 days", difficulty: "Advanced", githubImplementation: "https://github.com/istio/istio", badge: ["Advanced"] }
+          { name: "Microservices with Istio", url: "https://github.com/istio/istio", type: "Project", goal: "Service mesh implementation", skillsLearned: ["Service Mesh", "Circuit Breaking", "mTLS"], estimatedTime: "1-2 days", difficulty: "Advanced", githubImplementation: "https://github.com/istio/istio", badge: ["Advanced"] }
         ],
         enterprise: [
-          { name: "Production Cluster Setup", goal: "HA cluster with monitoring", skillsLearned: ["High Availability", "Monitoring", "Backup"], estimatedTime: "1 week", difficulty: "Advanced", githubImplementation: "https://github.com/kubernetes-sigs/kubespray", badge: ["Enterprise"] }
+          { name: "Production Cluster Setup", url: "https://github.com/kubernetes-sigs/kubespray", type: "Project", goal: "HA cluster with monitoring", skillsLearned: ["High Availability", "Monitoring", "Backup"], estimatedTime: "1 week", difficulty: "Advanced", githubImplementation: "https://github.com/kubernetes-sigs/kubespray", badge: ["Enterprise"] }
         ]
       },
       certifications: [
