@@ -5,23 +5,10 @@ import { Play, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
-interface DiagramStep {
-  id: number;
-  label: string;
-  type: string;
-}
-
-interface DiagramData {
-  title: string;
-  steps: DiagramStep[];
-  relationships?: string[];
-}
-
 interface ExplanationStructure {
   verdict: string;
   explanation?: string;
   why?: string[];
-  diagram: DiagramData;
   keyConcept?: string;
   whyOthersWrong: string[];
   remember: string;
@@ -69,16 +56,6 @@ const scenarios: Scenario[] = [
         "Killing the process frees the port for the container"
       ],
       keyConcept: "Only one process can bind to a specific port at a time. When you see 'port already in use', identify and resolve the conflicting process.",
-      diagram: {
-        title: "Port Conflict Flow",
-        steps: [
-          { id: 1, label: "Port 8080", type: "start" },
-          { id: 2, label: "Process 4521 listening", type: "process" },
-          { id: 3, label: "Container tries to bind", type: "decision" },
-          { id: 4, label: "Connection blocked", type: "error" }
-        ],
-        relationships: ["Port 8080 → Process 4521", "Process 4521 → Container blocked"]
-      },
       whyOthersWrong: [
         "Restarting won't free the port",
         "Deleting containers ignores the real issue",
@@ -161,17 +138,6 @@ const scenarios: Scenario[] = [
         "package-lock.json ensures identical dependencies everywhere"
       ],
       keyConcept: "CI/CD pipelines run in isolated environments. Differences in Node versions, npm packages, or missing files cause tests to fail in CI but pass locally.",
-      diagram: {
-        title: "Environment Mismatch Flow",
-        steps: [
-          { id: 1, label: "Local: Node v18", type: "start" },
-          { id: 2, label: "package.json deps", type: "process" },
-          { id: 3, label: "CI: Node v16", type: "decision" },
-          { id: 4, label: "Missing packages", type: "error" },
-          { id: 5, label: "Tests fail", type: "error" }
-        ],
-        relationships: ["Local → package.json → CI mismatch", "CI mismatch → Missing packages → Tests fail"]
-      },
       whyOthersWrong: [
         "Flaky tests need fixing, not longer timeouts",
         "Skipping tests defeats the purpose of CI",
@@ -320,13 +286,7 @@ export function ScenarioSimulator() {
   const generateExplanationText = () => {
     const exp = scenario.explanation;
     let text = `${exp.verdict}. `;
-    text += `Explanation: ${exp.explanation}. `;
-    if (exp.diagram && exp.diagram.length > 0) {
-      text += `Visual flow: `;
-      text += exp.diagram.map((step, i) =>
-        `Step ${step.step}: ${step.title}. ${step.desc}`
-      ).join(' ') + '. ';
-    }
+    text += `Explanation: ${exp.explanation || exp.why?.join('. ')}. `;
     text += `Remember: ${exp.remember}. `;
     text += `Best practice: ${exp.bestPractice}.`;
     return text;
