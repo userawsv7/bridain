@@ -248,7 +248,18 @@ const scenarios: Scenario[] = [
         "Jitter prevents all clients from retrying simultaneously"
       ],
       keyConcept: "Rate limiting protects APIs from abuse. When you hit limits, wait progressively longer between retries to avoid making the situation worse.",
-      visualDiagram: "Rate Limit Hit\n    │\n    ▼\nWait: 1s → Retry → Fail\n    │\n    ▼\nWait: 2s → Retry → Fail\n    │\n    ▼\nWait: 4s → Success ✓",
+      diagram: {
+        title: "Exponential Backoff Flow",
+        steps: [
+          { id: 1, label: "Rate Limit Hit", type: "start" },
+          { id: 2, label: "Wait 1s → Retry", type: "process" },
+          { id: 3, label: "Still limited", type: "decision" },
+          { id: 4, label: "Wait 2s → Retry", type: "process" },
+          { id: 5, label: "Still limited", type: "decision" },
+          { id: 6, label: "Wait 4s → Success", type: "success" }
+        ],
+        relationships: ["Rate limit → Exponential backoff", "Backoff → Increasing delays → Success"]
+      },
       whyOthersWrong: [
         "Making requests faster triggers more rate limits",
         "Requesting higher limits takes time and may be denied",
