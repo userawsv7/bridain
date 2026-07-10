@@ -364,19 +364,19 @@ Make it challenging but fair for a ${skill} role.`,
 Previous question: ${currentQuestion}
 User's answer: ${answer}
 
-Provide structured feedback with EXACTLY these three components:
-1. STATUS: Correct or Wrong
-2. CONTRAST: State the correct answer and specifically point out what was wrong with the user's answer "${answer}"
-3. EXPLANATION: Explain WHY the correct answer is right using BEGINNER-FRIENDLY language. Use simple, relatable analogies. Avoid technical jargon or explain it simply if needed. Use conversational tone like explaining to a friend. Keep it concise (2-3 short sentences maximum).
+Provide structured feedback with EXACTLY these three components, REGARDLESS of correct or wrong:
+1. STATUS: MUST explicitly state "Correct" or "Wrong"
+2. CONTRAST: MUST explicitly display what the correct answer is, then briefly point out the user's choice
+3. EXPLANATION: MUST explain WHY the correct answer is right using BEGINNER-FRIENDLY language with simple analogies (2-3 sentences max)
 
 CRITICAL INSTRUCTIONS:
-- Return clean text only. NO markdown, NO asterisks, NO special characters. Use plain text format.
-- Make explanations accessible to absolute beginners
-- Use everyday analogies to explain complex concepts
+- Always show the correct answer, even if user was correct
+- Use plain text only. NO markdown, NO asterisks, NO special characters
+- Explanation must be 2-3 sentences maximum, beginner-friendly
 - Format exactly as:
 STATUS: [Correct/Wrong]
-CONTRAST: [text without any special characters]
-EXPLANATION: [beginner-friendly text without any special characters]
+CONTRAST: [correct answer displayed clearly]
+EXPLANATION: [brief beginner-friendly explanation]
 
 Then provide the next question with choices.`,
           skill: selectedSkill,
@@ -400,10 +400,13 @@ Then provide the next question with choices.`,
         let explanation = '';
 
         const contrastMatch = responseText.match(/contrast[:\s]+([^\n]+)/i);
-        const explanationMatch = responseText.match(/explanation[:\s]+([^\n]+(?:\n[^\n]+)*)/i);
+        const explanationMatch = responseText.match(/explanation[:\s]+([^\n]+(?:\n[^\n]+){0,2})/i);
 
         if (contrastMatch) contrast = contrastMatch[1].trim();
-        if (explanationMatch) explanation = explanationMatch[1].trim();
+        if (explanationMatch) {
+          // Ensure explanation is max 3 sentences
+          explanation = explanationMatch[1].trim().split(/[.!?]+/).slice(0, 3).join('. ') + '.';
+        }
 
         // Fallback structured feedback format
         if (!contrast) {
