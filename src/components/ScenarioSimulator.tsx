@@ -6,20 +6,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 interface DiagramStep {
-  id: number;
-  label: string;
-  type: 'start' | 'process' | 'decision' | 'success' | 'error';
+  step: number;
+  title: string;
+  desc: string;
 }
 
 interface ExplanationStructure {
   verdict: string;
-  why: string[];
-  keyConcept: string;
-  diagram?: {
-    title: string;
-    steps: DiagramStep[];
-    relationships: string[];
-  };
+  explanation: string;
+  diagram: DiagramStep[];
   whyOthersWrong: string[];
   remember: string;
   bestPractice: string;
@@ -317,13 +312,12 @@ export function ScenarioSimulator() {
   const generateExplanationText = () => {
     const exp = scenario.explanation;
     let text = `${exp.verdict}. `;
-    text += `Why? ${exp.why.join('. ')}. `;
-    text += `Key concept: ${exp.keyConcept}. `;
-    if (exp.diagram) {
-      text += `Visual flow: ${exp.diagram.title}. `;
-      text += exp.diagram.steps.map((step, i) =>
-        `Step ${i + 1}: ${step.label}`
-      ).join('. ') + '. ';
+    text += `Explanation: ${exp.explanation}. `;
+    if (exp.diagram && exp.diagram.length > 0) {
+      text += `Visual flow: `;
+      text += exp.diagram.map((step, i) =>
+        `Step ${step.step}: ${step.title}. ${step.desc}`
+      ).join(' ') + '. ';
     }
     text += `Remember: ${exp.remember}. `;
     text += `Best practice: ${exp.bestPractice}.`;
@@ -502,129 +496,69 @@ export function ScenarioSimulator() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-8 rounded-3xl bg-white/5 border border-white/10 space-y-8"
+                className="p-8 rounded-3xl bg-white/5 border border-white/10 space-y-6"
               >
-                {/* 🎯 Verdict - Callout Box */}
-                <div className="p-6 rounded-2xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30">
-                  <div className="font-bold text-xl flex items-center gap-3 mb-2">
-                    🎯 Verdict
-                  </div>
-                  <div className="text-xl font-medium">
-                    {scenario.explanation.verdict}
-                  </div>
-                </div>
-
-                {/* 📌 Why? - Clean List */}
-                <div className="space-y-4">
-                  <div className="font-bold text-lg flex items-center gap-3 text-primary">
-                    📌 Why did this happen?
-                  </div>
-                  <div className="grid gap-3 pl-2">
-                    {scenario.explanation.why.map((point, index) => (
-                      <div key={index} className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-primary text-xs font-bold">{index + 1}</span>
-                        </div>
-                        <span className="text-white/90 leading-relaxed">{point}</span>
-                      </div>
-                    ))}
+                {/* Status Badge */}
+                <div className="flex justify-start">
+                  <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                    selectedAnswer === scenario.correct
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  }`}>
+                    {selectedAnswer === scenario.correct ? 'Correct' : 'Wrong'}
                   </div>
                 </div>
 
-                {/* 💡 Key Concept - Emphasized Card */}
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-                  <div className="font-bold text-lg flex items-center gap-3 mb-4 text-blue-400">
-                    💡 Key Concept
-                  </div>
-                  <p className="text-white/90 leading-relaxed text-lg pl-2">
-                    {scenario.explanation.keyConcept}
-                  </p>
+                {/* Explanation Card */}
+                <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                  <div className="font-semibold text-primary mb-3">Explanation</div>
+                  <p className="text-white/90 leading-relaxed">{scenario.explanation.explanation}</p>
                 </div>
 
-                {/* 📖 Visual Flow Diagram */}
-                {scenario.explanation.diagram && (
-                  <>
-                    <div className="h-px bg-white/10" />
-                    <div className="space-y-4">
-                      <div className="font-bold text-lg flex items-center gap-2">
-                        📖 {scenario.explanation.diagram.title}
-                      </div>
-                      <div className="pl-4">
-                        {/* Flow Diagram Container */}
-                        <div className="bg-[#1a1b26] rounded-xl p-6 border border-white/10">
-                          {/* Steps Flow */}
-                          <div className="flex flex-wrap items-center gap-3 mb-6">
-                            {scenario.explanation.diagram.steps.map((step, index) => (
-                              <React.Fragment key={step.id}>
-                                <div className={`
-                                  px-4 py-2 rounded-lg text-sm font-medium border
-                                  ${step.type === 'start' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : ''}
-                                  ${step.type === 'process' ? 'bg-purple-500/20 border-purple-500/50 text-purple-400' : ''}
-                                  ${step.type === 'decision' ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400' : ''}
-                                  ${step.type === 'success' ? 'bg-green-500/20 border-green-500/50 text-green-400' : ''}
-                                  ${step.type === 'error' ? 'bg-red-500/20 border-red-500/50 text-red-400' : ''}
-                                `}>
-                                  {step.label}
-                                </div>
-                                {index < scenario.explanation.diagram!.steps.length - 1 && (
-                                  <ArrowRight className="w-4 h-4 text-white/40" />
-                                )}
-                              </React.Fragment>
-                            ))}
+                {/* Visual Flow Diagram */}
+                {scenario.explanation.diagram && scenario.explanation.diagram.length > 0 && (
+                  <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                    <div className="font-semibold text-primary mb-4">Visual Flow</div>
+                    <div className="space-y-3">
+                      {scenario.explanation.diagram.map((step, index) => (
+                        <div key={index} className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+                            {step.step}
                           </div>
-
-                          {/* Relationships */}
-                          {scenario.explanation.diagram.relationships.length > 0 && (
-                            <div className="pt-4 border-t border-white/10">
-                              <div className="text-sm text-white/60 mb-2">Key Relationships:</div>
-                              <div className="flex flex-wrap gap-2">
-                                {scenario.explanation.diagram.relationships.map((rel, index) => (
-                                  <div key={index} className="px-3 py-1 rounded-full bg-white/5 text-xs text-white/70 border border-white/10">
-                                    {rel}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                          <div className="flex-1">
+                            <div className="font-medium text-white mb-1">{step.title}</div>
+                            <div className="text-sm text-white/70">{step.desc}</div>
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  </>
+                  </div>
                 )}
 
-                {/* ⚠️ Why Other Options Are Wrong - Subtle Section */}
-                <div className="space-y-4">
-                  <div className="font-bold text-lg flex items-center gap-3 text-orange-400">
-                    ⚠️ Why Other Options Are Wrong
-                  </div>
-                  <div className="grid gap-2 pl-2">
-                    {scenario.explanation.whyOthersWrong.map((reason, index) => (
-                      <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-red-500/5 border-l-2 border-red-500/30">
-                        <span className="text-red-400/60 mt-1">✗</span>
-                        <span className="text-white/70">{reason}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 🧠 Remember & ✅ Best Practice - Side by Side Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                  <div className="p-5 rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
-                    <div className="font-bold text-sm flex items-center gap-2 mb-3 text-yellow-400">
-                      🧠 Remember
+                {/* Why Others Wrong */}
+                {scenario.explanation.whyOthersWrong && scenario.explanation.whyOthersWrong.length > 0 && (
+                  <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20">
+                    <div className="font-semibold text-red-400 mb-4">Why Others Are Wrong</div>
+                    <div className="space-y-2">
+                      {scenario.explanation.whyOthersWrong.map((reason, index) => (
+                        <div key={index} className="flex items-start gap-3 text-sm">
+                          <span className="text-red-400/60 mt-0.5">✗</span>
+                          <span className="text-white/70">{reason}</span>
+                        </div>
+                      ))}
                     </div>
-                    <p className="text-white/90 italic leading-relaxed">
-                      "{scenario.explanation.remember}"
-                    </p>
                   </div>
+                )}
 
-                  <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                    <div className="font-bold text-sm flex items-center gap-2 mb-3 text-emerald-400">
-                      ✅ Best Practice
-                    </div>
-                    <p className="text-white/90 leading-relaxed">
-                      {scenario.explanation.bestPractice}
-                    </p>
+                {/* Remember & Best Practice */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-5 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="font-semibold text-sm text-yellow-400 mb-2">Remember</div>
+                    <p className="text-sm text-white/90 italic">"{scenario.explanation.remember}"</p>
+                  </div>
+                  <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <div className="font-semibold text-sm text-emerald-400 mb-2">Best Practice</div>
+                    <p className="text-sm text-white/90">{scenario.explanation.bestPractice}</p>
                   </div>
                 </div>
 
