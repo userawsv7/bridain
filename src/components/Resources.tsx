@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, Filter, Award as CertIcon, HelpCircle
 } from 'lucide-react';
 
+// Base interface for all resources
 interface BaseResource {
   name: string;
   url: string;
@@ -17,6 +18,56 @@ interface BaseResource {
   badge?: string[];
   lastUpdated?: string;
   stars?: number;
+}
+
+// New specific interfaces for the expanded resource categories
+
+interface CourseResource extends BaseResource {
+  type: 'Course';
+  platform: string;
+  cost: 'Free' | 'Paid';
+  category: 'Free' | 'Paid';
+  duration?: string;
+  level?: string;
+}
+
+interface GitHubRepoResource {
+  name: string;
+  url: string;
+  description: string;
+  stars: number;
+  language?: string;
+  lastUpdated: string;
+}
+
+interface YouTubeVideoResource {
+  name: string;
+  url: string;
+  channel: string;
+  views: string;
+  duration: string;
+  description: string;
+}
+
+interface CertificationResource {
+  name: string;
+  provider: string;
+  officialPage: string;
+  practiceExams: { name: string; url: string }[];
+  studyGuides: { name: string; url: string }[];
+  examDumps: { name: string; url: string }[];
+  faqs: { question: string; answer: string }[];
+}
+
+interface CheatsheetResource {
+  name: string;
+  url: string;
+  description: string;
+}
+
+interface InterviewPrepResource {
+  generalFAQs: { question: string; answer: string }[];
+  mostAskedQuestions: { question: string; answer: string; category: string }[];
 }
 
 interface GitHubRepo extends BaseResource {
@@ -148,6 +199,17 @@ interface SkillResources {
   blogs: BaseResource[];
   newsletters: BaseResource[];
   podcasts: BaseResource[];
+
+  // NEW: Categorized resources
+  courses: {
+    free: CourseResource[];
+    paid: CourseResource[];
+  };
+  githubRepositories: GitHubRepoResource[];
+  youtubeVideos: YouTubeVideoResource[];
+  certificationsExpanded: CertificationResource[];
+  cheatsheets: CheatsheetResource[];
+  interviewPreparation: InterviewPrepResource;
 }
 
 const generateComprehensiveResources = (skill: string): SkillResources => {
@@ -302,13 +364,13 @@ const generateComprehensiveResources = (skill: string): SkillResources => {
     return defaultResources as SkillResources;
   }
 
-  // Generic template maintaining priority order
+  // Generic dynamic template matching new resource structure
   return {
     skill: skill,
     timeToMaster: "2-4 months",
-    keyTopics: ["Fundamentals", "Core APIs", "Best Practices", "Security", "Performance", "DevOps Integration"],
+    keyTopics: ["Fundamentals", "Core Concepts", "Best Practices", "Industry Standards"],
     ecosystem: [],
-    officialDocs: [{ name: "Official Documentation", url: `https://docs.${skillLower}.org`, type: "Documentation", badge: ["Official"], description: "Primary documentation source" }],
+    officialDocs: [{ name: "Official Documentation", url: `https://www.google.com/search?q=${encodeURIComponent(skill)}+official+documentation`, type: "Documentation", badge: ["Search"], description: "Search for official docs" }],
     gettingStarted: [],
     tutorials: [],
     apiReference: [],
@@ -331,7 +393,21 @@ const generateComprehensiveResources = (skill: string): SkillResources => {
     books: { beginner: [], intermediate: [], advanced: [] },
     blogs: [],
     newsletters: [],
-    podcasts: []
+    podcasts: [],
+
+    // NEW: Full categorized resources structure
+    courses: {
+      free: [],
+      paid: []
+    },
+    githubRepositories: [],
+    youtubeVideos: [],
+    certificationsExpanded: [],
+    cheatsheets: [],
+    interviewPreparation: {
+      generalFAQs: [],
+      mostAskedQuestions: []
+    }
   };
 };
 
@@ -739,6 +815,225 @@ export function Resources() {
                 <div className="text-xs text-gray-500 mt-2">Source: {faq.source}</div>
               </div>
             ))}
+          </div>
+        </Section>
+      )}
+
+      {/* NEW: Courses & Platforms - Free vs Paid */}
+      {(current.courses.free.length > 0 || current.courses.paid.length > 0) && (
+        <Section id="courses" title="Courses & Platforms" icon={BookOpen} count={current.courses.free.length + current.courses.paid.length}>
+          <div className="pt-4 space-y-6">
+            {/* Free Courses */}
+            {current.courses.free.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">FREE</span>
+                  <span className="text-sm text-gray-400">No cost required</span>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {current.courses.free.map((course, i) => (
+                    <a key={i} href={course.url} target="_blank" className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-green-600/50 transition-all">
+                      <div className="font-medium text-white mb-1">{course.name}</div>
+                      <div className="text-sm text-gray-400">{course.platform} • {course.duration}</div>
+                      <div className="text-xs text-gray-500 mt-1">{course.description}</div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Paid Courses */}
+            {current.courses.paid.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm font-medium">PAID</span>
+                  <span className="text-sm text-gray-400">Premium content available</span>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {current.courses.paid.map((course, i) => (
+                    <a key={i} href={course.url} target="_blank" className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-yellow-600/50 transition-all">
+                      <div className="font-medium text-white mb-1">{course.name}</div>
+                      <div className="text-sm text-gray-400">{course.platform} • {course.duration} • {course.cost}</div>
+                      <div className="text-xs text-gray-500 mt-1">{course.description}</div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </Section>
+      )}
+
+      {/* NEW: GitHub Repositories */}
+      {current.githubRepositories.length > 0 && (
+        <Section id="github-repos" title="GitHub Repositories" icon={Github} count={current.githubRepositories.length}>
+          <div className="grid md:grid-cols-2 gap-4 pt-4">
+            {current.githubRepositories.map((repo, i) => (
+              <a key={i} href={repo.url} target="_blank" className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-600 transition-all group">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="font-medium text-white group-hover:text-purple-400">{repo.name}</div>
+                    <div className="text-sm text-gray-400 mt-1">{repo.description}</div>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                    <Star className="w-4 h-4" />{repo.stars.toLocaleString()}
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 mt-2">{repo.language} • Updated {repo.lastUpdated}</div>
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* NEW: YouTube Videos - Top 10 */}
+      {current.youtubeVideos.length > 0 && (
+        <Section id="youtube-videos" title="YouTube Videos (Top 10)" icon={Youtube} count={current.youtubeVideos.length}>
+          <div className="space-y-3 pt-4">
+            {current.youtubeVideos.map((video, i) => (
+              <a key={i} href={video.url} target="_blank" className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-600 transition-all group">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="font-medium text-white group-hover:text-purple-400">{video.name}</div>
+                    <div className="text-sm text-gray-400 mt-1">{video.channel} • {video.duration} • {video.views} views</div>
+                    <div className="text-sm text-gray-500 mt-1">{video.description}</div>
+                  </div>
+                  <PlayCircle className="w-5 h-5 text-gray-600 group-hover:text-purple-400 flex-shrink-0" />
+                </div>
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* NEW: Certifications Expanded */}
+      {current.certificationsExpanded.length > 0 && (
+        <Section id="certs-expanded" title="Certifications" icon={CertIcon} count={current.certificationsExpanded.length}>
+          <div className="space-y-6 pt-4">
+            {current.certificationsExpanded.map((cert, i) => (
+              <div key={i} className="p-5 bg-gray-950 rounded-xl border border-gray-800">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <div className="font-semibold text-white text-lg">{cert.name}</div>
+                    <div className="text-sm text-gray-400">{cert.provider}</div>
+                  </div>
+                  <a href={cert.officialPage} target="_blank" className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                    Official Site <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                {/* Practice Exams */}
+                {cert.practiceExams.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Practice Exams</div>
+                    <div className="flex flex-wrap gap-2">
+                      {cert.practiceExams.map((exam, j) => (
+                        <a key={j} href={exam.url} target="_blank" className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded text-sm hover:bg-blue-500/30">
+                          {exam.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Study Guides */}
+                {cert.studyGuides.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Study Guides</div>
+                    <div className="flex flex-wrap gap-2">
+                      {cert.studyGuides.map((guide, j) => (
+                        <a key={j} href={guide.url} target="_blank" className="px-3 py-1 bg-green-500/20 text-green-400 rounded text-sm hover:bg-green-500/30">
+                          {guide.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Exam Dumps */}
+                {cert.examDumps.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Community Resources</div>
+                    <div className="flex flex-wrap gap-2">
+                      {cert.examDumps.map((dump, j) => (
+                        <a key={j} href={dump.url} target="_blank" className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded text-sm hover:bg-orange-500/30">
+                          {dump.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* FAQs */}
+                {cert.faqs.length > 0 && (
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Frequently Asked Questions</div>
+                    <div className="space-y-2">
+                      {cert.faqs.map((faq, j) => (
+                        <div key={j} className="text-sm">
+                          <span className="text-white">{faq.question}</span>
+                          <span className="text-gray-400 ml-2">- {faq.answer}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* NEW: Cheatsheets */}
+      {current.cheatsheets.length > 0 && (
+        <Section id="cheatsheets-new" title="Cheatsheets" icon={FileText} count={current.cheatsheets.length}>
+          <div className="grid md:grid-cols-3 gap-4 pt-4">
+            {current.cheatsheets.map((sheet, i) => (
+              <a key={i} href={sheet.url} target="_blank" className="block p-4 bg-gray-950 rounded-xl border border-gray-800 hover:border-gray-600 transition-all group">
+                <div className="font-medium text-white group-hover:text-purple-400">{sheet.name}</div>
+                <div className="text-sm text-gray-400 mt-1">{sheet.description}</div>
+              </a>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* NEW: Interview Preparation */}
+      {(current.interviewPreparation.generalFAQs.length > 0 || current.interviewPreparation.mostAskedQuestions.length > 0) && (
+        <Section id="interview-prep" title="Interview Preparation" icon={HelpCircle} count={
+          current.interviewPreparation.generalFAQs.length + current.interviewPreparation.mostAskedQuestions.length
+        }>
+          <div className="pt-4 space-y-6">
+            {/* General FAQs */}
+            {current.interviewPreparation.generalFAQs.length > 0 && (
+              <div>
+                <div className="text-sm uppercase tracking-wider text-gray-500 mb-3">General FAQs</div>
+                <div className="space-y-3">
+                  {current.interviewPreparation.generalFAQs.map((faq, i) => (
+                    <div key={i} className="p-4 bg-gray-950 rounded-lg border border-gray-800">
+                      <div className="font-medium text-white mb-1">{faq.question}</div>
+                      <div className="text-sm text-gray-400">{faq.answer}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Most Asked Questions */}
+            {current.interviewPreparation.mostAskedQuestions.length > 0 && (
+              <div>
+                <div className="text-sm uppercase tracking-wider text-gray-500 mb-3">Most Asked Interview Questions</div>
+                <div className="space-y-3">
+                  {current.interviewPreparation.mostAskedQuestions.map((q, i) => (
+                    <div key={i} className="p-4 bg-gray-950 rounded-lg border border-gray-800">
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="font-medium text-white">{q.question}</div>
+                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs">{q.category}</span>
+                      </div>
+                      <div className="text-sm text-gray-400">{q.answer}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </Section>
       )}
