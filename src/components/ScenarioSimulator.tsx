@@ -5,11 +5,21 @@ import { Play, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
+interface DiagramStep {
+  id: number;
+  label: string;
+  type: 'start' | 'process' | 'decision' | 'success' | 'error';
+}
+
 interface ExplanationStructure {
   verdict: string;
   why: string[];
   keyConcept: string;
-  visualDiagram?: string;
+  diagram?: {
+    title: string;
+    steps: DiagramStep[];
+    relationships: string[];
+  };
   whyOthersWrong: string[];
   remember: string;
   bestPractice: string;
@@ -56,7 +66,16 @@ const scenarios: Scenario[] = [
         "Killing the process frees the port for the container"
       ],
       keyConcept: "Only one process can bind to a specific port at a time. When you see 'port already in use', identify and resolve the conflicting process.",
-      visualDiagram: "Port 8080\n    │\n    ▼\nProcess 4521 (LISTENING)\n    │\n    ▼\nContainer tries to bind → ❌ BLOCKED",
+      diagram: {
+        title: "Port Conflict Flow",
+        steps: [
+          { id: 1, label: "Port 8080", type: "start" },
+          { id: 2, label: "Process 4521 listening", type: "process" },
+          { id: 3, label: "Container tries to bind", type: "decision" },
+          { id: 4, label: "Connection blocked", type: "error" }
+        ],
+        relationships: ["Port 8080 → Process 4521", "Process 4521 → Container blocked"]
+      },
       whyOthersWrong: [
         "Restarting won't free the port",
         "Deleting containers ignores the real issue",
@@ -92,7 +111,18 @@ const scenarios: Scenario[] = [
         "Fixing the root cause prevents further crashes"
       ],
       keyConcept: "CrashLoopBackOff indicates Kubernetes gave up restarting a failing container. Logs contain the specific error preventing successful startup.",
-      visualDiagram: "Pod Status Flow:\nRunning → Error → Restart → Error...\n    │\n    ▼\nCrashLoopBackOff\n    │\n    ▼\nCheck Logs → Fix Issue",
+      diagram: {
+        title: "CrashLoopBackOff Flow",
+        steps: [
+          { id: 1, label: "Pod starts", type: "start" },
+          { id: 2, label: "Error occurs", type: "error" },
+          { id: 3, label: "Restart attempt", type: "process" },
+          { id: 4, label: "Repeat failure", type: "decision" },
+          { id: 5, label: "CrashLoopBackOff", type: "error" },
+          { id: 6, label: "Check logs & fix", type: "success" }
+        ],
+        relationships: ["Pod → Error → Restart → Failure", "Failure → CrashLoopBackOff → Check logs"]
+      },
       whyOthersWrong: [
         "Scaling won't fix underlying application errors",
         "Deleting the pod just restarts the same failing container",
@@ -128,7 +158,17 @@ const scenarios: Scenario[] = [
         "package-lock.json ensures identical dependencies everywhere"
       ],
       keyConcept: "CI/CD pipelines run in isolated environments. Differences in Node versions, npm packages, or missing files cause tests to fail in CI but pass locally.",
-      visualDiagram: "Local:  Node v18 + package.json\n    │\n    ▼\nCI:      Node v16 + ? packages\n    │\n    ▼\nMismatch → Tests Fail",
+      diagram: {
+        title: "Environment Mismatch Flow",
+        steps: [
+          { id: 1, label: "Local: Node v18", type: "start" },
+          { id: 2, label: "package.json deps", type: "process" },
+          { id: 3, label: "CI: Node v16", type: "decision" },
+          { id: 4, label: "Missing packages", type: "error" },
+          { id: 5, label: "Tests fail", type: "error" }
+        ],
+        relationships: ["Local → package.json → CI mismatch", "CI mismatch → Missing packages → Tests fail"]
+      },
       whyOthersWrong: [
         "Flaky tests need fixing, not longer timeouts",
         "Skipping tests defeats the purpose of CI",
@@ -164,7 +204,17 @@ const scenarios: Scenario[] = [
         "imagePullSecrets provide the registry authentication"
       ],
       keyConcept: "Kubernetes pods need explicit credentials to pull images from private registries. Without imagePullSecrets, the kubelet can't authenticate.",
-      visualDiagram: "Registry (Private)\n    │\n    ▼\nNeed: imagePullSecrets\n    │\n    ▼\nKubernetes Pod ← Authenticated",
+      diagram: {
+        title: "Image Pull Authentication Flow",
+        steps: [
+          { id: 1, label: "Private registry", type: "start" },
+          { id: 2, label: "Need credentials", type: "decision" },
+          { id: 3, label: "imagePullSecrets", type: "process" },
+          { id: 4, label: "Authenticated", type: "success" },
+          { id: 5, label: "Pod gets image", type: "success" }
+        ],
+        relationships: ["Registry → Need credentials → imagePullSecrets", "imagePullSecrets → Authenticated → Pod gets image"]
+      },
       whyOthersWrong: [
         "Force sync won't fix authentication issues",
         "Latest tag still requires authentication",
@@ -218,12 +268,61 @@ export function ScenarioSimulator() {
   const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState(0);
   const [completed, setCompleted] = useState<number[]>([]);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechComplete, setSpeechComplete] = useState(false);
 
   const scenario = scenarios[currentScenario];
 
-  const handleAnswer = (index: number) => {
+  const speakExplanation = (text: string): Promise<void> => {
+    return new Promise((resolve) => {
+      if (!('speechSynthesis' in window)) {
+        resolve();
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
+      utterance.volume = 0.8;
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setSpeechComplete(true);
+        resolve();
+      };
+
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+        setSpeechComplete(true);
+        resolve();
+      };
+
+      setIsSpeaking(true);
+      setSpeechComplete(false);
+      window.speechSynthesis.speak(utterance);
+    });
+  };
+
+  const generateExplanationText = () => {
+    const exp = scenario.explanation;
+    let text = `${exp.verdict}. `;
+    text += `Why? ${exp.why.join('. ')}. `;
+    text += `Key concept: ${exp.keyConcept}. `;
+    if (exp.diagram) {
+      text += `Visual flow: ${exp.diagram.title}. `;
+      text += exp.diagram.steps.map((step, i) =>
+        `Step ${i + 1}: ${step.label}`
+      ).join('. ') + '. ';
+    }
+    text += `Remember: ${exp.remember}. `;
+    text += `Best practice: ${exp.bestPractice}.`;
+    return text;
+  };
+
+  const handleAnswer = async (index: number) => {
     setSelectedAnswer(index);
     setShowResult(true);
+    setSpeechComplete(false);
 
     const isCorrect = index === scenario.correct;
     if (isCorrect) {
@@ -240,9 +339,20 @@ export function ScenarioSimulator() {
     if (!completed.includes(scenario.id)) {
       setCompleted([...completed, scenario.id]);
     }
+
+    // Start TTS after showing results
+    const explanationText = generateExplanationText();
+    await speakExplanation(explanationText);
   };
 
   const nextScenario = () => {
+    // Stop any ongoing speech when moving to next scenario
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setSpeechComplete(false);
+
     if (currentScenario < scenarios.length - 1) {
       setCurrentScenario(currentScenario + 1);
       setSelectedAnswer(null);
@@ -255,11 +365,16 @@ export function ScenarioSimulator() {
   };
 
   const resetSimulation = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     setCurrentScenario(0);
     setSelectedAnswer(null);
     setShowResult(false);
     setScore(0);
     setCompleted([]);
+    setIsSpeaking(false);
+    setSpeechComplete(false);
   };
 
   return (
@@ -376,112 +491,161 @@ export function ScenarioSimulator() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-6 rounded-2xl bg-white/5 space-y-6"
+                className="p-8 rounded-3xl bg-white/5 border border-white/10 space-y-8"
               >
-                {/* 🎯 Verdict */}
-                <div className="space-y-2">
-                  <div className="font-bold text-lg flex items-center gap-2">
+                {/* 🎯 Verdict - Callout Box */}
+                <div className="p-6 rounded-2xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30">
+                  <div className="font-bold text-xl flex items-center gap-3 mb-2">
                     🎯 Verdict
                   </div>
-                  <div className="pl-4 text-lg">
+                  <div className="text-xl font-medium">
                     {scenario.explanation.verdict}
                   </div>
                 </div>
 
-                <div className="h-px bg-white/10" />
-
-                {/* 📌 Why? */}
-                <div className="space-y-3">
-                  <div className="font-bold text-lg flex items-center gap-2">
-                    📌 Why?
+                {/* 📌 Why? - Clean List */}
+                <div className="space-y-4">
+                  <div className="font-bold text-lg flex items-center gap-3 text-primary">
+                    📌 Why did this happen?
                   </div>
-                  <ul className="pl-4 space-y-2">
+                  <div className="grid gap-3 pl-2">
                     {scenario.explanation.why.map((point, index) => (
-                      <li key={index} className="text-white/80 flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        <span>{point}</span>
-                      </li>
+                      <div key={index} className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-primary text-xs font-bold">{index + 1}</span>
+                        </div>
+                        <span className="text-white/90 leading-relaxed">{point}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
 
-                <div className="h-px bg-white/10" />
-
-                {/* 💡 Key Concept */}
-                <div className="space-y-2">
-                  <div className="font-bold text-lg flex items-center gap-2">
+                {/* 💡 Key Concept - Emphasized Card */}
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20">
+                  <div className="font-bold text-lg flex items-center gap-3 mb-4 text-blue-400">
                     💡 Key Concept
                   </div>
-                  <p className="pl-4 text-white/80 leading-relaxed">
+                  <p className="text-white/90 leading-relaxed text-lg pl-2">
                     {scenario.explanation.keyConcept}
                   </p>
                 </div>
 
-                {/* 📖 Visual Representation */}
-                {scenario.explanation.visualDiagram && (
+                {/* 📖 Visual Flow Diagram */}
+                {scenario.explanation.diagram && (
                   <>
                     <div className="h-px bg-white/10" />
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       <div className="font-bold text-lg flex items-center gap-2">
-                        📖 Visual Representation
+                        📖 {scenario.explanation.diagram.title}
                       </div>
-                      <pre className="pl-4 p-4 rounded-xl bg-[#1a1b26] text-green-400/90 font-mono text-sm overflow-x-auto whitespace-pre">
-                        {scenario.explanation.visualDiagram}
-                      </pre>
+                      <div className="pl-4">
+                        {/* Flow Diagram Container */}
+                        <div className="bg-[#1a1b26] rounded-xl p-6 border border-white/10">
+                          {/* Steps Flow */}
+                          <div className="flex flex-wrap items-center gap-3 mb-6">
+                            {scenario.explanation.diagram.steps.map((step, index) => (
+                              <React.Fragment key={step.id}>
+                                <div className={`
+                                  px-4 py-2 rounded-lg text-sm font-medium border
+                                  ${step.type === 'start' ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : ''}
+                                  ${step.type === 'process' ? 'bg-purple-500/20 border-purple-500/50 text-purple-400' : ''}
+                                  ${step.type === 'decision' ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400' : ''}
+                                  ${step.type === 'success' ? 'bg-green-500/20 border-green-500/50 text-green-400' : ''}
+                                  ${step.type === 'error' ? 'bg-red-500/20 border-red-500/50 text-red-400' : ''}
+                                `}>
+                                  {step.label}
+                                </div>
+                                {index < scenario.explanation.diagram!.steps.length - 1 && (
+                                  <ArrowRight className="w-4 h-4 text-white/40" />
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </div>
+
+                          {/* Relationships */}
+                          {scenario.explanation.diagram.relationships.length > 0 && (
+                            <div className="pt-4 border-t border-white/10">
+                              <div className="text-sm text-white/60 mb-2">Key Relationships:</div>
+                              <div className="flex flex-wrap gap-2">
+                                {scenario.explanation.diagram.relationships.map((rel, index) => (
+                                  <div key={index} className="px-3 py-1 rounded-full bg-white/5 text-xs text-white/70 border border-white/10">
+                                    {rel}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </>
                 )}
 
-                <div className="h-px bg-white/10" />
-
-                {/* ⚠️ Why Other Options Are Wrong */}
-                <div className="space-y-3">
-                  <div className="font-bold text-lg flex items-center gap-2">
+                {/* ⚠️ Why Other Options Are Wrong - Subtle Section */}
+                <div className="space-y-4">
+                  <div className="font-bold text-lg flex items-center gap-3 text-orange-400">
                     ⚠️ Why Other Options Are Wrong
                   </div>
-                  <ul className="pl-4 space-y-2">
+                  <div className="grid gap-2 pl-2">
                     {scenario.explanation.whyOthersWrong.map((reason, index) => (
-                      <li key={index} className="text-white/70 flex items-start gap-2">
-                        <span className="text-red-500/70 mt-1">•</span>
-                        <span>{reason}</span>
-                      </li>
+                      <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-red-500/5 border-l-2 border-red-500/30">
+                        <span className="text-red-400/60 mt-1">✗</span>
+                        <span className="text-white/70">{reason}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
 
-                <div className="h-px bg-white/10" />
-
-                {/* 🧠 Remember */}
-                <div className="space-y-2">
-                  <div className="font-bold text-lg flex items-center gap-2">
-                    🧠 Remember
+                {/* 🧠 Remember & ✅ Best Practice - Side by Side Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                  <div className="p-5 rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="font-bold text-sm flex items-center gap-2 mb-3 text-yellow-400">
+                      🧠 Remember
+                    </div>
+                    <p className="text-white/90 italic leading-relaxed">
+                      "{scenario.explanation.remember}"
+                    </p>
                   </div>
-                  <p className="pl-4 text-white/80 italic">
-                    "{scenario.explanation.remember}"
-                  </p>
-                </div>
 
-                <div className="h-px bg-white/10" />
-
-                {/* ✅ Best Practice */}
-                <div className="space-y-2">
-                  <div className="font-bold text-lg flex items-center gap-2">
-                    ✅ Best Practice
+                  <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                    <div className="font-bold text-sm flex items-center gap-2 mb-3 text-emerald-400">
+                      ✅ Best Practice
+                    </div>
+                    <p className="text-white/90 leading-relaxed">
+                      {scenario.explanation.bestPractice}
+                    </p>
                   </div>
-                  <p className="pl-4 text-white/80">
-                    {scenario.explanation.bestPractice}
-                  </p>
                 </div>
 
                 <div className="pt-4 border-t border-white/10">
                   <p className="text-sm text-accent mb-4">{scenario.tip}</p>
+
+                  {/* Audio Status Indicator */}
+                  {isSpeaking && (
+                    <div className="flex items-center gap-2 mb-4 text-sm text-primary">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                      Reading explanation aloud...
+                    </div>
+                  )}
+
                   <button
                     onClick={nextScenario}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary font-medium"
+                    disabled={!speechComplete && showResult}
+                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
+                      !speechComplete && showResult
+                        ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-primary to-secondary hover:shadow-lg'
+                    }`}
                   >
                     {currentScenario < scenarios.length - 1 ? 'Next Scenario' : 'Complete Simulation'}
                     <ArrowRight className="w-4 h-4" />
                   </button>
+
+                  {!speechComplete && showResult && (
+                    <p className="text-xs text-white/50 mt-2">
+                      Please wait for the explanation to finish reading
+                    </p>
+                  )}
                 </div>
               </motion.div>
             )}
