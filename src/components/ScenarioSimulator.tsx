@@ -5,6 +5,16 @@ import { Play, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
+interface ExplanationStructure {
+  verdict: string;
+  why: string[];
+  keyConcept: string;
+  visualDiagram?: string;
+  whyOthersWrong: string[];
+  remember: string;
+  bestPractice: string;
+}
+
 interface Scenario {
   id: number;
   title: string;
@@ -16,7 +26,7 @@ interface Scenario {
   folderStructure?: string[];
   options: string[];
   correct: number;
-  explanation: string;
+  explanation: ExplanationStructure;
   tip: string;
   skill: string;
 }
@@ -38,7 +48,23 @@ const scenarios: Scenario[] = [
       "📝 Ignore the error and use a different port"
     ],
     correct: 1,
-    explanation: "Always investigate port conflicts first! Use `lsof -i :8080` or `netstat -tulpn` to find what's using the port.",
+    explanation: {
+      verdict: "✅ Correct",
+      why: [
+        "Port 8080 is actively used by process PID 4521",
+        "Container can't bind to an occupied port",
+        "Killing the process frees the port for the container"
+      ],
+      keyConcept: "Only one process can bind to a specific port at a time. When you see 'port already in use', identify and resolve the conflicting process.",
+      visualDiagram: "Port 8080\n    │\n    ▼\nProcess 4521 (LISTENING)\n    │\n    ▼\nContainer tries to bind → ❌ BLOCKED",
+      whyOthersWrong: [
+        "Restarting won't free the port",
+        "Deleting containers ignores the real issue",
+        "Changing ports masks configuration problems"
+      ],
+      remember: "Think of ports as parking spots - only one car can park in each spot.",
+      bestPractice: "Use docker-compose to manage port mappings and avoid conflicts automatically."
+    },
     tip: "💡 Pro tip: Use `docker compose` to manage ports automatically!",
     skill: "docker"
   },
@@ -58,7 +84,23 @@ const scenarios: Scenario[] = [
       "⚙️ Increase CPU limits in the deployment"
     ],
     correct: 1,
-    explanation: "Always check logs first! CrashLoopBackOff usually indicates application errors or misconfiguration.",
+    explanation: {
+      verdict: "✅ Correct",
+      why: [
+        "Logs reveal the actual error causing the restart loop",
+        "CrashLoopBackOff means the container is failing repeatedly",
+        "Fixing the root cause prevents further crashes"
+      ],
+      keyConcept: "CrashLoopBackOff indicates Kubernetes gave up restarting a failing container. Logs contain the specific error preventing successful startup.",
+      visualDiagram: "Pod Status Flow:\nRunning → Error → Restart → Error...\n    │\n    ▼\nCrashLoopBackOff\n    │\n    ▼\nCheck Logs → Fix Issue",
+      whyOthersWrong: [
+        "Scaling won't fix underlying application errors",
+        "Deleting the pod just restarts the same failing container",
+        "Resource limits don't address code/configuration issues"
+      ],
+      remember: "Think of CrashLoopBackOff as a smoke alarm - investigate the fire, not just silence the alarm.",
+      bestPractice: "Always run `kubectl describe pod` first to see events, then `kubectl logs` to find the error."
+    },
     tip: "🎯 Use `kubectl describe pod` to see events and failure reasons!",
     skill: "kubernetes"
   },
@@ -78,7 +120,23 @@ const scenarios: Scenario[] = [
       "📦 Increase runner resources"
     ],
     correct: 1,
-    explanation: "Environment differences are common! Ensure consistent Node versions and dependencies between local and CI.",
+    explanation: {
+      verdict: "✅ Correct",
+      why: [
+        "CI environment may have different dependency versions",
+        "Missing './config' module suggests incomplete setup",
+        "package-lock.json ensures identical dependencies everywhere"
+      ],
+      keyConcept: "CI/CD pipelines run in isolated environments. Differences in Node versions, npm packages, or missing files cause tests to fail in CI but pass locally.",
+      visualDiagram: "Local:  Node v18 + package.json\n    │\n    ▼\nCI:      Node v16 + ? packages\n    │\n    ▼\nMismatch → Tests Fail",
+      whyOthersWrong: [
+        "Flaky tests need fixing, not longer timeouts",
+        "Skipping tests defeats the purpose of CI",
+        "More resources won't fix missing modules"
+      ],
+      remember: "Think of CI as a clean room - it only has what you explicitly provide.",
+      bestPractice: "Pin exact dependency versions in package-lock.json and use .nvmrc for Node version consistency."
+    },
     tip: "✨ Use `.nvmrc` file and same Node version in CI as locally!",
     skill: "cicd"
   },
@@ -98,7 +156,23 @@ const scenarios: Scenario[] = [
       "🚫 Ignore and redeploy the application"
     ],
     correct: 0,
-    explanation: "ImagePullBackOff typically means authentication issues with private registries. Check imagePullSecrets!",
+    explanation: {
+      verdict: "✅ Correct",
+      why: [
+        "Private registries require authentication credentials",
+        "ImagePullBackOff means Kubernetes can't pull the image",
+        "imagePullSecrets provide the registry authentication"
+      ],
+      keyConcept: "Kubernetes pods need explicit credentials to pull images from private registries. Without imagePullSecrets, the kubelet can't authenticate.",
+      visualDiagram: "Registry (Private)\n    │\n    ▼\nNeed: imagePullSecrets\n    │\n    ▼\nKubernetes Pod ← Authenticated",
+      whyOthersWrong: [
+        "Force sync won't fix authentication issues",
+        "Latest tag still requires authentication",
+        "Ignoring errors leaves pods failing"
+      ],
+      remember: "Think of imagePullSecrets as house keys - you can't enter without them.",
+      bestPractice: "Always configure imagePullSecrets in your service account or pod spec for private registry access."
+    },
     tip: "💡 Always use imagePullSecrets for private registry access!",
     skill: "argocd"
   },
@@ -116,7 +190,23 @@ const scenarios: Scenario[] = [
       "🗑️ Cache all responses indefinitely"
     ],
     correct: 1,
-    explanation: "Exponential backoff prevents overwhelming the API! Add random jitter to avoid thundering herd.",
+    explanation: {
+      verdict: "✅ Correct",
+      why: [
+        "API rate limits prevent server overload",
+        "Exponential backoff gives servers time to recover",
+        "Jitter prevents all clients from retrying simultaneously"
+      ],
+      keyConcept: "Rate limiting protects APIs from abuse. When you hit limits, wait progressively longer between retries to avoid making the situation worse.",
+      visualDiagram: "Rate Limit Hit\n    │\n    ▼\nWait: 1s → Retry → Fail\n    │\n    ▼\nWait: 2s → Retry → Fail\n    │\n    ▼\nWait: 4s → Success ✓",
+      whyOthersWrong: [
+        "Making requests faster triggers more rate limits",
+        "Requesting higher limits takes time and may be denied",
+        "Indefinite caching ignores rate limit design"
+      ],
+      remember: "Think of rate limiting like traffic lights - rushing causes more congestion.",
+      bestPractice: "Use retry libraries with exponential backoff and jitter (like `retry` or `p-retry`) for resilient API clients."
+    },
     tip: "💡 Libraries like `retry` or `p-retry` make this easy!",
     skill: "api"
   }
@@ -286,24 +376,113 @@ export function ScenarioSimulator() {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="p-6 rounded-2xl bg-white/5 space-y-4"
+                className="p-6 rounded-2xl bg-white/5 space-y-6"
               >
-                <div>
-                  <div className="font-semibold mb-2 flex items-center gap-2">
-                    {selectedAnswer === scenario.correct ? '✅ Correct!' : '❌ Incorrect'}
+                {/* 🎯 Verdict */}
+                <div className="space-y-2">
+                  <div className="font-bold text-lg flex items-center gap-2">
+                    🎯 Verdict
                   </div>
-                  <p className="text-white/80">{scenario.explanation}</p>
+                  <div className="pl-4 text-lg">
+                    {scenario.explanation.verdict}
+                  </div>
                 </div>
+
+                <div className="h-px bg-white/10" />
+
+                {/* 📌 Why? */}
+                <div className="space-y-3">
+                  <div className="font-bold text-lg flex items-center gap-2">
+                    📌 Why?
+                  </div>
+                  <ul className="pl-4 space-y-2">
+                    {scenario.explanation.why.map((point, index) => (
+                      <li key={index} className="text-white/80 flex items-start gap-2">
+                        <span className="text-primary mt-1">•</span>
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                {/* 💡 Key Concept */}
+                <div className="space-y-2">
+                  <div className="font-bold text-lg flex items-center gap-2">
+                    💡 Key Concept
+                  </div>
+                  <p className="pl-4 text-white/80 leading-relaxed">
+                    {scenario.explanation.keyConcept}
+                  </p>
+                </div>
+
+                {/* 📖 Visual Representation */}
+                {scenario.explanation.visualDiagram && (
+                  <>
+                    <div className="h-px bg-white/10" />
+                    <div className="space-y-2">
+                      <div className="font-bold text-lg flex items-center gap-2">
+                        📖 Visual Representation
+                      </div>
+                      <pre className="pl-4 p-4 rounded-xl bg-[#1a1b26] text-green-400/90 font-mono text-sm overflow-x-auto whitespace-pre">
+                        {scenario.explanation.visualDiagram}
+                      </pre>
+                    </div>
+                  </>
+                )}
+
+                <div className="h-px bg-white/10" />
+
+                {/* ⚠️ Why Other Options Are Wrong */}
+                <div className="space-y-3">
+                  <div className="font-bold text-lg flex items-center gap-2">
+                    ⚠️ Why Other Options Are Wrong
+                  </div>
+                  <ul className="pl-4 space-y-2">
+                    {scenario.explanation.whyOthersWrong.map((reason, index) => (
+                      <li key={index} className="text-white/70 flex items-start gap-2">
+                        <span className="text-red-500/70 mt-1">•</span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                {/* 🧠 Remember */}
+                <div className="space-y-2">
+                  <div className="font-bold text-lg flex items-center gap-2">
+                    🧠 Remember
+                  </div>
+                  <p className="pl-4 text-white/80 italic">
+                    "{scenario.explanation.remember}"
+                  </p>
+                </div>
+
+                <div className="h-px bg-white/10" />
+
+                {/* ✅ Best Practice */}
+                <div className="space-y-2">
+                  <div className="font-bold text-lg flex items-center gap-2">
+                    ✅ Best Practice
+                  </div>
+                  <p className="pl-4 text-white/80">
+                    {scenario.explanation.bestPractice}
+                  </p>
+                </div>
+
                 <div className="pt-4 border-t border-white/10">
-                  <p className="text-sm text-accent">{scenario.tip}</p>
+                  <p className="text-sm text-accent mb-4">{scenario.tip}</p>
+                  <button
+                    onClick={nextScenario}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary font-medium"
+                  >
+                    {currentScenario < scenarios.length - 1 ? 'Next Scenario' : 'Complete Simulation'}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={nextScenario}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary font-medium"
-                >
-                  {currentScenario < scenarios.length - 1 ? 'Next Scenario' : 'Complete Simulation'}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
               </motion.div>
             )}
           </AnimatePresence>
