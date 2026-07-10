@@ -16,6 +16,7 @@ interface ExplanationStructure {
   diagram?: {
     title: string;
     steps: { id: number; label: string; type: string }[];
+    relationships?: string[];
   };
 }
 
@@ -488,18 +489,17 @@ export function ScenarioSimulator() {
                 </div>
 
                 {/* Visual Flow Diagram */}
-                {scenario.explanation.diagram && scenario.explanation.diagram.length > 0 && (
+                {scenario.explanation.diagram && scenario.explanation.diagram.steps && scenario.explanation.diagram.steps.length > 0 && (
                   <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
                     <div className="font-semibold text-primary mb-4">Visual Flow</div>
                     <div className="space-y-3">
-                      {scenario.explanation.diagram.map((step, index) => (
+                      {scenario.explanation.diagram.steps.map((step, index) => (
                         <div key={index} className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
                           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
-                            {step.step}
+                            {step.id}
                           </div>
                           <div className="flex-1">
-                            <div className="font-medium text-white mb-1">{step.title}</div>
-                            <div className="text-sm text-white/70">{step.desc}</div>
+                            <div className="font-medium text-white mb-1">{step.label}</div>
                           </div>
                         </div>
                       ))}
