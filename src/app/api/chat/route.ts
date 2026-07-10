@@ -110,6 +110,9 @@ MANDATORY FORMAT - YOU MUST FOLLOW EXACTLY:
    3) [${skillName}-specific choice with real commands/tools]
    4) [${skillName}-specific choice with real commands/tools]
 3. End with: CORRECT: [number 1-4]
+4. IMMEDIATELY after CORRECT, add: WHY_CORRECT: [Detailed 4-6 sentence explanation of WHY this answer is correct - technical reasoning, why it solves the problem, production best practices]
+
+CRITICAL: The WHY_CORRECT section is MANDATORY and must explain the technical reasoning behind why the correct answer is right, not just what it is.
 
 EXAMPLE for Docker:
 Your production Docker container is repeatedly crashing with OOM errors during peak traffic
@@ -118,6 +121,7 @@ Your production Docker container is repeatedly crashing with OOM errors during p
 3) Scale up additional container instances to distribute load
 4) Switch to a different base image with lower memory footprint
 CORRECT: 2
+WHY_CORRECT: Checking logs and stats first is essential because OOM errors can stem from memory leaks, inefficient processes, or configuration issues. The docker stats command provides real-time memory usage metrics showing which container processes are consuming excessive resources. Logs reveal application errors, stack traces, and warning patterns that pinpoint the root cause. This diagnostic approach prevents unnecessary service restarts that could mask underlying problems and ensures fixes address the actual issue. In production, systematic troubleshooting maintains service stability and prevents cascading failures from reactive restarts.
 
 CRITICAL: Always make scenarios feel like actual engineering work. Include real tool names, commands, and decision points engineers face daily. Never use generic scenarios.`;
   } else if (mode === 'scenario_feedback') {

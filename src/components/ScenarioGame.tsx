@@ -223,6 +223,14 @@ export function ScenarioGame() {
       }
     }
 
+    // Extract WHY_CORRECT explanation
+    const whyCorrectMatch = text.match(/WHY_CORRECT:\s*([^\n]+(?:\n(?![A-Z]+:)[^\n]+)*)/i);
+    if (whyCorrectMatch) {
+      window.whyCorrectExplanation = whyCorrectMatch[1].trim();
+    } else {
+      window.whyCorrectExplanation = null;
+    }
+
     // Ensure we have 4 choices
     const finalChoices = choiceLines.length >= 4
       ? choiceLines.slice(0, 4).map(c => c.replace(/^\d[\)\.\-]\s*/, '')) // Remove the number prefix
@@ -397,6 +405,9 @@ Provide comprehensive educational feedback following the mandatory format with a
           : `Option ${correctAnswerIndex}`;
 
         // Create feedback message with comprehensive 8-section educational feedback
+        // Use WHY_CORRECT from scenario OR from feedback response
+        const whyCorrectExplanation = window.whyCorrectExplanation || structuredFeedback?.whyCorrectIsCorrect;
+
         const feedbackMsg: Message = {
           id: Date.now() + 1,
           text: isCorrect
@@ -406,9 +417,9 @@ Provide comprehensive educational feedback following the mandatory format with a
           selectedAnswer: choiceIndex,
           correctAnswer: correctAnswerIndex !== null ? correctAnswerIndex - 1 : 0,
           isCorrect: isCorrect,
-          // Map new 8-section feedback structure
-          correctAnswerText: structuredFeedback?.correctAnswer,
-          whyCorrectIsCorrect: structuredFeedback?.whyCorrectIsCorrect,
+          // Map new 8-section feedback structure - ALWAYS include whyCorrectIsCorrect
+          correctAnswerText: structuredFeedback?.correctAnswer || correctChoiceText,
+          whyCorrectIsCorrect: whyCorrectExplanation,
           userAnswerEvaluation: structuredFeedback?.userAnswerEvaluation,
           whyOtherOptionsWrong: structuredFeedback?.whyOtherOptionsWrong,
           technicalConcept: structuredFeedback?.technicalConcept,
