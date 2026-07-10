@@ -233,7 +233,7 @@ export function ScenarioSimulator() {
       });
     } else {
       toast.error(`Not quite right 😅`, {
-        description: scenario.explanation,
+        description: scenario.explanation.verdict,
       });
     }
 

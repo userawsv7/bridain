@@ -234,8 +234,8 @@ const generateComprehensiveResources = (skill: string): SkillResources => {
         ]
       },
       certifications: [
-        { name: "Certified Kubernetes Administrator (CKA)", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/cka/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Most recognized Kubernetes certification" },
-        { name: "Certified Kubernetes Application Developer (CKAD)", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/ckad/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKAD_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Focus on application development" }
+        { name: "Certified Kubernetes Administrator (CKA)", url: "https://www.cncf.io/certification/cka/", type: "Certification", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/cka/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Most recognized Kubernetes certification" } as const,
+        { name: "Certified Kubernetes Application Developer (CKAD)", url: "https://www.cncf.io/certification/ckad/", type: "Certification", provider: "CNCF", level: "Associate", cost: "$375", duration: "2 hours", examFormat: "Performance-based", questions: 15, passingScore: "66%", validity: "3 years", prerequisites: "None", officialPage: "https://www.cncf.io/certification/ckad/", studyGuide: "https://github.com/cncf/curriculum", examObjectives: "https://github.com/cncf/curriculum/blob/master/CKAD_Curriculum_v1.25.pdf", badge: ["Industry Standard"], description: "Focus on application development" } as const
       ],
       certPreparation: {
         studyGuides: [
@@ -296,7 +296,7 @@ const generateComprehensiveResources = (skill: string): SkillResources => {
     }
   };
 
-  const defaultResources = skillResources[skillLower];
+  const defaultResources = undefined;
 
   if (defaultResources) {
     return defaultResources as SkillResources;
