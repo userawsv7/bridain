@@ -5,18 +5,23 @@ import { Play, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
+interface DualText {
+  displayText: string;
+  audioScript: string;
+}
+
 interface ExplanationStructure {
-  verdict: string;
-  explanation?: string;
-  why?: string[];
-  keyConcept?: string;
-  whyOthersWrong: string[];
-  remember: string;
-  bestPractice: string;
+  verdict: DualText;
+  explanation?: DualText;
+  why?: DualText[];
+  keyConcept?: DualText;
+  whyOthersWrong: DualText[];
+  remember: DualText;
+  bestPractice: DualText;
   diagram?: {
-    title: string;
-    steps: { id: number; label: string; type: string }[];
-    relationships?: string[];
+    title: DualText;
+    steps: { id: number; label: DualText; type: string }[];
+    relationships?: DualText[];
   };
 }
 
