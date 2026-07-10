@@ -15,6 +15,11 @@ interface Message {
   explanation?: string;
   isCorrect?: boolean;
   coreExplanation?: string;
+  whyOthersWrong?: string;
+  productionReasoning?: string;
+  consequences?: string;
+  bestPractices?: string;
+  keyLearning?: string;
   commonPitfall?: string;
   proTip?: string;
   displayText?: string;
