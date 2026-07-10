@@ -364,21 +364,13 @@ Make it challenging but fair for a ${skill} role.`,
 Previous question: ${currentQuestion}
 User's answer: ${answer}
 
-Provide structured feedback with EXACTLY these three components, REGARDLESS of correct or wrong:
-1. STATUS: MUST explicitly state "Correct" or "Wrong"
-2. CONTRAST: MUST explicitly display what the correct answer is, then briefly point out the user's choice
-3. EXPLANATION: MUST explain WHY the correct answer is right using BEGINNER-FRIENDLY language with simple analogies (2-3 sentences max)
+CRITICAL: ALWAYS show the correct answer and explain it. Format MUST be:
 
-CRITICAL INSTRUCTIONS:
-- Always show the correct answer, even if user was correct
-- Use plain text only. NO markdown, NO asterisks, NO special characters
-- Explanation must be 2-3 sentences maximum, beginner-friendly
-- Format exactly as:
-STATUS: [Correct/Wrong]
-CONTRAST: [correct answer displayed clearly]
-EXPLANATION: [brief beginner-friendly explanation]
+STATUS: Correct or Wrong
+CONTRAST: The correct answer is X. Your answer Y was Wrong/Correct.
+EXPLANATION: Brief 1-2 sentence explanation why correct answer works. Use simple language.
 
-Then provide the next question with choices.`,
+Then ask the next interview question with 4 choices.`,
           skill: selectedSkill,
           mode: 'interview_feedback'
         })
@@ -389,35 +381,39 @@ Then provide the next question with choices.`,
 
         // Parse the structured feedback from the API response
         const responseText = data.response;
-        const isCorrect = responseText.toLowerCase().includes('correct: yes') ||
-                         responseText.toLowerCase().includes('status: correct');
 
-        // Extract structured feedback components
-        const status = isCorrect ? 'Correct' : 'Wrong' as const;
+        // Parse STATUS - always extract Correct or Wrong
+        const statusMatch = responseText.match(/STATUS:\s*(Correct|Wrong)/i);
+        const status = (statusMatch ? statusMatch[1] : (responseText.toLowerCase().includes('correct') ? 'Correct' : 'Wrong')) as 'Correct' | 'Wrong';
+        const isCorrect = status === 'Correct';
 
-        // Parse contrast and explanation from response (with fallback)
+        // Parse CONTRAST - MUST extract the correct answer
         let contrast = '';
+        const contrastMatch = responseText.match(/CONTRAST:\s*([^\n]+(?:\n[^\n]+)*?)(?=\nEXPLANATION:|$)/i);
+        if (contrastMatch) {
+          contrast = contrastMatch[1].trim().replace(/\n/g, ' ');
+        }
+
+        // Parse EXPLANATION - MUST extract the explanation
         let explanation = '';
-
-        const contrastMatch = responseText.match(/contrast[:\s]+([^\n]+)/i);
-        const explanationMatch = responseText.match(/explanation[:\s]+([^\n]+(?:\n[^\n]+){0,2})/i);
-
-        if (contrastMatch) contrast = contrastMatch[1].trim();
+        const explanationMatch = responseText.match(/EXPLANATION:\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|$)/i);
         if (explanationMatch) {
-          // Ensure explanation is max 3 sentences
-          explanation = explanationMatch[1].trim().split(/[.!?]+/).slice(0, 3).join('. ') + '.';
+          // Limit to 3 sentences max
+          explanation = explanationMatch[1].trim()
+            .replace(/\n/g, ' ')
+            .split(/[.!?]+/)
+            .slice(0, 3)
+            .join('. ')
+            .trim();
+          if (explanation && !explanation.endsWith('.')) explanation += '.';
         }
 
-        // Fallback structured feedback format
+        // Strict fallback - always show correct vs user's answer
         if (!contrast) {
-          const correctAnswerMatch = responseText.match(/correct answer[:\s]+([^\n]+)/i);
-          contrast = correctAnswerMatch
-            ? `The correct answer is: ${correctAnswerMatch[1].trim()}. Your answer "${answer}" was not correct.`
-            : `The correct answer differs from "${answer}".`;
+          contrast = `The correct answer is displayed. Your answer "${answer}" was ${status === 'Correct' ? 'correct' : 'incorrect'}.`;
         }
-
         if (!explanation) {
-          explanation = "Understanding the underlying concepts and best practices for this skill area.";
+          explanation = "The correct answer demonstrates proper understanding of the underlying concepts and best practices.";
         }
 
         // Clean the text to remove any markdown/special characters
