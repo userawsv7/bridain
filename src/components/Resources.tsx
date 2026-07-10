@@ -6,64 +6,83 @@ import {
   Search, Star, HelpCircle, Loader2, ChevronDown, ChevronUp, User
 } from 'lucide-react';
 
-interface CareerPathStep {
-  step: string;
-  description: string;
-}
-
-interface WebsiteResource {
-  name: string;
-  url: string;
-  isFree: boolean;
-}
-
-interface YouTubeResource {
-  title: string;
-  url: string;
-}
-
-interface GitHubRepo {
-  name: string;
-  url: string;
-  description: string;
-}
-
-interface Cheatsheet {
-  topic: string;
-  url: string;
+// New Groq schema interfaces
+interface CoreConcept {
+  level: string;
+  concept: string;
+  explanation: string;
 }
 
 interface Certification {
   name: string;
   officialUrl: string;
-  examDumpsOrStudyGuidesUrls?: string[];
-  faqs?: string[];
+  studyGuidesAndDumps: string[];
+  cost: string;
+  faqs: string[];
 }
 
 interface InterviewPrep {
   question: string;
   answer: string;
+  difficulty: string;
 }
 
-interface ResourcesData {
-  coreConceptsWebsites: WebsiteResource[];
-  youtubeTutorials: YouTubeResource[];
-  githubRepos: GitHubRepo[];
-  cheatsheets: Cheatsheet[];
+interface DayToDayScenario {
+  scenario: string;
+  struggle: string;
+  solution: string;
+}
+
+interface LearningResource {
+  title: string;
+  url: string;
+}
+
+interface GitHubResource {
+  name: string;
+  url: string;
+  description: string;
+}
+
+interface CheatsheetResource {
+  topic: string;
+  url: string;
+}
+
+interface WebsiteResource {
+  name: string;
+  url: string;
+  description: string;
+}
+
+interface OtherResource {
+  title: string;
+  type: string;
+  url: string;
+  description: string;
+}
+
+interface LearningResources {
+  bestYoutubeTutorials: LearningResource[];
+  githubRepos: GitHubResource[];
+  cheatsheets: CheatsheetResource[];
+  popularWebsites: WebsiteResource[];
+  otherValuableResources: OtherResource[];
+}
+
+interface GroqResourcesData {
+  coreConcepts: CoreConcept[];
   certifications: Certification[];
   interviewPrep: InterviewPrep[];
-}
-
-interface ResourceState {
-  careerPath: CareerPathStep[];
-  resources: ResourcesData;
+  dayToDayRealWorld: DayToDayScenario[];
+  learningResources: LearningResources;
 }
 
 export function Resources() {
   const [inputSkill, setInputSkill] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'career' | 'resources'>('career');
-  const [resourceData, setResourceData] = useState<ResourceState | null>(null);
+  const [activeTab, setActiveTab] = useState<'concepts' | 'certifications' | 'interview' | 'daytoday' | 'learning'>('concepts');
+  const [resourceData, setResourceData] = useState<GroqResourcesData | null>(null);
   const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
@@ -76,35 +95,60 @@ export function Resources() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Generate comprehensive career path and resources for ${skill}`,
-          context: `You must return a JSON object for skill: ${skill}.
+          message: `Generate comprehensive resources for ${skill}`,
+          context: `You must return ONLY a JSON object matching this exact schema for skill: ${skill}.
 
-REQUIRED JSON SCHEMA:
+JSON SCHEMA:
 {
-  "careerPath": [{ "step": "string", "description": "string" }],
-  "resources": {
-    "coreConceptsWebsites": [{ "name": "string", "url": "string", "isFree": boolean }],
-    "youtubeTutorials": [{ "title": "string", "url": "string" }],
-    "githubRepos": [{ "name": "string", "url": "string", "description": "string" }],
-    "cheatsheets": [{ "topic": "string", "url": "string" }],
-    "certifications": [{
+  "coreConcepts": [
+    {
+      "level": "string (Basic / Intermediate / Expert)",
+      "concept": "string",
+      "explanation": "string"
+    }
+  ],
+  "certifications": [
+    {
       "name": "string",
       "officialUrl": "string",
-      "examDumpsOrStudyGuidesUrls": ["string"],
+      "studyGuidesAndDumps": ["string"],
+      "cost": "string",
       "faqs": ["string"]
-    }],
-    "interviewPrep": [{ "question": "string", "answer": "string" }]
+    }
+  ],
+  "interviewPrep": [
+    {
+      "question": "string",
+      "answer": "string",
+      "difficulty": "string (Easy/Medium/Hard)"
+    }
+  ],
+  "dayToDayRealWorld": [
+    {
+      "scenario": "string",
+      "struggle": "string",
+      "solution": "string"
+    }
+  ],
+  "learningResources": {
+    "bestYoutubeTutorials": [{"title": "string", "url": "string"}],
+    "githubRepos": [{"name": "string", "url": "string", "description": "string"}],
+    "cheatsheets": [{"topic": "string", "url": "string"}],
+    "popularWebsites": [{"name": "string", "url": "string", "description": "string"}],
+    "otherValuableResources": [{"title": "string", "type": "string", "url": "string", "description": "string"}]
   }
 }
 
+Use Groq llama3-70b-8192 or llama3-8b-8192 model for this generation.
 STRICT RULES:
-- YouTube: Return minimum 10 tutorials with safe YouTube search URLs if unsure
-- URLs: Use real working URLs only, or generate safe search query URLs like "https://www.youtube.com/results?search_query=skill+tutorial"
-- Clean Text: NO markdown, NO asterisks, NO special characters in any text
 - All arrays must be populated with real, helpful resources
-- If unsure of exact URL, generate safe search query instead of hallucinating
-
-Return ONLY the JSON object, nothing else.`,
+- URLs must be real working URLs
+- Provide concepts progression: 3-5 Basic, 3-5 Intermediate, 3-5 Expert
+- List ALL major certifications
+- Generate 10+ interview questions with difficulty levels
+- Include 5-8 real-world scenarios
+- Generate comprehensive learning resources
+- Return ONLY valid JSON, no markdown or commentary`,
           skill: skill,
           mode: 'resource_generation'
         })
@@ -113,8 +157,8 @@ Return ONLY the JSON object, nothing else.`,
       if (response.ok) {
         const data = await response.json();
 
-        // Parse JSON from API response
-        let parsedData: ResourceState;
+        // Parse JSON from API response - updated for Groq schema
+        let parsedData: GroqResourcesData;
         try {
           const jsonMatch = data.response.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
@@ -125,29 +169,18 @@ Return ONLY the JSON object, nothing else.`,
         } catch {
           // Fallback structure if parsing fails
           parsedData = {
-            careerPath: [
-              { step: "Learn Fundamentals", description: "Start with basic concepts and terminology" },
-              { step: "Practice Hands-on", description: "Build projects to reinforce learning" },
-              { step: "Advanced Topics", description: "Explore complex patterns and optimization" }
-            ],
-            resources: {
-              coreConceptsWebsites: [],
-              youtubeTutorials: [],
+            coreConcepts: [],
+            certifications: [],
+            interviewPrep: [],
+            dayToDayRealWorld: [],
+            learningResources: {
+              bestYoutubeTutorials: [],
               githubRepos: [],
               cheatsheets: [],
-              certifications: [],
-              interviewPrep: []
+              popularWebsites: [],
+              otherValuableResources: []
             }
           };
-        }
-
-        // Ensure optional arrays exist on certifications
-        if (parsedData.resources.certifications) {
-          parsedData.resources.certifications = parsedData.resources.certifications.map(cert => ({
-            ...cert,
-            examDumpsOrStudyGuidesUrls: cert.examDumpsOrStudyGuidesUrls || [],
-            faqs: cert.faqs || []
-          }));
         }
 
         setResourceData(parsedData);
@@ -262,81 +295,202 @@ Return ONLY the JSON object, nothing else.`,
 
       {resourceData && (
         <>
-          {/* Tabs */}
-          <div className="flex justify-center gap-4 border-b border-white/10 pb-4">
+          {/* Tabs for new Groq schema */}
+          <div className="flex justify-center gap-2 border-b border-white/10 pb-4 flex-wrap">
             <button
-              onClick={() => setActiveTab('career')}
-              className={`px-6 py-2 rounded-xl font-medium transition-all ${
-                activeTab === 'career'
+              onClick={() => setActiveTab('concepts')}
+              className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                activeTab === 'concepts'
                   ? 'bg-primary/20 text-primary border border-primary/30'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}
             >
-              Career Path
+              Core Concepts
             </button>
             <button
-              onClick={() => setActiveTab('resources')}
-              className={`px-6 py-2 rounded-xl font-medium transition-all ${
-                activeTab === 'resources'
+              onClick={() => setActiveTab('certifications')}
+              className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                activeTab === 'certifications'
                   ? 'bg-primary/20 text-primary border border-primary/30'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}
             >
-              Resources
+              Certifications
+            </button>
+            <button
+              onClick={() => setActiveTab('interview')}
+              className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                activeTab === 'interview'
+                  ? 'bg-primary/20 text-primary border border-primary/30'
+                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+              }`}
+            >
+              Interview Prep
+            </button>
+            <button
+              onClick={() => setActiveTab('daytoday')}
+              className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                activeTab === 'daytoday'
+                  ? 'bg-primary/20 text-primary border border-primary/30'
+                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+              }`}
+            >
+              Day-to-Day
+            </button>
+            <button
+              onClick={() => setActiveTab('learning')}
+              className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                activeTab === 'learning'
+                  ? 'bg-primary/20 text-primary border border-primary/30'
+                  : 'bg-white/5 text-white/60 hover:bg-white/10'
+              }`}
+            >
+              Learning Resources
             </button>
           </div>
 
-          {/* Career Path Tab */}
-          {activeTab === 'career' && (
+          {/* Core Concepts Tab */}
+          {activeTab === 'concepts' && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-6">
-                <User className="w-6 h-6 text-primary" />
-                <h2 className="text-2xl font-bold text-white">Career Path</h2>
+                <Target className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold text-white">Core Concepts: {inputSkill}</h2>
               </div>
 
-              {resourceData.careerPath.map((step, index) => (
-                <div key={index} className="flex gap-4 p-6 bg-white/5 rounded-2xl border border-white/10">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                    {index + 1}
+              {['Basic', 'Intermediate', 'Expert'].map(level => {
+                const concepts = resourceData.coreConcepts?.filter(c => c.level === level) || [];
+                if (concepts.length === 0) return null;
+
+                return (
+                  <div key={level} className="mb-6">
+                    <h3 className="text-xl font-semibold text-primary mb-4">{level} Level</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {concepts.map((concept, i) => (
+                        <div key={i} className="p-5 bg-white/5 rounded-xl border border-white/10">
+                          <h4 className="font-semibold text-white mb-2">{concept.concept}</h4>
+                          <p className="text-sm text-white/70 leading-relaxed">{concept.explanation}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{step.step}</h3>
-                    <p className="text-white/70">{step.description}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          {/* Resources Tab */}
-          {activeTab === 'resources' && (
+          {/* Certifications Tab */}
+          {activeTab === 'certifications' && (
             <div className="space-y-4">
-              {/* Core Concepts Websites */}
-              {resourceData.resources.coreConceptsWebsites &&
-               resourceData.resources.coreConceptsWebsites.length > 0 && (
-                <Accordion title="Core Concepts Websites" icon={BookOpen} count={resourceData.resources.coreConceptsWebsites.length} id="websites">
-                  <div className="grid md:grid-cols-2 gap-4 pt-4">
-                    {resourceData.resources.coreConceptsWebsites.map((site, i) => (
-                      <div key={i} className="p-4 bg-white/5 rounded-xl border border-white/10">
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-white">{site.name}</h4>
-                          {site.isFree && <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">Free</span>}
+              <div className="flex items-center gap-3 mb-6">
+                <Award className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold text-white">Certifications</h2>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {resourceData.certifications?.map((cert, i) => (
+                  <div key={i} className="p-5 bg-white/5 rounded-xl border border-white/10">
+                    <h4 className="font-semibold text-lg text-white mb-2">{cert.name}</h4>
+                    <ResourceLink url={cert.officialUrl} className="mb-3 inline-block">Official Site</ResourceLink>
+
+                    <div className="text-sm text-white/50 mb-1">Cost: <span className="text-white/70">{cert.cost}</span></div>
+
+                    {cert.studyGuidesAndDumps?.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-sm text-white/50 mb-1">Study Guides & Dumps</div>
+                        <div className="flex flex-wrap gap-2">
+                          {cert.studyGuidesAndDumps.map((url, j) => (
+                            <a key={j} href={url} target="_blank" rel="noopener noreferrer"
+                               className="px-2 py-0.5 bg-white/10 rounded text-xs hover:bg-white/20 transition-colors">
+                              Resource {j + 1} <ExternalLink className="w-3 h-3 inline" />
+                            </a>
+                          ))}
                         </div>
-                        <ResourceLink url={site.url}>Visit Website</ResourceLink>
                       </div>
-                    ))}
+                    )}
+
+                    {cert.faqs?.length > 0 && (
+                      <div className="mt-3">
+                        <div className="text-sm text-white/50 mb-1">FAQs</div>
+                        <ul className="text-xs text-white/70 space-y-0.5">
+                          {cert.faqs.map((faq, j) => (
+                            <li key={j}>• {faq}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                </Accordion>
-              )}
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Interview Prep Tab */}
+          {activeTab === 'interview' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-6">
+                <HelpCircle className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold text-white">Interview Preparation</h2>
+              </div>
+
+              <div className="space-y-3">
+                {resourceData.interviewPrep?.map((prep, i) => (
+                  <div key={i} className="p-5 bg-white/5 rounded-xl border border-white/10">
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-medium text-white">{prep.question}</h4>
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        prep.difficulty === 'Easy' ? 'bg-green-500/20 text-green-400' :
+                        prep.difficulty === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}>{prep.difficulty}</span>
+                    </div>
+                    <p className="text-sm text-white/70">{prep.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Day-to-Day Tab */}
+          {activeTab === 'daytoday' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-6">
+                <User className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold text-white">Day-to-Day Realities</h2>
+              </div>
+
+              <div className="space-y-4">
+                {resourceData.dayToDayRealWorld?.map((scenario, i) => (
+                  <div key={i} className="p-5 bg-white/5 rounded-xl border border-white/10">
+                    <h4 className="font-semibold text-white mb-3">{scenario.scenario}</h4>
+                    <div className="mb-2">
+                      <span className="text-sm text-red-400">Challenge: </span>
+                      <span className="text-sm text-white/70">{scenario.struggle}</span>
+                    </div>
+                    <div>
+                      <span className="text-sm text-green-400">Solution: </span>
+                      <span className="text-sm text-white/70">{scenario.solution}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Learning Resources Tab */}
+          {activeTab === 'learning' && resourceData.learningResources && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-6">
+                <BookOpen className="w-6 h-6 text-primary" />
+                <h2 className="text-2xl font-bold text-white">Learning Resources</h2>
+              </div>
 
               {/* YouTube Tutorials */}
-              {resourceData.resources.youtubeTutorials &&
-               resourceData.resources.youtubeTutorials.length > 0 && (
-                <Accordion title="YouTube Tutorials" icon={Youtube} count={resourceData.resources.youtubeTutorials.length} id="youtube">
-                  <div className="space-y-3 pt-4">
-                    {resourceData.resources.youtubeTutorials.map((video, i) => (
+              {resourceData.learningResources.bestYoutubeTutorials?.length > 0 && (
+                <Accordion title="Best YouTube Tutorials" icon={Youtube} count={resourceData.learningResources.bestYoutubeTutorials.length} id="youtube">
+                  <div className="space-y-2 pt-4">
+                    {resourceData.learningResources.bestYoutubeTutorials.map((video, i) => (
                       <a key={i} href={video.url} target="_blank" rel="noopener noreferrer"
-                         className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:border-primary/50 transition-all group">
+                         className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:border-primary/50 transition-all group">
                         <span className="text-white group-hover:text-primary transition-colors">{video.title}</span>
                         <ExternalLink className="w-4 h-4 text-white/50" />
                       </a>
@@ -346,18 +500,19 @@ Return ONLY the JSON object, nothing else.`,
               )}
 
               {/* GitHub Repos */}
-              {resourceData.resources.githubRepos &&
-               resourceData.resources.githubRepos.length > 0 && (
-                <Accordion title="GitHub Repositories" icon={Github} count={resourceData.resources.githubRepos.length} id="github">
-                  <div className="space-y-3 pt-4">
-                    {resourceData.resources.githubRepos.map((repo, i) => (
+              {resourceData.learningResources.githubRepos?.length > 0 && (
+                <Accordion title="GitHub Repositories" icon={Github} count={resourceData.learningResources.githubRepos.length} id="github">
+                  <div className="space-y-2 pt-4">
+                    {resourceData.learningResources.githubRepos.map((repo, i) => (
                       <a key={i} href={repo.url} target="_blank" rel="noopener noreferrer"
-                         className="block p-4 bg-white/5 rounded-xl border border-white/10 hover:border-primary/50 transition-all group">
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-white group-hover:text-primary transition-colors">{repo.name}</h4>
-                          <ExternalLink className="w-4 h-4 text-white/50" />
+                         className="block p-3 bg-white/5 rounded-lg border border-white/10 hover:border-primary/50 transition-all group">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-medium text-white group-hover:text-primary transition-colors">{repo.name}</h4>
+                            <p className="text-sm text-white/60 mt-0.5">{repo.description}</p>
+                          </div>
+                          <ExternalLink className="w-4 h-4 text-white/50 flex-shrink-0" />
                         </div>
-                        <p className="text-sm text-white/70">{repo.description}</p>
                       </a>
                     ))}
                   </div>
@@ -365,13 +520,12 @@ Return ONLY the JSON object, nothing else.`,
               )}
 
               {/* Cheatsheets */}
-              {resourceData.resources.cheatsheets &&
-               resourceData.resources.cheatsheets.length > 0 && (
-                <Accordion title="Cheatsheets" icon={FileText} count={resourceData.resources.cheatsheets.length} id="cheatsheets">
-                  <div className="grid md:grid-cols-2 gap-4 pt-4">
-                    {resourceData.resources.cheatsheets.map((sheet, i) => (
+              {resourceData.learningResources.cheatsheets?.length > 0 && (
+                <Accordion title="Cheatsheets" icon={FileText} count={resourceData.learningResources.cheatsheets.length} id="cheatsheets">
+                  <div className="grid md:grid-cols-2 gap-3 pt-4">
+                    {resourceData.learningResources.cheatsheets.map((sheet, i) => (
                       <a key={i} href={sheet.url} target="_blank" rel="noopener noreferrer"
-                         className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:border-primary/50 transition-all group">
+                         className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:border-primary/50 transition-all group">
                         <span className="text-white group-hover:text-primary transition-colors">{sheet.topic}</span>
                         <ExternalLink className="w-4 h-4 text-white/50" />
                       </a>
@@ -380,60 +534,37 @@ Return ONLY the JSON object, nothing else.`,
                 </Accordion>
               )}
 
-              {/* Certifications */}
-              {resourceData.resources.certifications &&
-               resourceData.resources.certifications.length > 0 && (
-                <Accordion title="Certifications" icon={Award} count={resourceData.resources.certifications.length} id="certifications">
-                  <div className="space-y-4 pt-4">
-                    {resourceData.resources.certifications.map((cert, i) => (
-                      <div key={i} className="p-5 bg-white/5 rounded-xl border border-white/10">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-semibold text-lg text-white">{cert.name}</h4>
-                          <ResourceLink url={cert.officialUrl}>Official Site</ResourceLink>
-                        </div>
-
-                        {cert.examDumpsOrStudyGuidesUrls && cert.examDumpsOrStudyGuidesUrls.length > 0 && (
-                          <div className="mb-4">
-                            <div className="text-sm text-white/50 mb-2">Study Materials</div>
-                            <div className="flex flex-wrap gap-2">
-                              {cert.examDumpsOrStudyGuidesUrls.map((url, j) => (
-                                <a key={j} href={url} target="_blank" rel="noopener noreferrer"
-                                   className="px-3 py-1 bg-white/10 rounded-lg text-sm hover:bg-white/20 transition-colors">
-                                  Resource {j + 1} <ExternalLink className="w-3 h-3 inline ml-1" />
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {cert.faqs && cert.faqs.length > 0 && (
-                          <div>
-                            <div className="text-sm text-white/50 mb-2">FAQs</div>
-                            <ul className="text-sm text-white/70 space-y-1">
-                              {cert.faqs.map((faq, j) => (
-                                <li key={j} className="flex gap-2">
-                                  <span className="text-white/30">•</span> {faq}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+              {/* Popular Websites */}
+              {resourceData.learningResources.popularWebsites?.length > 0 && (
+                <Accordion title="Popular Websites" icon={BookOpen} count={resourceData.learningResources.popularWebsites.length} id="websites">
+                  <div className="grid md:grid-cols-2 gap-3 pt-4">
+                    {resourceData.learningResources.popularWebsites.map((site, i) => (
+                      <div key={i} className="p-4 bg-white/5 rounded-lg border border-white/10">
+                        <h4 className="font-medium text-white mb-1">{site.name}</h4>
+                        <p className="text-xs text-white/60 mb-2">{site.description}</p>
+                        <ResourceLink url={site.url}>Visit Site</ResourceLink>
                       </div>
                     ))}
                   </div>
                 </Accordion>
               )}
 
-              {/* Interview Prep */}
-              {resourceData.resources.interviewPrep &&
-               resourceData.resources.interviewPrep.length > 0 && (
-                <Accordion title="Interview Preparation" icon={HelpCircle} count={resourceData.resources.interviewPrep.length} id="interview">
-                  <div className="space-y-3 pt-4">
-                    {resourceData.resources.interviewPrep.map((prep, i) => (
-                      <div key={i} className="p-4 bg-white/5 rounded-xl border border-white/10">
-                        <div className="font-medium text-white mb-2">{prep.question}</div>
-                        <div className="text-sm text-white/70">{prep.answer}</div>
-                      </div>
+              {/* Other Resources */}
+              {resourceData.learningResources.otherValuableResources?.length > 0 && (
+                <Accordion title="Other Valuable Resources" icon={Star} count={resourceData.learningResources.otherValuableResources.length} id="other">
+                  <div className="space-y-2 pt-4">
+                    {resourceData.learningResources.otherValuableResources.map((resource, i) => (
+                      <a key={i} href={resource.url} target="_blank" rel="noopener noreferrer"
+                         className="block p-3 bg-white/5 rounded-lg border border-white/10 hover:border-primary/50 transition-all group">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <span className="text-xs px-2 py-0.5 bg-white/10 rounded text-white/60">{resource.type}</span>
+                            <h4 className="font-medium text-white group-hover:text-primary transition-colors mt-1">{resource.title}</h4>
+                            <p className="text-sm text-white/60 mt-0.5">{resource.description}</p>
+                          </div>
+                          <ExternalLink className="w-4 h-4 text-white/50 flex-shrink-0" />
+                        </div>
+                      </a>
                     ))}
                   </div>
                 </Accordion>
