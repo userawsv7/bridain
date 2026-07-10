@@ -284,11 +284,14 @@ export function VoiceCoach() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: "Generate an interview question with 4 choices for " + skill,
+          message: "Generate an interview scenario question with 4 options for " + skill,
           context: `INTERVIEW MODE for ${skill}:
-Generate a realistic interview question with exactly 4 choices.
-Format: QUESTION: [question] CHOICES: 1) [choice] 2) [choice] 3) [choice] 4) [choice]
-Make it challenging but fair for a ${skill} role.`,
+Generate a realistic interview scenario in this exact format:
+IDEA: [Brief practical scenario description]
+SCENARIO: [Detailed situation with real context]
+OPTIONS: 1) [option] 2) [option] 3) [option] 4) [option]
+CORRECT: [number 1-4]
+Create challenging but fair scenarios for ${skill} role.`,
           skill: skill,
           mode: 'interview_question'
         })
@@ -298,45 +301,58 @@ Make it challenging but fair for a ${skill} role.`,
         const data = await response.json();
         const sanitizedResponse = sanitizeMessageText(data.response);
 
-        // Parse question and choices separately for clean UI
-        const parts = sanitizedResponse.split('CHOICES:');
-        const questionText = parts[0].replace('QUESTION:', '').trim();
-        const choicesText = parts[1] || '';
-        const choices = choicesText.match(/\d+\)\s*([^\n]+)/g)?.map(c => c.replace(/^\d+\)\s*/, '')) || [];
+        // Parse scenario components like ScenarioSimulator
+        const ideaMatch = sanitizedResponse.match(/IDEA:\s*([^\n]+)/i);
+        const scenarioMatch = sanitizedResponse.match(/SCENARIO:\s*([^\n]+(?:\n(?![A-Z]+:)[^\n]+)*)/i);
+        const optionsMatch = sanitizedResponse.match(/OPTIONS:\s*([\s\S]*?)(?=CORRECT:|$)/i);
+        const correctMatch = sanitizedResponse.match(/CORRECT:\s*(\d)/i);
 
+        const idea = ideaMatch ? ideaMatch[1].trim() : '';
+        const scenario = scenarioMatch ? scenarioMatch[1].trim() : '';
+        const optionsText = optionsMatch ? optionsMatch[1].trim() : '';
+        const correct = correctMatch ? parseInt(correctMatch[1]) - 1 : 0; // Convert to 0-indexed
+
+        const options = optionsText.match(/\d+\)\s*([^\n]+)/g)?.map(o => o.replace(/^\d+\)\s*/, '')) || [];
+
+        // Store the full response for context but display structured
         const questionMsg: Message = {
           id: Date.now(),
           text: sanitizedResponse,
           isUser: false,
-          questionText: questionText,
-          choices: choices.length > 0 ? choices : undefined
+          questionText: idea,
+          choices: options.length > 0 ? options : undefined,
+          // Store additional data for feedback
+          correctAnswer: correct.toString()
         };
         setMessages(prev => [...prev, questionMsg]);
         setCurrentQuestion(sanitizedResponse);
         setAwaitingAnswer(true);
 
-        // Speak only the question, not the choices
-        speak(questionText, 0.85);
+        // Speak the scenario idea
+        speak(idea, 0.85);
       }
     } catch (error) {
-      const fallbackQuestionText = `How would you handle a memory leak in a ${skill} application?`;
-      const fallbackChoices = [
-        "Restart the application periodically",
-        "Use memory profiling tools to identify the source",
-        "Increase the available memory",
-        "Ignore it until it crashes"
+      const fallbackIdea = `Debugging a production issue in ${skill}`;
+      const fallbackScenario = `A critical ${skill} issue has been reported in production. You need to diagnose and fix it.`;
+      const fallbackOptions = [
+        "Check logs and metrics first to identify the root cause",
+        "Immediately restart all services to clear the issue",
+        "Roll back to the previous deployment version",
+        "Add more resources to handle the load"
       ];
+      const fallbackCorrect = 0;
       const fallbackQuestion: Message = {
         id: Date.now(),
-        text: `QUESTION: ${fallbackQuestionText}\n\nCHOICES:\n1) ${fallbackChoices[0]}\n2) ${fallbackChoices[1]}\n3) ${fallbackChoices[2]}\n4) ${fallbackChoices[3]}`,
+        text: `IDEA: ${fallbackIdea}\nSCENARIO: ${fallbackScenario}\nOPTIONS:\n1) ${fallbackOptions[0]}\n2) ${fallbackOptions[1]}\n3) ${fallbackOptions[2]}\n4) ${fallbackOptions[3]}\nCORRECT: ${fallbackCorrect + 1}`,
         isUser: false,
-        questionText: fallbackQuestionText,
-        choices: fallbackChoices
+        questionText: fallbackIdea,
+        choices: fallbackOptions,
+        correctAnswer: fallbackCorrect.toString()
       };
       setMessages(prev => [...prev, fallbackQuestion]);
       setCurrentQuestion(fallbackQuestion.text);
       setAwaitingAnswer(true);
-      speak(fallbackQuestionText, 0.85);
+      speak(fallbackIdea, 0.85);
     }
 
     setIsLoading(false);
