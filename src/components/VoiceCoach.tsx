@@ -545,7 +545,7 @@ Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
         setMessages(prev => [...prev, feedbackMsg]);
 
         // Speak the feedback and WAIT for completion before next question
-        const speakText = `${status}. ${cleanContrast} ${cleanExplanation}`;
+        const speakText = `${status}. ${cleanDisplayContrast} ${cleanDisplayExplanation}`;
 
         // Set waiting state and speak with promise
         setIsWaitingForSpeech(true);
