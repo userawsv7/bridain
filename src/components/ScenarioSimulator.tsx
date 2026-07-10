@@ -13,6 +13,10 @@ interface ExplanationStructure {
   whyOthersWrong: string[];
   remember: string;
   bestPractice: string;
+  diagram?: {
+    title: string;
+    steps: { id: number; label: string; type: string }[];
+  };
 }
 
 interface Scenario {
