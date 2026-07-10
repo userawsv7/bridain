@@ -49,16 +49,6 @@ interface YouTubeVideoResource {
   description: string;
 }
 
-interface CertificationResource {
-  name: string;
-  provider: string;
-  officialPage: string;
-  practiceExams: { name: string; url: string }[];
-  studyGuides: { name: string; url: string }[];
-  examDumps: { name: string; url: string }[];
-  faqs: { question: string; answer: string }[];
-}
-
 interface CheatsheetResource {
   name: string;
   url: string;
