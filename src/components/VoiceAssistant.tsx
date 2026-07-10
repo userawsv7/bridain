@@ -5,9 +5,14 @@ import { Mic, MicOff, Send, Volume2, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
+interface DualText {
+  displayText: string;
+  audioScript: string;
+}
+
 interface Message {
   id: number;
-  text: string;
+  text: DualText | string;
   isUser: boolean;
   emoji: string;
 }
@@ -38,10 +43,11 @@ export function VoiceAssistant() {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
 
-  const speak = (text: string) => {
+  const speak = (text: DualText | string) => {
     if ('speechSynthesis' in window) {
       setIsSpeaking(true);
-      const utterance = new SpeechSynthesisUtterance(text);
+      const audioScript = typeof text === 'string' ? text : text.audioScript;
+      const utterance = new SpeechSynthesisUtterance(audioScript);
       utterance.onend = () => setIsSpeaking(false);
       window.speechSynthesis.speak(utterance);
     } else {
@@ -76,9 +82,12 @@ export function VoiceAssistant() {
 
       const data = await response.json();
 
+      const responseText: DualText = typeof data.response === 'string'
+        ? { displayText: data.response, audioScript: data.response }
+        : data.response;
       const aiMessage: Message = {
         id: Date.now() + 1,
-        text: data.response,
+        text: responseText,
         isUser: false,
         emoji: data.emoji
       };
@@ -183,7 +192,7 @@ export function VoiceAssistant() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{msg.emoji}</span>
                   <div className="space-y-1">
-                    <p className="text-sm leading-relaxed">{msg.text}</p>
+                    <p className="text-sm leading-relaxed">{typeof msg.text === 'string' ? msg.text : msg.text.displayText}</p>
                     {!msg.isUser && voiceEnabled && (
                       <button
                         onClick={() => speak(msg.text)}

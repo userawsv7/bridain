@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Send, Volume2, Loader2, Mic, MicOff, Award, Target, Book } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Send, Volume2, VolumeX, Loader2, Mic, MicOff, Award, Target, Book } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -46,15 +46,32 @@ export function ChatCoach() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [mode, setMode] = useState<'mcq' | 'chat'>('mcq');
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
+  const [speechRate, setSpeechRate] = useState(0.9);
   const [isListening, setIsListening] = useState(false);
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(0);
 
+  const voiceFlavors = {
+    Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
+    Amba: { name: 'Amba', pitch: 1.1, description: 'Gentle, melodic Indian goddess' },
+    Venus: { name: 'Venus', pitch: 1.2, description: 'Elegant, romantic Roman goddess' },
+    Ishtar: { name: 'Ishtar', pitch: 1.05, description: 'Strong, confident Babylonian goddess' },
+    Freyja: { name: 'Freyja', pitch: 1.12, description: 'Nurturing, wise Norse goddess' }
+  };
+
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
   const sanitizeForTTS = (text: string): string => {
     return text
-      .replace(/[*_`#]/g, '') // Remove markdown formatting characters
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/#{1,6}\s*/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/_{1,2}/g, '')
+      .replace(/`{1,3}/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   };
 
@@ -73,33 +90,99 @@ export function ChatCoach() {
       if (voice) return voice;
     }
 
-    // Then try any female voice indicators
-    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
+    // Then try any female voice indicators - strictly female only
+    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady', 'WOMAN', 'FEMALE'];
     for (const indicator of femaleIndicators) {
       const voice = voices.find(v => v.name.includes(indicator));
       if (voice) return voice;
     }
 
-    // Fallback to Google voices or first available
-    return voices.find(v => v.name.includes('Google')) || voices[0];
+    // Look for any voice that contains common female name patterns
+    const commonFemaleVoices = voices.filter(v =>
+      v.name.toLowerCase().includes('alice') ||
+      v.name.toLowerCase().includes('emma') ||
+      v.name.toLowerCase().includes('olivia') ||
+      v.name.toLowerCase().includes('sophia') ||
+      v.name.toLowerCase().includes('isabella') ||
+      v.name.toLowerCase().includes('mary') ||
+      v.name.toLowerCase().includes('patricia') ||
+      v.name.toLowerCase().includes('jennifer') ||
+      v.name.toLowerCase().includes('linda') ||
+      v.name.toLowerCase().includes('barbara')
+    );
+    if (commonFemaleVoices.length > 0) return commonFemaleVoices[0];
+
+    // Fallback to Google female voices specifically
+    const googleFemale = voices.find(v => v.name.includes('Google') && v.name.toLowerCase().includes('female'));
+    if (googleFemale) return googleFemale;
+
+    // Last resort: use any voice with explicitly female gender info if available
+    const anyVoice = voices.find(v => v.name.toLowerCase().includes('en') && !v.name.toLowerCase().includes('male'));
+    return anyVoice || voices.find(v => v.name.includes('Google')) || voices[0];
   };
 
-  const speak = (text: string) => {
-    if ('speechSynthesis' in window && voiceEnabled) {
-      window.speechSynthesis.cancel();
-      const cleanText = sanitizeForTTS(text);
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 0.9; // Natural, pleasant speaking pace
-      utterance.pitch = 1.1; // Natural female pitch
-      utterance.volume = 0.85; // Pleasant volume level
+  const speak = (text: string, rate: number = 0.9) => {
+    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
-      // Ensure strict female voice selection
-      const femaleVoice = selectPreferredFemaleVoice();
+    const cleanText = sanitizeForTTS(text);
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const flavor = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors];
+
+    // Always use female voice by default
+    utterance.rate = rate;
+    utterance.pitch = flavor.pitch;
+    utterance.volume = 0.85;
+
+    // Ensure female voice is selected
+    const selectFemaleVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      // Female voice priority list
+      const femaleVoices = ['Samantha', 'Karen', 'Victoria', 'Susan', 'Allison', 'Ava', 'Moira', 'Fiona', 'Veena', 'Tessa'];
+
+      // Try to find a female voice
+      for (const name of femaleVoices) {
+        const voice = voices.find(v => v.name.includes(name));
+        if (voice) return voice;
+      }
+
+      // Fallback to any female-indicated voice
+      const voice = voices.find(v =>
+        v.name.toLowerCase().includes('female') ||
+        v.name.toLowerCase().includes('woman') ||
+        v.name.includes('Google') && v.name.toLowerCase().includes('en')
+      );
+
+      return voice || voices[0];
+    };
+
+    // Load voices if needed
+    const setVoiceAndSpeak = () => {
+      const femaleVoice = selectFemaleVoice();
       if (femaleVoice) {
         utterance.voice = femaleVoice;
       }
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utteranceRef.current = utterance;
       window.speechSynthesis.speak(utterance);
+    };
+
+    // Handle voices not loaded yet
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.onvoiceschanged = setVoiceAndSpeak;
+    } else {
+      setVoiceAndSpeak();
     }
+  };
+
+  const toggleMute = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+    setIsMuted(!isMuted);
   };
 
   const generateMCQ = async (skill: string) => {
@@ -128,7 +211,11 @@ export function ChatCoach() {
 
       lines.forEach((line: string, index: number) => {
         if (line.startsWith('Q:')) question = line.replace('Q:', '').trim();
-        if (line.match(/^[A-D]\)/)) options.push(line);
+        if (line.match(/^[A-D]\)/)) {
+          // Clean up the option text and ensure proper spacing
+          const cleanOption = line.replace(/^[A-D]\)\s*/, '').trim();
+          options.push(cleanOption);
+        }
         if (line.startsWith('ANSWER:')) {
           const ans = line.replace('ANSWER:', '').trim().toUpperCase();
           correctAnswer = ans.charCodeAt(0) - 65; // Convert A->0, B->1, etc
@@ -227,8 +314,8 @@ export function ChatCoach() {
 
       setMessages(prev => [...prev, aiMessage]);
 
-      if (voiceEnabled) {
-        speak(data.response);
+      if (!isMuted) {
+        speak(data.response, speechRate);
       }
     } catch (error) {
       toast.error('Connection issue');
@@ -312,16 +399,46 @@ export function ChatCoach() {
           >
             <Book className="w-4 h-4" /> Chat & Learn
           </button>
-          <button
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
-            className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
-              voiceEnabled
-                ? 'bg-green-500/20 border border-green-500 text-green-500'
-                : 'bg-white/5 border border-white/10 hover:bg-white/10'
-            }`}
-          >
-            <Volume2 className="w-4 h-4" /> Voice {voiceEnabled ? 'ON' : 'OFF'}
-          </button>
+          {/* Voice Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleMute}
+              className={`px-3 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                isMuted
+                  ? 'bg-red-500/20 border border-red-500 text-red-500'
+                  : 'bg-white/5 border border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted ? 'Muted' : 'Voice'}
+            </button>
+
+            {/* Voice Flavor Selector */}
+            <select
+              value={selectedVoiceFlavor}
+              onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
+              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm focus:border-primary/50 outline-none"
+            >
+              {Object.keys(voiceFlavors).map(flavor => (
+                <option key={flavor} value={flavor}>{flavor}</option>
+              ))}
+            </select>
+
+            {/* Speech Rate Controls */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
+              <span className="text-xs text-white/60">Speed</span>
+              <input
+                type="range"
+                min="0.5"
+                max="1.5"
+                step="0.1"
+                value={speechRate}
+                onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                className="w-16 accent-primary"
+              />
+              <span className="text-xs font-mono w-8">{speechRate.toFixed(1)}x</span>
+            </div>
+          </div>
         </div>
 
         {/* Skills Selection */}
@@ -358,7 +475,39 @@ export function ChatCoach() {
                   : 'bg-white/10 border border-white/20'
               }`}>
                 <div className="space-y-3">
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-invert prose-sm max-w-none">
+                    {msg.text.split('\n').map((line, idx) => {
+                      // Handle headings
+                      if (line.startsWith('##')) {
+                        return <h3 key={idx} className="font-semibold mt-4 mb-2 text-white/90">{line.replace(/^##\s*/, '')}</h3>;
+                      }
+                      if (line.startsWith('#')) {
+                        return <h2 key={idx} className="font-semibold mt-4 mb-2 text-lg text-white">{line.replace(/^#\s*/, '')}</h2>;
+                      }
+                      // Handle bullet points
+                      if (line.startsWith('- ') || line.startsWith('• ')) {
+                        return <div key={idx} className="ml-4 text-white/80">• {line.replace(/^[-•]\s*/, '')}</div>;
+                      }
+                      // Handle numbered items
+                      if (/^\d+\./.test(line)) {
+                        return <div key={idx} className="ml-4 text-white/80">{line}</div>;
+                      }
+                      // Handle code blocks
+                      if (line.includes('```')) {
+                        return null; // Skip code markers, handle inline code below
+                      }
+                      // Handle empty lines
+                      if (!line.trim()) {
+                        return <div key={idx} className="h-2" />;
+                      }
+                      // Regular text with inline formatting
+                      const formattedLine = line
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>')
+                        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                        .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-white/10 rounded text-xs">$1</code>');
+                      return <div key={idx} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
+                    })}
+                  </div>
 
                   {/* MCQ Options */}
                   {msg.type === 'mcq' && msg.options && (
@@ -369,7 +518,7 @@ export function ChatCoach() {
                           onClick={() => handleAnswer(optIndex, index)}
                           className="w-full p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-all"
                         >
-                          {option}
+                          <span className="font-medium mr-2">{String.fromCharCode(65 + optIndex)})</span> {option}
                         </button>
                       ))}
                     </div>

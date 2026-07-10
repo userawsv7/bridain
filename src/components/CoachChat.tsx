@@ -12,24 +12,59 @@ interface Message {
 
 export function CoachChat() {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 0, text: "👋 Welcome to Coach Mode!\n\nI'll help you master ANY skill through:\n• Deep concept explanations\n• Day-to-day work fixes\n• Best practices & gotchas\n• Troubleshooting guidance\n\nWhat skill would you like to learn?", isUser: false }
+    { id: 0, text: "👋 Welcome to Coach Mode!\n\nI'll help you master any skill through deep concept explanations, practical fixes, best practices, and troubleshooting guidance. What skill would you like to learn?", isUser: false }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
+  const [speechRate, setSpeechRate] = useState(0.9);
+
+  const voiceFlavors = {
+    Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
+    Amba: { name: 'Amba', pitch: 1.1, description: 'Gentle, melodic Indian goddess' },
+    Venus: { name: 'Venus', pitch: 1.2, description: 'Elegant, romantic Roman goddess' },
+    Ishtar: { name: 'Ishtar', pitch: 1.05, description: 'Strong, confident Babylonian goddess' },
+    Freyja: { name: 'Freyja', pitch: 1.12, description: 'Nurturing, wise Norse goddess' }
+  };
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const sanitizeText = (text: string): string => {
+    return text
+      .replace(/#{1,6}\s*/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/_{1,2}/g, '')
+      .replace(/`{1,3}/g, '')
+      .replace(/^\s*[-•]\s*/gm, '• ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
+  const sanitizeForVoiceOnly = (text: string): string => {
+    return text
+      .replace(/#{1,6}\s*/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/_{1,2}/g, '')
+      .replace(/`{1,3}/g, '')
+      .replace(/^\s*[-•]\s*/gm, '')
+      .trim();
+  };
 
   const speak = (text: string, rate: number = 0.9) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
+    const cleanText = sanitizeText(text);
+
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = rate;
-    utterance.pitch = 1.0;
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = speechRate;
+    utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
     utterance.volume = 0.9;
 
     utterance.onend = () => setIsSpeaking(false);
@@ -103,14 +138,15 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
 
       if (response.ok) {
         const data = await response.json();
+        const sanitizedResponse = sanitizeText(data.response);
         const aiMsg: Message = {
           id: Date.now() + 1,
-          text: data.response,
+          text: sanitizedResponse,
           isUser: false
         };
         setMessages(prev => [...prev, aiMsg]);
         // Speak the response
-        speak(data.response, 0.9);
+        speak(sanitizeForVoiceOnly(data.response), 0.9);
       }
     } catch (error) {
       const aiMsg: Message = {
@@ -155,6 +191,33 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
               >
                 <MicOff className="w-4 h-4" />
               </button>
+            </div>
+          )}
+          {/* Voice Controls */}
+          {selectedSkill && (
+            <div className="flex items-center gap-2 ml-4">
+              <select
+                value={selectedVoiceFlavor}
+                onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
+                className="px-3 py-1 rounded-xl bg-white/5 border border-white/10 text-sm"
+              >
+                {Object.keys(voiceFlavors).map(flavor => (
+                  <option key={flavor} value={flavor}>{flavor}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-white/60">Rate:</span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={speechRate}
+                  onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                  className="w-20"
+                />
+                <span className="text-xs w-8">{speechRate.toFixed(1)}x</span>
+              </div>
             </div>
           )}
         </div>
@@ -207,7 +270,11 @@ Focus on being practical, actionable, and encouraging. Structure responses with 
                   className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`max-w-[85%] p-4 rounded-2xl ${msg.isUser ? 'bg-primary/20 border border-primary/30' : 'bg-white/10 border border-white/20'}`}>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words space-y-1">
+                    {sanitizeText(msg.text).split('\n').map((line, idx) => (
+                      <div key={idx}>{line || ' '}</div>
+                    ))}
+                  </div>
                   </div>
                 </motion.div>
               ))}

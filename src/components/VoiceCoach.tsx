@@ -4,6 +4,11 @@ import React, { useState, useRef } from 'react';
 import { Send, Loader2, Mic, MicOff, Volume2, VolumeX, Target, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+interface DualText {
+  displayText: string;
+  audioScript: string;
+}
+
 interface Message {
   id: number;
   text: string;
@@ -11,7 +16,15 @@ interface Message {
   isCorrect?: boolean;
   showAnswer?: boolean;
   correctAnswer?: string;
-  explanation?: string;
+  explanation?: DualText;
+  feedbackStatus?: 'Correct' | 'Wrong';
+  feedbackContrast?: DualText;
+  feedbackExplanation?: DualText;
+  // Separate question text from choices for clean display
+  questionText?: DualText;
+  choices?: string[];
+  answered?: boolean;
+  selectedAnswer?: string;
 }
 
 type Mode = 'learning' | 'interview';
@@ -28,8 +41,22 @@ export function VoiceCoach() {
   const [isMuted, setIsMuted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [awaitingAnswer, setAwaitingAnswer] = useState(false);
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
+  const [speechRate, setSpeechRate] = useState(0.85);
+  const [preferredVoice, setPreferredVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const [isWaitingForSpeech, setIsWaitingForSpeech] = useState(false);
+
+  const voiceFlavors = {
+    Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
+    Amba: { name: 'Amba', pitch: 1.1, description: 'Gentle, melodic Indian goddess' },
+    Venus: { name: 'Venus', pitch: 1.2, description: 'Elegant, romantic Roman goddess' },
+    Ishtar: { name: 'Ishtar', pitch: 1.05, description: 'Strong, confident Babylonian goddess' },
+    Freyja: { name: 'Freyja', pitch: 1.12, description: 'Nurturing, wise Norse goddess' }
+  };
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const selectFemaleVoice = () => {
     const voices = window.speechSynthesis.getVoices();
@@ -39,14 +66,50 @@ export function VoiceCoach() {
   };
 
   const sanitizeForTTS = (text: string): string => {
+    // Enhanced sanitization that properly handles all markdown formatting
     return text
-      .replace(/[*_`#]/g, '') // Remove markdown formatting characters
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers like ###, ##, #
+      .replace(/\*\*/g, '') // Remove all ** markers
+      .replace(/\*/g, '') // Remove all * markers
+      .replace(/_{1,2}/g, '') // Remove all underscores
+      .replace(/`{1,3}/g, '') // Remove all code markers
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
   };
 
-  const selectPreferredFemaleVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
+  const sanitizeMessageText = (text: string): string => {
+    // Remove markdown formatting while keeping clean text structure
+    return text
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers like ###, ##, #
+      .replace(/\*\*/g, '') // Remove all ** markers
+      .replace(/\*/g, '') // Remove all * markers
+      .replace(/_{1,2}/g, '') // Remove all underscores
+      .replace(/`{1,3}/g, '') // Remove all code markers
+      .replace(/\s{3,}/g, '\n\n') // Replace excessive whitespace with paragraph breaks
+      .trim();
+  };
+
+  const selectAndCacheFemaleVoice = async (): Promise<SpeechSynthesisVoice | null> => {
+    // Wait for voices to load if not already loaded
+    let voices = window.speechSynthesis.getVoices();
+
+    if (voices.length === 0) {
+      // Wait for voiceschanged event
+      await new Promise<void>((resolve) => {
+        const handleVoicesChanged = () => {
+          window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+          resolve();
+        };
+        window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+
+        // Fallback timeout
+        setTimeout(() => {
+          window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+          resolve();
+        }, 1000);
+      });
+      voices = window.speechSynthesis.getVoices();
+    }
 
     // Priority order for premium female voices
     const premiumVoices = [
@@ -68,43 +131,129 @@ export function VoiceCoach() {
     }
 
     // Fallback to Google voices or first available
-    return voices.find(v => v.name.includes('Google')) || voices[0];
+    return voices.find(v => v.name.includes('Google')) || voices[0] || null;
   };
 
-  const speak = (text: string, rate: number = 0.9) => {
+  // Initialize female voice on component mount
+  React.useEffect(() => {
+    const initVoice = async () => {
+      const voice = await selectAndCacheFemaleVoice();
+      if (voice) {
+        setPreferredVoice(voice);
+        setVoicesLoaded(true);
+      }
+    };
+
+    initVoice();
+  }, []);
+
+  // Speak with promise support for awaiting completion
+  const speakWithPromise = (text: string, rate: number = 0.9): Promise<void> => {
+    return new Promise((resolve) => {
+      if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        resolve();
+        return;
+      }
+
+      // Stop any current speech immediately
+      stopSpeaking();
+
+      // Clean text for pleasant TTS experience
+      const cleanText = sanitizeForTTS(text);
+
+      // Create a local function to select voice
+      const selectVoiceLocally = async (): Promise<SpeechSynthesisVoice | null> => {
+        let voices = window.speechSynthesis.getVoices();
+
+        if (voices.length === 0) {
+          await new Promise<void>((resolve) => {
+            const handleVoicesChanged = () => {
+              window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+              resolve();
+            };
+            window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+            setTimeout(() => {
+              window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+              resolve();
+            }, 1000);
+          });
+          voices = window.speechSynthesis.getVoices();
+        }
+
+        const premiumVoices = ['Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira', 'Tessa', 'Veena', 'Fiona', 'Serena'];
+        for (const voiceName of premiumVoices) {
+          const voice = voices.find(v => v.name.includes(voiceName));
+          if (voice) return voice;
+        }
+        const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
+        for (const indicator of femaleIndicators) {
+          const voice = voices.find(v => v.name.includes(indicator));
+          if (voice) return voice;
+        }
+        return voices.find(v => v.name.includes('Google')) || voices[0] || null;
+      };
+
+      selectVoiceLocally().then(voiceToUse => {
+        if (voiceToUse && !preferredVoice) {
+          setPreferredVoice(voiceToUse);
+        }
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.rate = speechRate;
+        utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
+        utterance.volume = 0.85;
+
+        const voice = voiceToUse || preferredVoice;
+        if (voice) {
+          utterance.voice = voice;
+        }
+
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          currentUtteranceRef.current = null;
+          resolve();
+        };
+        utterance.onerror = () => {
+          setIsSpeaking(false);
+          currentUtteranceRef.current = null;
+          resolve();
+        };
+
+        currentUtteranceRef.current = utterance;
+        utteranceRef.current = utterance;
+        setIsSpeaking(true);
+        window.speechSynthesis.speak(utterance);
+      });
+    });
+  };
+
+  const speak = async (text: string, rate: number = 0.9) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    // Clean text for pleasant TTS experience
-    const cleanText = sanitizeForTTS(text);
-
-    // Stop any current speech
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = rate; // 0.9 - natural, pleasant speaking pace
-    utterance.pitch = 1.1; // Natural female pitch
-    utterance.volume = 0.85; // Pleasant volume level
-
-    // Ensure strict female voice selection
-    const femaleVoice = selectPreferredFemaleVoice();
-    if (femaleVoice) {
-      utterance.voice = femaleVoice;
-    }
-
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    utteranceRef.current = utterance;
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
+    await speakWithPromise(text, rate);
   };
 
   const stopSpeaking = () => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    if (currentUtteranceRef.current) {
+      currentUtteranceRef.current.onend = null;
+      currentUtteranceRef.current.onerror = null;
+      currentUtteranceRef.current = null;
+    }
     setIsSpeaking(false);
   };
+
+  // Cleanup speech on component unmount
+  React.useEffect(() => {
+    return () => {
+      stopSpeaking();
+      // Remove any event listeners
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const toggleMute = () => {
     if (!isMuted) {
@@ -142,11 +291,14 @@ export function VoiceCoach() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: "Generate an interview question with 4 choices for " + skill,
+          message: "Generate an interview scenario question with 4 options for " + skill,
           context: `INTERVIEW MODE for ${skill}:
-Generate a realistic interview question with exactly 4 choices.
-Format: QUESTION: [question] CHOICES: 1) [choice] 2) [choice] 3) [choice] 4) [choice]
-Make it challenging but fair for a ${skill} role.`,
+Generate a realistic interview scenario in this exact format:
+IDEA: [Brief practical scenario description]
+SCENARIO: [Detailed situation with real context]
+OPTIONS: 1) [option] 2) [option] 3) [option] 4) [option]
+CORRECT: [number 1-4]
+Create challenging but fair scenarios for ${skill} role.`,
           skill: skill,
           mode: 'interview_question'
         })
@@ -154,28 +306,74 @@ Make it challenging but fair for a ${skill} role.`,
 
       if (response.ok) {
         const data = await response.json();
-        const questionMsg: Message = {
-          id: Date.now(),
-          text: data.response,
-          isUser: false
-        };
+        const sanitizedResponse = sanitizeMessageText(data.response);
+
+        // Parse scenario components like ScenarioSimulator
+        const ideaMatch = sanitizedResponse.match(/IDEA:\s*([^\n]+)/i);
+        const scenarioMatch = sanitizedResponse.match(/SCENARIO:\s*([^\n]+(?:\n(?![A-Z]+:)[^\n]+)*)/i);
+        const optionsMatch = sanitizedResponse.match(/OPTIONS:\s*([\s\S]*?)(?=CORRECT:|$)/i);
+        const correctMatch = sanitizedResponse.match(/CORRECT:\s*(\d)/i);
+
+        const idea = ideaMatch ? ideaMatch[1].trim() : '';
+        const scenario = scenarioMatch ? scenarioMatch[1].trim() : '';
+        const optionsText = optionsMatch ? optionsMatch[1].trim() : '';
+        const correct = correctMatch ? parseInt(correctMatch[1]) - 1 : 0; // Convert to 0-indexed
+
+        const options = optionsText.match(/\d+\)\s*([^\n]+)/g)?.map(o => o.replace(/^\d+\)\s*/, '')) || [];
+
+        // Store the full response for context but display structured
+        // Create dual-text objects for display and audio
+          const ideaDual: DualText = {
+            displayText: idea,
+            audioScript: idea
+              .replace(/API/g, 'A P I')
+              .replace(/URL/g, 'U R L')
+              .replace(/AWS/g, 'A W S')
+              .replace(/CI\/CD/g, 'C I and C D')
+              .replace(/\/\//g, ' slash slash ')
+              .replace(/\//g, ' slash ')
+              .replace(/_/g, ' underscore ')
+              .replace(/-/g, ' dash ')
+          };
+
+          const questionMsg: Message = {
+            id: Date.now(),
+            text: sanitizedResponse,
+            isUser: false,
+            questionText: ideaDual,
+            choices: options.length > 0 ? options : undefined,
+            // Store correct answer TEXT (not index) for proper feedback display
+            correctAnswer: options[correct] || ''
+          };
         setMessages(prev => [...prev, questionMsg]);
-        setCurrentQuestion(data.response);
+        setCurrentQuestion(sanitizedResponse);
         setAwaitingAnswer(true);
 
-        // Speak the question
-        speak(data.response.split('CHOICES:')[0], 0.85);
+        // Speak the scenario idea
+        speak(idea, 0.85);
       }
     } catch (error) {
+      const fallbackIdea = `Debugging a production issue in ${skill}`;
+      const fallbackScenario = `A critical ${skill} issue has been reported in production. You need to diagnose and fix it.`;
+      const fallbackOptions = [
+        "Check logs and metrics first to identify the root cause",
+        "Immediately restart all services to clear the issue",
+        "Roll back to the previous deployment version",
+        "Add more resources to handle the load"
+      ];
+      const fallbackCorrect = 0;
       const fallbackQuestion: Message = {
         id: Date.now(),
-        text: `QUESTION: How would you handle a memory leak in a ${skill} application?\n\nCHOICES:\n1) Restart the application periodically\n2) Use memory profiling tools to identify the source\n3) Increase the available memory\n4) Ignore it until it crashes`,
-        isUser: false
+        text: `IDEA: ${fallbackIdea}\nSCENARIO: ${fallbackScenario}\nOPTIONS:\n1) ${fallbackOptions[0]}\n2) ${fallbackOptions[1]}\n3) ${fallbackOptions[2]}\n4) ${fallbackOptions[3]}\nCORRECT: ${fallbackCorrect + 1}`,
+        isUser: false,
+        questionText: { displayText: fallbackIdea, audioScript: fallbackIdea },
+        choices: fallbackOptions,
+        correctAnswer: fallbackOptions[fallbackCorrect]
       };
       setMessages(prev => [...prev, fallbackQuestion]);
       setCurrentQuestion(fallbackQuestion.text);
       setAwaitingAnswer(true);
-      speak("How would you handle a memory leak in a " + skill + " application?", 0.85);
+      speak(fallbackIdea, 0.85);
     }
 
     setIsLoading(false);
@@ -183,6 +381,14 @@ Make it challenging but fair for a ${skill} role.`,
 
   const handleAnswer = async (answer: string) => {
     if (!selectedSkill || !awaitingAnswer) return;
+
+    // Mark the question as answered and store the selected answer
+    setMessages(prev => prev.map(msg => {
+      if (msg.choices && !msg.answered) {
+        return { ...msg, answered: true, selectedAnswer: answer };
+      }
+      return msg;
+    }));
 
     const userMsg: Message = {
       id: Date.now(),
@@ -203,13 +409,19 @@ Make it challenging but fair for a ${skill} role.`,
 Previous question: ${currentQuestion}
 User's answer: ${answer}
 
-Provide feedback:
-1. Is their answer correct? (Yes/No)
-2. If wrong, explain the correct answer
-3. Give a brief explanation
-4. Move to next question
+CRITICAL REQUIREMENTS:
+1. Generate a detailed, beginner-friendly explanation (3-4 sentences minimum)
+2. Explain WHY the correct answer is right, not just state facts
+3. Explain why common misconceptions lead to wrong choices
+4. Use simple language suitable for someone learning ${selectedSkill}
 
-Format: CORRECT/INCORRECT: [explanation] NEXT: [next question with choices]`,
+Format MUST be:
+
+STATUS: Correct or Wrong
+CONTRAST: The correct answer is "[ACTUAL TEXT OF CORRECT ANSWER]". Your answer was "[ACTUAL TEXT OF USER'S ANSWER]".
+EXPLANATION: [Detailed 3-4 sentence explanation explaining the concept, why the correct answer works, and why other options are wrong. Be thorough and educational.]
+
+Then ask the next interview question with 4 choices numbered 1) 2) 3) 4).`,
           skill: selectedSkill,
           mode: 'interview_feedback'
         })
@@ -217,27 +429,133 @@ Format: CORRECT/INCORRECT: [explanation] NEXT: [next question with choices]`,
 
       if (response.ok) {
         const data = await response.json();
-        const isCorrect = data.response.toLowerCase().includes('correct: yes') ||
-                         data.response.toLowerCase().includes('correct answer');
+
+        // Parse the structured feedback from the API response
+        const responseText = data.response;
+
+        // Parse STATUS - always extract Correct or Wrong
+        const statusMatch = responseText.match(/STATUS:\s*(Correct|Wrong)/i);
+        const status = (statusMatch ? statusMatch[1] : (responseText.toLowerCase().includes('correct') ? 'Correct' : 'Wrong')) as 'Correct' | 'Wrong';
+        const isCorrect = status === 'Correct';
+
+        // Parse CONTRAST - MUST extract the correct answer and create dual output
+        let displayContrast = '';
+        const contrastMatch = responseText.match(/CONTRAST:\s*([^\n]+(?:\n[^\n]+)*?)(?=\nEXPLANATION:|$)/i);
+        if (contrastMatch) {
+          displayContrast = contrastMatch[1].trim().replace(/\n/g, ' ');
+        }
+
+        // Parse EXPLANATION - MUST extract the explanation and create dual output
+        let displayExplanation = '';
+        const explanationMatch = responseText.match(/EXPLANATION:\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|$)/i);
+        if (explanationMatch) {
+          // Limit to 3 sentences max
+          displayExplanation = explanationMatch[1].trim()
+            .replace(/\n/g, ' ')
+            .split(/[.!?]+/)
+            .slice(0, 3)
+            .join('. ')
+            .trim();
+          if (displayExplanation && !displayExplanation.endsWith('.')) displayExplanation += '.';
+        }
+
+        // Strict fallback - always show correct vs user's answer with actual text
+        if (!displayContrast) {
+          const lastQuestionMsg = messages.slice().reverse().find(m => m.choices);
+          const correctText = lastQuestionMsg?.correctAnswer || "the correct answer";
+          displayContrast = `The correct answer is "${correctText}". Your answer was "${answer}".`;
+        }
+        if (!displayExplanation) {
+          displayExplanation = "Understanding the underlying concepts requires careful consideration of the practical implications and best practices in this domain.";
+        }
+
+        // Clean the text to remove any markdown/special characters for display
+        const cleanDisplayContrast = displayContrast.replace(/[\*\_\`\#]/g, '').trim();
+        const cleanDisplayExplanation = displayExplanation.replace(/[\*\_\`\#]/g, '').trim();
+
+        // Create optimized audio scripts by correcting acronyms and symbols
+        const createAudioScript = (text: string): string => {
+          return text
+            .replace(/API/g, 'A P I')
+            .replace(/URL/g, 'U R L')
+            .replace(/AWS/g, 'A W S')
+            .replace(/CI\/CD/g, 'C I and C D')
+            .replace(/\/\//g, ' slash slash ')
+            .replace(/\//g, ' slash ')
+            .replace(/_/g, ' underscore ')
+            .replace(/-/g, ' dash ')
+            .replace(/HTTP/g, 'H T T P')
+            .replace(/HTTPS/g, 'H T T P S')
+            .replace(/JSON/g, 'J S O N')
+            .replace(/XML/g, 'X M L')
+            .replace(/SQL/g, 'S Q L')
+            .replace(/HTML/g, 'H T M L')
+            .replace(/CSS/g, 'C S S')
+            .replace(/JS/g, 'J S')
+            .replace(/TS/g, 'T S')
+            .replace(/DB/g, 'D B')
+            .replace(/UI/g, 'U I')
+            .replace(/UX/g, 'U X')
+            .replace(/SDK/g, 'S D K')
+            .replace(/IDE/g, 'I D E')
+            .replace(/VPN/g, 'V P N')
+            .replace(/DNS/g, 'D N S')
+            .replace(/SSH/g, 'S S H')
+            .replace(/FTP/g, 'F T P')
+            .replace(/TCP/g, 'T C P')
+            .replace(/UDP/g, 'U D P')
+            .replace(/REST/g, 'R E S T')
+            .replace(/SOAP/g, 'S O A P')
+            .replace(/gRPC/g, 'g R P C')
+            .replace(/OAuth/g, 'O Auth')
+            .replace(/JWT/g, 'J W T')
+            .replace(/SSL/g, 'S S L')
+            .replace(/TLS/g, 'T L S')
+            .replace(/CDN/g, 'C D N')
+            .replace(/S3/g, 'S three');
+        };
+
+        const audioContrast = createAudioScript(cleanDisplayContrast);
+        const audioExplanation = createAudioScript(cleanDisplayExplanation);
+
+        // Create dual-text objects
+        const contrastDual: DualText = {
+          displayText: cleanDisplayContrast,
+          audioScript: audioContrast
+        };
+        const explanationDual: DualText = {
+          displayText: cleanDisplayExplanation,
+          audioScript: audioExplanation
+        };
+
+        // Extract the actual correct answer text from the contrast output
+        const textAnswerMatch = cleanDisplayContrast.match(/correct answer is\s*[""]([^""]+)[""]/i);
+        const correctAnswerText = textAnswerMatch ? textAnswerMatch[1].trim() : cleanDisplayContrast;
 
         const feedbackMsg: Message = {
           id: Date.now() + 1,
-          text: data.response,
+          text: `${status}: ${cleanDisplayContrast} ${cleanDisplayExplanation}`,
           isUser: false,
-          isCorrect: isCorrect
+          isCorrect: isCorrect,
+          feedbackStatus: status,
+          feedbackContrast: contrastDual,
+          feedbackExplanation: explanationDual,
+          correctAnswer: correctAnswerText
         };
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak the feedback
-        const speechText = data.response.split('NEXT:')[0] || data.response;
-        speak(speechText, 0.9);
+        // Speak the feedback and WAIT for completion before next question
+        const speakText = `${status}. ${cleanDisplayContrast} ${cleanDisplayExplanation}`;
 
-        // Ask next question after feedback
-        setTimeout(() => {
-          if (selectedSkill) {
-            askInterviewQuestion(selectedSkill);
-          }
-        }, 3000);
+        // Set waiting state and speak with promise
+        setIsWaitingForSpeech(true);
+        await speakWithPromise(speakText, 0.9);
+        setIsWaitingForSpeech(false);
+
+        // Only after speech completes, move to next question
+        if (selectedSkill) {
+          askInterviewQuestion(selectedSkill);
+        }
       }
     } catch (error) {
       const errorMsg: Message = {
@@ -246,9 +564,13 @@ Format: CORRECT/INCORRECT: [explanation] NEXT: [next question with choices]`,
         isUser: false
       };
       setMessages(prev => [...prev, errorMsg]);
-      setTimeout(() => {
-        if (selectedSkill) askInterviewQuestion(selectedSkill);
-      }, 2000);
+
+      // Wait for speech to complete before next question
+      setIsWaitingForSpeech(true);
+      await speakWithPromise("Good effort! Let me ask another question...", 0.9);
+      setIsWaitingForSpeech(false);
+
+      if (selectedSkill) askInterviewQuestion(selectedSkill);
     }
 
     setIsLoading(false);
@@ -408,6 +730,31 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                 >
                   <MicOff className="w-4 h-4" />
                 </button>
+                {/* Voice Controls */}
+                <div className="flex items-center gap-2 ml-2">
+                  <select
+                    value={selectedVoiceFlavor}
+                    onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
+                    className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs"
+                  >
+                    {Object.keys(voiceFlavors).map(flavor => (
+                      <option key={flavor} value={flavor}>{flavor}</option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-white/60">Rate:</span>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="2.0"
+                      step="0.1"
+                      value={speechRate}
+                      onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                      className="w-16"
+                    />
+                    <span className="text-xs w-8">{speechRate.toFixed(1)}x</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -420,12 +767,85 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] p-4 rounded-2xl ${
-                    msg.isUser ? 'bg-primary/20 border border-primary/30' :
-                    msg.isCorrect !== undefined ? (msg.isCorrect ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30') :
-                    'bg-white/10 border border-white/20'
-                  }`}>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  <div
+                    className={`max-w-[85%] p-4 rounded-2xl cursor-pointer transition-all hover:bg-white/20 ${
+                      msg.isUser ? 'bg-primary/20 border border-primary/30' :
+                      msg.isCorrect !== undefined ? (msg.isCorrect ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30') :
+                      'bg-white/10 border border-white/20'
+                    }`}
+                    onClick={() => !msg.isUser && speak(sanitizeMessageText(msg.text), 0.85)}
+                  >
+                    {/* Structured Feedback Display - Show correct answer with explanation */}
+                    {msg.feedbackStatus && msg.feedbackContrast && msg.feedbackExplanation ? (
+                      <div className="space-y-3">
+                        {/* Status Badge */}
+                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          msg.feedbackStatus === 'Correct'
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        }`}>
+                          {msg.feedbackStatus}
+                        </div>
+
+                        {/* Contrast Section - Shows which choice is correct */}
+                        <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                          <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Correct Choice Revealed</div>
+                          <p className="text-sm text-white/90 font-medium">{msg.feedbackContrast?.displayText}</p>
+                        </div>
+
+                        {/* Explanation Section */}
+                        <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                          <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Why This Is Correct</div>
+                          <p className="text-sm text-white/90 leading-relaxed">{msg.feedbackExplanation?.displayText}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Display only question text if available, hide raw choices text */
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {(msg.questionText?.displayText) || sanitizeMessageText(msg.text)}
+                      </p>
+                    )}
+
+                    {/* MCQ Radio Buttons for Interview Mode - Keep visible after answering, only disable */}
+                    {mode === 'interview' && !msg.isUser && msg.choices && (
+                      <div className="mt-4 space-y-2">
+                        {msg.choices.map((choice, index) => {
+                          const isAnswered = msg.answered === true;
+                          const isSelected = msg.selectedAnswer === choice;
+                          const isCorrect = isAnswered && msg.correctAnswer === choice;
+
+                          return (
+                            <label
+                              key={index}
+                              className={`flex items-center gap-2 p-2 rounded-lg transition-all ${
+                                isAnswered
+                                  ? isCorrect
+                                    ? 'bg-green-500/20 border border-green-500/50'
+                                    : isSelected
+                                      ? 'bg-red-500/20 border border-red-500/50'
+                                      : 'bg-white/5'
+                                  : 'bg-white/5 hover:bg-white/10 cursor-pointer'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`interview-answer-${msg.id}`}
+                                value={choice}
+                                checked={isSelected}
+                                onChange={(e) => !isAnswered && handleAnswer(e.target.value)}
+                                disabled={isAnswered}
+                                className="text-primary"
+                              />
+                              <span className="text-sm">
+                                {index + 1}. {choice}
+                                {isAnswered && isCorrect && " ✓"}
+                                {isAnswered && isSelected && !isCorrect && " ✗"}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}

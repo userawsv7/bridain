@@ -14,6 +14,11 @@ interface Message {
   correctAnswer?: number;
   explanation?: string;
   isCorrect?: boolean;
+  coreExplanation?: string;
+  commonPitfall?: string;
+  proTip?: string;
+  displayText?: string;
+  audioScript?: string;
 }
 
 export function ScenarioGame() {
@@ -28,6 +33,17 @@ export function ScenarioGame() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number | null>(null);
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
+  const [speechRate, setSpeechRate] = useState(0.85);
+  const [currentChoices, setCurrentChoices] = useState<string[]>([]);
+
+  const voiceFlavors = {
+    Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
+    Amba: { name: 'Amba', pitch: 1.1, description: 'Gentle, melodic Indian goddess' },
+    Venus: { name: 'Venus', pitch: 1.2, description: 'Elegant, romantic Roman goddess' },
+    Ishtar: { name: 'Ishtar', pitch: 1.05, description: 'Strong, confident Babylonian goddess' },
+    Freyja: { name: 'Freyja', pitch: 1.12, description: 'Nurturing, wise Norse goddess' }
+  };
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
@@ -41,9 +57,17 @@ export function ScenarioGame() {
 
   const sanitizeForTTS = (text: string): string => {
     return text
-      .replace(/[*_`#]/g, '') // Remove markdown formatting characters
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers
+      .replace(/\*\*{1,2}/g, '') // Remove bold markers
+      .replace(/\*{1,2}/g, '') // Remove remaining asterisks
+      .replace(/[`_]/g, '') // Remove code/underscore markers
       .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '') // Remove emojis
       .trim();
+  };
+
+  const sanitizeMessageText = (text: string): string => {
+    return sanitizeForTTS(text);
   };
 
   const selectPreferredFemaleVoice = () => {
@@ -61,18 +85,47 @@ export function ScenarioGame() {
       if (voice) return voice;
     }
 
-    // Then try any female voice indicators
-    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
+    // Then try any female voice indicators - strictly female only
+    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady', 'WOMAN', 'FEMALE'];
     for (const indicator of femaleIndicators) {
       const voice = voices.find(v => v.name.includes(indicator));
       if (voice) return voice;
     }
 
-    // Fallback to Google voices or first available
-    return voices.find(v => v.name.includes('Google')) || voices[0];
+    // Look for any voice that contains common female name patterns
+    const commonFemaleVoices = voices.filter(v =>
+      v.name.toLowerCase().includes('alice') ||
+      v.name.toLowerCase().includes('emma') ||
+      v.name.toLowerCase().includes('olivia') ||
+      v.name.toLowerCase().includes('sophia') ||
+      v.name.toLowerCase().includes('isabella') ||
+      v.name.toLowerCase().includes('mary') ||
+      v.name.toLowerCase().includes('patricia') ||
+      v.name.toLowerCase().includes('jennifer') ||
+      v.name.toLowerCase().includes('linda') ||
+      v.name.toLowerCase().includes('barbara')
+    );
+    if (commonFemaleVoices.length > 0) return commonFemaleVoices[0];
+
+    // Fallback to Google female voices specifically
+    const googleFemale = voices.find(v => v.name.includes('Google') && v.name.toLowerCase().includes('female'));
+    if (googleFemale) return googleFemale;
+
+    // Last resort: use any voice with explicitly female gender info if available
+    const anyVoice = voices.find(v => v.name.toLowerCase().includes('en') && !v.name.toLowerCase().includes('male'));
+    return anyVoice || voices.find(v => v.name.includes('Google')) || voices[0];
   };
 
-  const speak = (text: string, rate: number = 0.9, onComplete?: () => void) => {
+  // Update speech synthesis whenever rate or voice changes
+  React.useEffect(() => {
+    if (isSpeaking && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      // Stop current speech and restart with new settings
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, [speechRate, selectedVoiceFlavor]);
+
+  const speak = (text: string, rate?: number, onComplete?: () => void) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     // Clean text for pleasant TTS experience
@@ -81,8 +134,8 @@ export function ScenarioGame() {
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = rate; // 0.9 - natural, pleasant speaking pace
-    utterance.pitch = 1.1; // Natural female pitch
+    utterance.rate = rate !== undefined ? rate : speechRate; // Use current rate dynamically
+    utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
     utterance.volume = 0.85; // Pleasant volume level
 
     // Ensure strict female voice selection
@@ -219,10 +272,12 @@ Include the CORRECT answer number as: CORRECT: [number]`,
         const parsed = parseScenario(data.response);
         console.log('Parsed:', parsed); // Debug log
 
-        // Ensure we have content to show
-        let scenarioText = parsed.scenario || data.response || 'A technical scenario for you to solve:';
-    // Filter out CORRECT markers from displayed text
-    scenarioText = scenarioText.replace(/CORRECT:\s*\d/i, '').trim();
+        // Ensure we have content to show - sanitize special characters
+        let scenarioText = (parsed.scenario || data.response || 'A technical scenario for you to solve:')
+          .replace(/CORRECT:\s*\d/i, '')
+          .replace(/\*/g, '') // Remove asterisks
+          .replace(/#{1,6}\s*/g, '') // Remove markdown headers
+          .trim();
 
         const scenarioMsg: Message = {
           id: Date.now(),
@@ -239,6 +294,7 @@ Include the CORRECT answer number as: CORRECT: [number]`,
           choices: parsed.choices
         };
 
+        setCurrentChoices(parsed.choices);
         setMessages(prev => [...prev, scenarioMsg, choicesMsg]);
 
         // Speak the scenario
@@ -299,8 +355,20 @@ Include the CORRECT answer number as: CORRECT: [number]`,
 User selected option ${choiceIndex + 1}, correct answer was option ${correctAnswerIndex}.
 ${isCorrect ? 'User was correct!' : 'User was wrong.'}
 
-Provide brief feedback and generate the next scenario continuing this storyline.
-Include CORRECT: [number] for the new scenario.`,
+You MUST respond with ONLY a JSON object in this exact format:
+{
+  "coreExplanation": "2-3 concise sentences explaining WHY the correct answer works technically. Be precise and factual only.",
+  "commonPitfall": "Brief description of the usual mistake people make in this scenario",
+  "proTip": "How to avoid the common pitfall",
+  "displayText": "Clean text for UI - no markdown, no special characters",
+  "audioScript": "TTS text - space out acronyms like A P I, replace symbols with words",
+  "nextCorrectAnswer": [number 1-4]
+}
+
+Rules:
+- coreExplanation: Maximum 2-3 sentences explaining the exact technical mechanism
+- No fluff, guessing, or hallucinations - only accurate technical explanations
+- Keep responses concise and scannable`,
           skill: selectedSkill,
           mode: 'scenario_feedback',
           previousChoice: choiceText
@@ -310,59 +378,88 @@ Include CORRECT: [number] for the new scenario.`,
       if (response.ok) {
         const data = await response.json();
 
-        // Use the API response as the explanation
-        const explanation = data.response || (isCorrect
-          ? "Great decision! This shows you understand the proper approach."
-          : `Option ${correctAnswerIndex} is the recommended solution.`);
+        // Try to parse JSON response from LLM
+        let structuredFeedback: any = null;
+        try {
+          const jsonMatch = data.response.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            structuredFeedback = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          console.log('Could not parse JSON feedback:', e);
+        }
 
-        // Create feedback message showing the correct answer with proper explanation
+        // Get actual choice texts
+        const correctChoiceText = correctAnswerIndex !== null
+          ? currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`
+          : `Option ${correctAnswerIndex}`;
+
+        // Create feedback message with structured data
         const feedbackMsg: Message = {
           id: Date.now() + 1,
           text: isCorrect
-            ? `✅ Correct! Option ${correctAnswerIndex} was the right choice.`
-            : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
+            ? `✅ Correct! ${correctChoiceText}`
+            : `❌ Wrong! The correct answer is: ${correctChoiceText}`,
           isUser: false,
           selectedAnswer: choiceIndex,
-          correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0, // Convert to 0-indexed for display
+          correctAnswer: correctAnswerIndex !== null ? correctAnswerIndex - 1 : 0,
           isCorrect: isCorrect,
-          explanation: explanation
+          coreExplanation: structuredFeedback?.coreExplanation,
+          commonPitfall: structuredFeedback?.commonPitfall,
+          proTip: structuredFeedback?.proTip,
+          displayText: structuredFeedback?.displayText,
+          audioScript: structuredFeedback?.audioScript,
+          choices: currentChoices, // Keep choices visible
+          explanation: data.response // fallback
         };
 
         setMessages(prev => [...prev, feedbackMsg]);
 
-        // Speak the feedback with explanation and wait for completion
-        const feedbackText = feedbackMsg.text + ". " + explanation;
-        speak(feedbackText, isCorrect ? 0.9 : 0.85, () => {
-          // Generate next scenario only after speech completes
-          if (selectedSkill) {
-            generateScenario(selectedSkill);
-          }
+        // Speak using audioScript if available, otherwise use the actual correct answer text
+        const speakText = structuredFeedback?.audioScript ||
+          (isCorrect ? `Correct! ${correctChoiceText}` : `Wrong. The correct answer is: ${correctChoiceText}`);
+
+        speak(speakText, 0.9, () => {
+          // Auto-advance to next scenario only after voice completes
+          setTimeout(() => {
+            if (selectedSkill) {
+              generateScenario(selectedSkill);
+            }
+          }, 500); // Small delay after audio ends
         });
       }
     } catch (error) {
+      const correctChoiceText = correctAnswerIndex !== null
+        ? currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`
+        : `Option ${correctAnswerIndex}`;
+      const fallbackExplanation = isCorrect
+        ? "Great decision! This approach works correctly."
+        : `${correctChoiceText} is correct because it properly addresses the issue at its source.`;
+
       const feedbackMsg: Message = {
         id: Date.now() + 1,
         text: isCorrect
-          ? `✅ Correct! Option ${correctAnswerIndex} was the right choice.`
-          : `❌ Wrong! The correct answer is option ${correctAnswerIndex}.`,
+          ? `✅ Correct! ${correctChoiceText}`
+          : `❌ Wrong! The correct answer is: ${correctChoiceText}`,
         isUser: false,
         selectedAnswer: choiceIndex,
-        correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0,
+        correctAnswer: correctAnswerIndex !== null ? correctAnswerIndex - 1 : 0,
         isCorrect: isCorrect,
-        explanation: isCorrect
-          ? "Great decision!"
-          : `Option ${correctAnswerIndex} addresses the root cause systematically.`
+        coreExplanation: fallbackExplanation,
+        commonPitfall: "Rushing to apply a fix without understanding the root cause",
+        proTip: "Always analyze the situation thoroughly before taking action",
+        choices: currentChoices // Keep choices visible
       };
 
       setMessages(prev => [...prev, feedbackMsg]);
-      speak(feedbackMsg.text + ". " + (feedbackMsg.explanation || ""), isCorrect ? 0.9 : 0.85);
-
-      // Generate next scenario after showing the explanation (longer delay for reading)
-      setTimeout(() => {
-        if (selectedSkill) {
-          generateScenario(selectedSkill);
-        }
-      }, 4000);
+      speak(feedbackMsg.text + ". " + fallbackExplanation, isCorrect ? 0.9 : 0.85, () => {
+        // Auto-advance after fallback speech completes
+        setTimeout(() => {
+          if (selectedSkill) {
+            generateScenario(selectedSkill);
+          }
+        }, 500);
+      });
     }
 
     // Update score
@@ -408,6 +505,39 @@ Include CORRECT: [number] for the new scenario.`,
               <button onClick={resetGame} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10">
                 <RotateCcw className="w-4 h-4" />
               </button>
+              {/* Voice Controls */}
+              <div className="flex items-center gap-2 ml-2">
+                <select
+                  value={selectedVoiceFlavor}
+                  onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
+                  className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs"
+                >
+                  {Object.keys(voiceFlavors).map(flavor => (
+                    <option key={flavor} value={flavor}>{flavor}</option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-white/60">Rate:</span>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={speechRate}
+                    onChange={(e) => {
+                      const newRate = parseFloat(e.target.value);
+                      setSpeechRate(newRate);
+                      // If currently speaking, restart with new rate
+                      if (isSpeaking && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                        window.speechSynthesis.cancel();
+                        // Re-speak current text with new rate (handled by useEffect)
+                      }
+                    }}
+                    className="w-16"
+                  />
+                  <span className="text-xs w-8">{speechRate.toFixed(1)}x</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -450,44 +580,124 @@ Include CORRECT: [number] for the new scenario.`,
                   <div className={`max-w-[85%] p-4 rounded-2xl ${msg.isUser ? 'bg-primary/20 border border-primary/30' : 'bg-white/10 border border-white/20'}`}>
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
 
-                    {/* Choice buttons */}
-                    {msg.type === 'choices' && msg.choices && (
+                    {/* Choice buttons - always shown, disabled after selection */}
+                    {(msg.type === 'choices' || msg.choices) && msg.choices && (
                       <div className="mt-4 space-y-2">
-                        {msg.choices.map((choice, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleChoice(idx, choice)}
-                            className="w-full text-left p-3 rounded-xl bg-white/5 border border-white/20 hover:bg-white/10 hover:border-primary/50 transition-all"
-                          >
-                            <span className="font-medium mr-2">{idx + 1}.</span> {choice}
-                          </button>
-                        ))}
+                        {msg.choices.map((choice, idx) => {
+                          // Determine styling based on selection state
+                          let choiceStyle = "w-full text-left p-3 rounded-xl border transition-all ";
+
+                          if (msg.selectedAnswer !== undefined) {
+                            // After selection - disable and color-code
+                            choiceStyle += "cursor-not-allowed ";
+
+                            if (idx === msg.selectedAnswer) {
+                              // User's selected answer
+                              choiceStyle += msg.isCorrect
+                                ? "bg-green-500/20 border-green-500/50 text-white"
+                                : "bg-red-500/20 border-red-500/50 text-white";
+                            } else if (idx === msg.correctAnswer && !msg.isCorrect) {
+                              // Correct answer when user was wrong
+                              choiceStyle += "bg-green-500/20 border-green-500/50 text-white";
+                            } else {
+                              // Other unselected choices
+                              choiceStyle += "bg-white/5 border-white/20 opacity-60";
+                            }
+                          } else {
+                            // Before selection - hoverable
+                            choiceStyle += "bg-white/5 border-white/20 hover:bg-white/10 hover:border-primary/50";
+                          }
+
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => msg.selectedAnswer === undefined && handleChoice(idx, choice)}
+                              disabled={msg.selectedAnswer !== undefined}
+                              className={choiceStyle}
+                            >
+                              <span className="font-medium mr-2">{idx + 1}.</span> {choice}
+                              {msg.selectedAnswer !== undefined && idx === msg.selectedAnswer && msg.isCorrect && (
+                                <span className="ml-2 text-green-400">✓</span>
+                              )}
+                              {msg.selectedAnswer !== undefined && idx === msg.selectedAnswer && !msg.isCorrect && (
+                                <span className="ml-2 text-red-400">✗</span>
+                              )}
+                              {msg.selectedAnswer !== undefined && idx === msg.correctAnswer && !msg.isCorrect && (
+                                <span className="ml-2 text-green-400">✓ Correct</span>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
 
-                    {/* Feedback display showing correct answer */}
-                    {msg.selectedAnswer !== undefined && msg.correctAnswer !== undefined && (
-                      <div className="mt-4 space-y-2">
-                        <div className="p-3 rounded-xl bg-white/5 border border-white/20">
-                          <p className="text-sm">
-                            <span className="font-medium">Your answer:</span> Option {msg.selectedAnswer + 1}
-                            {msg.isCorrect ? (
-                              <span className="ml-2 text-green-400">✓ Correct!</span>
-                            ) : (
-                              <span className="ml-2 text-red-400">✗ Wrong</span>
-                            )}
-                          </p>
-                          <p className="text-sm mt-1">
-                            <span className="font-medium text-green-400">Correct answer:</span> Option {msg.correctAnswer + 1}
-                          </p>
+                    {/* Feedback display showing correct answer - simplified */}
+                    {msg.selectedAnswer !== undefined && msg.correctAnswer !== undefined && !msg.choices && (
+                      <div className="mt-4">
+                        {/* Visual correctness indicator */}
+                        <div className={`p-4 rounded-xl border ${msg.isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm">
+                                <span className="font-medium">Your answer:</span> Option {msg.selectedAnswer + 1}
+                                {msg.isCorrect ? (
+                                  <span className="ml-2 text-green-400 font-bold">✓ Correct!</span>
+                                ) : (
+                                  <span className="ml-2 text-red-400 font-bold">✗ Wrong</span>
+                                )}
+                              </p>
+                              {!msg.isCorrect && (
+                                <p className="text-sm mt-1">
+                                  <span className="font-medium text-green-400">Correct answer:</span> Option {msg.correctAnswer + 1}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        {msg.explanation && (
-                          <div className="p-3 rounded-xl bg-white/5 border border-white/20">
-                            <p className="text-sm text-white/80">
-                              <span className="font-medium text-primary">Explanation:</span> {msg.explanation}
-                            </p>
+
+                        {/* Structured feedback sections */}
+                        {(msg.coreExplanation || msg.commonPitfall || msg.proTip) && (
+                          <div className="mt-4 space-y-3 p-4 rounded-xl bg-white/5 border border-white/20">
+                            {/* Core Explanation */}
+                            {msg.coreExplanation && (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium">CORE EXPLANATION</span>
+                                </div>
+                                <p className="text-sm text-white/90">{msg.coreExplanation}</p>
+                              </div>
+                            )}
+
+                            {/* Common Pitfall & Pro Tip */}
+                            {(msg.commonPitfall || msg.proTip) && (
+                              <div className="pt-2 border-t border-white/10">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-medium">⚠️ COMMON PITFALL</span>
+                                </div>
+                                <p className="text-sm text-white/80 mb-3">{msg.commonPitfall}</p>
+
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">💡 PRO TIP</span>
+                                </div>
+                                <p className="text-sm text-white/80">{msg.proTip}</p>
+                              </div>
+                            )}
                           </div>
                         )}
+
+                        {/* Next Scenario Button */}
+                        <div className="mt-4 flex justify-center">
+                          <button
+                            onClick={() => {
+                              if (selectedSkill) {
+                                generateScenario(selectedSkill);
+                              }
+                            }}
+                            className="px-6 py-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-sm font-medium hover:opacity-90 transition-opacity"
+                          >
+                            Next Scenario →
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -86,46 +86,56 @@ async function callGroq(message: string, context: string, apiKey: string, skill?
 
   if (mode === 'scenario_game') {
     const skillName = skill || 'technology';
-    systemPrompt = `You are creating an interactive scenario-based learning game SPECIFICALLY about ${skillName}.
+    systemPrompt = `You are creating an interactive scenario-based learning game for ${skillName} engineers.
 
-CRITICAL REQUIREMENTS - MUST USE REAL ${skillName.toUpperCase()} CONCEPTS:
-- The scenario MUST involve actual ${skillName} tools, commands, configurations, errors, or workflows
-- Use real ${skillName} terminology, error messages, and technical concepts
-- Make choices feature actual ${skillName} solutions and approaches
-- NEVER use generic examples - always use ${skillName}-specific problems
+FOCUS ON REAL DAY-TO-DAY ENGINEER SCENARIOS:
+- Day-to-day activities: Code reviews, deployments, debugging production issues, monitoring alerts, handling on-call incidents
+- Common struggles: Time pressure, unclear requirements, legacy code, technical debt, communication gaps, resource constraints
+- Realtime working scenarios: Production incidents, deadline pressures, team conflicts, technical trade-offs, certification-style troubleshooting
+- Certification questions: Best practices, security considerations, performance optimization, scalability decisions
+
+CREATE SCENARIOS THAT INCLUDE:
+1. Production debugging and incident response
+2. Code review and architecture decisions
+3. Deployment and CI/CD pipeline issues
+4. Performance optimization challenges
+5. Security and compliance decisions
+6. Team collaboration and technical leadership scenarios
 
 MANDATORY FORMAT - YOU MUST FOLLOW EXACTLY:
-1. Start with: SCENARIO: [describe a REAL ${skillName} problem in 1-2 sentences using real terminology]
+1. Start directly with the scenario (1-2 sentences describing a REAL ${skillName} work situation)
 2. List exactly 4 choices with this EXACT format:
-   1) [${skillName}-specific choice]
-   2) [${skillName}-specific choice]
-   3) [${skillName}-specific choice]
-   4) [${skillName}-specific choice]
+   1) [${skillName}-specific choice with real commands/tools]
+   2) [${skillName}-specific choice with real commands/tools]
+   3) [${skillName}-specific choice with real commands/tools]
+   4) [${skillName}-specific choice with real commands/tools]
 3. End with: CORRECT: [number 1-4]
 
 EXAMPLE for Docker:
-SCENARIO: Your Docker container keeps restarting due to health check failures
-1) Check docker logs CONTAINER_ID to diagnose the issue
-2) Increase container memory limits in docker-compose.yml
-3) Restart the Docker daemon service
-4) Pull a newer base image from Docker Hub
-CORRECT: 1
+Your production Docker container is repeatedly crashing with OOM errors during peak traffic
+1) Increase memory limits in docker-compose.yml and restart the service
+2) Check docker stats and logs to identify memory-heavy processes first
+3) Scale up additional container instances to distribute load
+4) Switch to a different base image with lower memory footprint
+CORRECT: 2
 
-CRITICAL: Must be about ${skillName}. Always use this format. Never deviate.`;
+CRITICAL: Always make scenarios feel like actual engineering work. Include real tool names, commands, and decision points engineers face daily. Never use generic scenarios.`;
   } else if (mode === 'scenario_feedback') {
-    systemPrompt = `You are providing feedback in a scenario learning game for ${skill}.
+    systemPrompt = `You are providing feedback in a scenario learning game for ${skill} engineer scenarios.
 
-CRITICAL RULES:
-- NEVER use  symbols like  or
+CRITICAL RULES FOR ENGINEER SCENARIO FEEDBACK:
+- NEVER use symbols like  or
 - Always say exactly which option number was correct (e.g., "Option 2 is the correct choice")
-- Explain WHY that option is correct using real-world reasoning
-- Use simple analogies to make concepts memorable
+- Explain WHY that option is correct using real-world engineering reasoning and day-to-day implications
+- Connect the answer to actual work scenarios, best practices, and certification concepts
+- Use relatable engineering situations and real tool/command references
 - Structure your response as:
-  1. "You chose: [their choice]"
-  2. "[X] points! Option Y is correct because..."
-  3. "Here's why: [clear explanation with analogy]"
-  4. "What happens next: [next scenario]"
-- Make it educational and memorable like a great teacher
+  1. Reference their choice and the correct approach
+  2. Explain the engineering reasoning behind the correct choice
+  3. Show how this applies to real day-to-day scenarios and certification questions
+  4. Generate the next scenario continuing the story
+
+Focus on why certain approaches work better in production environments, the trade-offs involved, and how this connects to common engineering challenges.
 
 Previous choice context: ${message}`;
   } else if (mode === 'resources') {
