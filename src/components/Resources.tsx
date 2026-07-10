@@ -86,7 +86,8 @@ export function Resources() {
   const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  const fetchResources = async (skill: string) => {
+  const fetchResources = async (skill: string, retryCount: number = 0) => {
+    const MAX_RETRIES = 2;
     setIsLoading(true);
     setError(null);
 
@@ -139,16 +140,18 @@ JSON SCHEMA:
   }
 }
 
-Use Groq llama3-70b-8192 or llama3-8b-8192 model for this generation.
-STRICT RULES:
-- All arrays must be populated with real, helpful resources
-- URLs must be real working URLs
-- Provide concepts progression: 3-5 Basic, 3-5 Intermediate, 3-5 Expert
-- List ALL major certifications
-- Generate 10+ interview questions with difficulty levels
-- Include 5-8 real-world scenarios
-- Generate comprehensive learning resources
-- Return ONLY valid JSON, no markdown or commentary`,
+CRITICAL REQUIREMENTS:
+1. Prioritize OFFICIAL documentation URLs first
+2. All arrays must be populated with real, helpful resources
+3. URLs must be real working URLs - verify they are correct
+4. Provide concepts progression: 3-5 Basic, 3-5 Intermediate, 3-5 Expert
+5. List ALL major certifications with actual official URLs
+6. Generate 10+ interview questions with real difficulty levels
+7. Include 5-8 real-world production scenarios
+8. Generate comprehensive learning resources with official sources first
+9. Return ONLY valid JSON, no markdown or commentary
+
+PRIORITY ORDER: Official docs > Official learning platforms > Certifications > Community resources`,
           skill: skill,
           mode: 'resource_generation'
         })
@@ -158,29 +161,70 @@ STRICT RULES:
         const data = await response.json();
         console.log("GROQ RESPONSE:", data);
 
-        // Parse JSON from API response - handle markdown code blocks
+        // Robust JSON parsing with validation
         let parsedData: GroqResourcesData;
         try {
           let jsonString = data.response;
 
           // Strip markdown code blocks if present
           if (jsonString.includes('```')) {
-            // Remove ```json and ``` markers
             jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*$/g, '').trim();
           }
 
-          // Find JSON object in the response
-          const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            parsedData = JSON.parse(jsonMatch[0]);
-          } else {
-            parsedData = JSON.parse(jsonString);
+          // Robust JSON extraction using bracket counting
+          let startIdx = jsonString.indexOf('{');
+          if (startIdx === -1) throw new Error('No JSON object found');
+
+          let braceCount = 0;
+          let endIdx = startIdx;
+          for (let i = startIdx; i < jsonString.length; i++) {
+            if (jsonString[i] === '{') braceCount++;
+            else if (jsonString[i] === '}') braceCount--;
+            if (braceCount === 0) {
+              endIdx = i + 1;
+              break;
+            }
           }
+
+          const jsonContent = jsonString.substring(startIdx, endIdx);
+          parsedData = JSON.parse(jsonContent);
+
+          // Validation: Ensure all required fields exist
+          if (!parsedData.coreConcepts) parsedData.coreConcepts = [];
+          if (!parsedData.certifications) parsedData.certifications = [];
+          if (!parsedData.interviewPrep) parsedData.interviewPrep = [];
+          if (!parsedData.dayToDayRealWorld) parsedData.dayToDayRealWorld = [];
+          if (!parsedData.learningResources) {
+            parsedData.learningResources = {
+              bestYoutubeTutorials: [],
+              githubRepos: [],
+              cheatsheets: [],
+              popularWebsites: [],
+              otherValuableResources: []
+            };
+          } else {
+            // Ensure all learning resource sub-arrays exist
+            if (!parsedData.learningResources.bestYoutubeTutorials) parsedData.learningResources.bestYoutubeTutorials = [];
+            if (!parsedData.learningResources.githubRepos) parsedData.learningResources.githubRepos = [];
+            if (!parsedData.learningResources.cheatsheets) parsedData.learningResources.cheatsheets = [];
+            if (!parsedData.learningResources.popularWebsites) parsedData.learningResources.popularWebsites = [];
+            if (!parsedData.learningResources.otherValuableResources) parsedData.learningResources.otherValuableResources = [];
+          }
+
           console.log("PARSED DATA:", parsedData);
         } catch (parseError) {
           console.error("JSON PARSE ERROR:", parseError);
-          setError(`Failed to parse response: ${parseError}`);
-          // Fallback structure if parsing fails
+
+          // Retry up to MAX_RETRIES times
+          if (retryCount < MAX_RETRIES) {
+            console.log(`Retrying resource generation (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+            setIsLoading(false);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+            return fetchResources(skill, retryCount + 1);
+          }
+
+          setError(`Failed to parse response after ${MAX_RETRIES} attempts: ${parseError}`);
+          // Fallback structure
           parsedData = {
             coreConcepts: [],
             certifications: [],
@@ -199,6 +243,15 @@ STRICT RULES:
         setResourceData(parsedData);
       } else {
         console.error("API RESPONSE NOT OK:", response.status);
+
+        // Retry on server errors
+        if ((response.status === 500 || response.status === 503) && retryCount < MAX_RETRIES) {
+          console.log(`Retrying due to server error ${response.status} (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+          setIsLoading(false);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return fetchResources(skill, retryCount + 1);
+        }
+
         setError(`API request failed with status: ${response.status}`);
       }
     } catch (err) {
@@ -530,46 +583,6 @@ STRICT RULES:
                       </div>
                     );
                   })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Day-to-Day Tab */}
-          {activeTab === 'daytoday' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-6">
-                <User className="w-6 h-6 text-primary" />
-                <h2 className="text-2xl font-bold text-white">Day-to-Day Realities</h2>
-              </div>
-
-              {!resourceData.dayToDayRealWorld || resourceData.dayToDayRealWorld.length === 0 ? (
-                <div className="p-8 text-center bg-white/5 rounded-2xl border border-white/10">
-                  <p className="text-white/60">No day-to-day scenarios available yet.</p>
-                </div>
-              ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {resourceData.dayToDayRealWorld.map((scenario, i) => (
-                    <div key={i} className="p-6 bg-white/5 rounded-2xl border border-white/10 flex flex-col h-full">
-                      <h4 className="font-bold text-lg text-white mb-4 pb-3 border-b border-white/10">{scenario.scenario}</h4>
-
-                      <div className="flex-1 space-y-4">
-                        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-red-400 font-semibold text-sm">⚠️ THE STRUGGLE</span>
-                          </div>
-                          <p className="text-sm text-white/80 leading-relaxed">{scenario.struggle}</p>
-                        </div>
-
-                        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-green-400 font-semibold text-sm">✓ THE SOLUTION</span>
-                          </div>
-                          <p className="text-sm text-white/80 leading-relaxed">{scenario.solution}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               )}
             </div>
