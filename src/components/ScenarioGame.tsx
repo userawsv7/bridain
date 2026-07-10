@@ -429,7 +429,9 @@ Rules:
         });
       }
     } catch (error) {
-      const correctChoiceText = currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`;
+      const correctChoiceText = correctAnswerIndex !== null
+        ? currentChoices[correctAnswerIndex - 1] || `Option ${correctAnswerIndex}`
+        : `Option ${correctAnswerIndex}`;
       const fallbackExplanation = isCorrect
         ? "Great decision! This approach works correctly."
         : `${correctChoiceText} is correct because it properly addresses the issue at its source.`;
@@ -441,7 +443,7 @@ Rules:
           : `❌ Wrong! The correct answer is: ${correctChoiceText}`,
         isUser: false,
         selectedAnswer: choiceIndex,
-        correctAnswer: correctAnswerIndex ? correctAnswerIndex - 1 : 0,
+        correctAnswer: correctAnswerIndex !== null ? correctAnswerIndex - 1 : 0,
         isCorrect: isCorrect,
         coreExplanation: fallbackExplanation,
         commonPitfall: "Rushing to apply a fix without understanding the root cause",
