@@ -30,6 +30,8 @@ export function VoiceCoach() {
   const [awaitingAnswer, setAwaitingAnswer] = useState(false);
   const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
   const [speechRate, setSpeechRate] = useState(0.85);
+  const [preferredVoice, setPreferredVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
 
   const voiceFlavors = {
     Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
@@ -40,6 +42,7 @@ export function VoiceCoach() {
   };
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const selectFemaleVoice = () => {
     const voices = window.speechSynthesis.getVoices();
@@ -61,14 +64,38 @@ export function VoiceCoach() {
   };
 
   const sanitizeMessageText = (text: string): string => {
-    // Keep markdown formatting for display - only clean excessive whitespace
+    // Remove markdown formatting while keeping clean text structure
     return text
+      .replace(/#{1,6}\s*/g, '') // Remove markdown headers like ###, ##, #
+      .replace(/\*\*/g, '') // Remove all ** markers
+      .replace(/\*/g, '') // Remove all * markers
+      .replace(/_{1,2}/g, '') // Remove all underscores
+      .replace(/`{1,3}/g, '') // Remove all code markers
       .replace(/\s{3,}/g, '\n\n') // Replace excessive whitespace with paragraph breaks
       .trim();
   };
 
-  const selectPreferredFemaleVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
+  const selectAndCacheFemaleVoice = async (): Promise<SpeechSynthesisVoice | null> => {
+    // Wait for voices to load if not already loaded
+    let voices = window.speechSynthesis.getVoices();
+
+    if (voices.length === 0) {
+      // Wait for voiceschanged event
+      await new Promise<void>((resolve) => {
+        const handleVoicesChanged = () => {
+          window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+          resolve();
+        };
+        window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+
+        // Fallback timeout
+        setTimeout(() => {
+          window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+          resolve();
+        }, 1000);
+      });
+      voices = window.speechSynthesis.getVoices();
+    }
 
     // Priority order for premium female voices
     const premiumVoices = [
@@ -90,32 +117,60 @@ export function VoiceCoach() {
     }
 
     // Fallback to Google voices or first available
-    return voices.find(v => v.name.includes('Google')) || voices[0];
+    return voices.find(v => v.name.includes('Google')) || voices[0] || null;
   };
 
-  const speak = (text: string, rate: number = 0.9) => {
+  // Initialize female voice on component mount
+  React.useEffect(() => {
+    const initVoice = async () => {
+      const voice = await selectAndCacheFemaleVoice();
+      if (voice) {
+        setPreferredVoice(voice);
+        setVoicesLoaded(true);
+      }
+    };
+
+    initVoice();
+  }, []);
+
+  const speak = async (text: string, rate: number = 0.9) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    // Stop any current speech immediately
+    stopSpeaking();
 
     // Clean text for pleasant TTS experience
     const cleanText = sanitizeForTTS(text);
 
-    // Stop any current speech
-    window.speechSynthesis.cancel();
+    // Ensure we have a female voice - wait if necessary
+    let voiceToUse = preferredVoice;
+    if (!voiceToUse) {
+      voiceToUse = await selectAndCacheFemaleVoice();
+      if (voiceToUse) {
+        setPreferredVoice(voiceToUse);
+      }
+    }
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = speechRate;
     utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
-    utterance.volume = 0.85; // Pleasant volume level
+    utterance.volume = 0.85;
 
-    // Ensure strict female voice selection
-    const femaleVoice = selectPreferredFemaleVoice();
-    if (femaleVoice) {
-      utterance.voice = femaleVoice;
+    // Always use the cached female voice
+    if (voiceToUse) {
+      utterance.voice = voiceToUse;
     }
 
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      currentUtteranceRef.current = null;
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      currentUtteranceRef.current = null;
+    };
 
+    currentUtteranceRef.current = utterance;
     utteranceRef.current = utterance;
     setIsSpeaking(true);
     window.speechSynthesis.speak(utterance);
@@ -125,8 +180,24 @@ export function VoiceCoach() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
+    if (currentUtteranceRef.current) {
+      currentUtteranceRef.current.onend = null;
+      currentUtteranceRef.current.onerror = null;
+      currentUtteranceRef.current = null;
+    }
     setIsSpeaking(false);
   };
+
+  // Cleanup speech on component unmount
+  React.useEffect(() => {
+    return () => {
+      stopSpeaking();
+      // Remove any event listeners
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const toggleMute = () => {
     if (!isMuted) {
@@ -469,11 +540,14 @@ Teach concepts interactively, ask questions to check understanding, provide exam
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] p-4 rounded-2xl ${
-                    msg.isUser ? 'bg-primary/20 border border-primary/30' :
-                    msg.isCorrect !== undefined ? (msg.isCorrect ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30') :
-                    'bg-white/10 border border-white/20'
-                  }`}>
+                  <div
+                    className={`max-w-[85%] p-4 rounded-2xl cursor-pointer transition-all hover:bg-white/20 ${
+                      msg.isUser ? 'bg-primary/20 border border-primary/30' :
+                      msg.isCorrect !== undefined ? (msg.isCorrect ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30') :
+                      'bg-white/10 border border-white/20'
+                    }`}
+                    onClick={() => !msg.isUser && speak(sanitizeMessageText(msg.text), 0.85)}
+                  >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{sanitizeMessageText(msg.text)}</p>
 
                     {/* MCQ Radio Buttons for Interview Mode */}
