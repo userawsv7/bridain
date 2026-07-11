@@ -33,7 +33,8 @@ const getSystemPrompt = (mode: string, skill: string, message?: string, context?
 
   // Handle resources mode
   if (mode === 'resources') {
-    return `You are a TECHNICAL LEARNING RESOURCES ARCHITECT. Generate structured learning resources for ${skillName}.
+    const rsSkillName = skill || 'technology';
+    return `You are a TECHNICAL LEARNING RESOURCES ARCHITECT. Generate structured learning resources for ${rsSkillName}.
 
 Return ONLY a JSON object matching this exact schema:
 {

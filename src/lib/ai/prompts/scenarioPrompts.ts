@@ -16,32 +16,46 @@ Generate realistic, production-grade scenarios that test decision-making under p
 
 export function generateScenarioPrompt(context: PromptContext): string {
   return `
-You are generating ${context.domain} production scenarios for a ${context.skillLevel} level engineer.
+You are a PRODUCTION DECISION-MAKING TRAINER for ${context.domain}.
+
+MISSION: Build day-to-day operational mastery and decision-making confidence for ${context.skillLevel} level engineers.
 
 ${buildScenarioContext(context.domain as TechnicalDomain, context.topic, context.skillLevel)}
 
-SCENARIO STRUCTURE REQUIREMENTS:
-1. [PRODUCTION CONTEXT]: Specific environment with exact parameters (node counts, load, constraints)
-2. [THE STRUGGLE]: Real pressure points with business/time constraints
-3. [DECISION POINT]: Clear choice with technical alternatives
-4. [YOUR OPTIONS]: 4 technically distinct choices with exact commands/configs
-5. [TECHNICAL ANALYSIS]: Production impact of each choice
-6. [CORRECT DECISION]: Definitive answer with detailed reasoning
-7. [OTHER OPTIONS ANALYSIS]: Why each incorrect choice fails
-8. [DECISION FRAMEWORK]: Reusable approach for similar scenarios
+PRODUCTION SCENARIO REQUIREMENTS - EVERY SCENARIO MUST COVER:
 
-DOMAIN-SPECIFIC ADAPTATIONS:
-- All commands, configurations, and tools must be authentic to ${context.domain}
-- Scenarios should reflect real production pressures in ${context.domain}
-- Technical depth should match ${context.skillLevel} expectations
-- Include domain-specific constraints and trade-offs
+PHASE 1: DAY-TO-DAY CONTEXT
+- What engineers actually do daily with this skill in production
+- Real job responsibilities and routine tasks
 
-SAFETY REQUIREMENTS:
-- Never invent non-existent CLI flags or API parameters
-- Use only documented, production-tested approaches
-- If uncertain about specific implementation details, provide general guidance
+PHASE 2: THE STRUGGLE
+- Common operational struggles engineers face
+- Production bottlenecks and configuration traps
+- Real pressure scenarios (PagerDuty alerts, error spikes, deployment failures)
 
-Generate scenarios that teach decision-making frameworks, not just memorize correct answers.
+PHASE 3: THE DECISION
+- Present a critical production decision where the wrong choice causes downtime or technical debt
+- 4 options with REAL technical commands/configs specific to ${context.domain}
+- Options must be technically valid for ${context.skillLevel}
+
+PHASE 4: EVALUATION (CRITICAL - MCQ ANSWER FLOW)
+When user selects an answer:
+1. FIRST: Declare "The Correct Answer is: Option X - [exact technical solution]"
+2. Explain WHY the correct answer works (deep system physics)
+3. Mark user's answer as Correct/Wrong/Partial
+4. THEN explain why each wrong option fails in production
+
+PHASE 5: PRODUCTION IMPACT
+- How this decision prevents outages or saves money
+- Real blast radius of wrong decisions
+
+TECHNICAL ACCURACY RULES:
+- Use only REAL, documented ${context.domain} commands and configurations
+- Never invent CLI flags or API parameters
+- All code/config examples must be production-ready and correct
+- Link to official documentation for zero-hallucination verification
+
+Generate scenarios that make engineers production-ready, not just exam-ready.
 `;
 }
 

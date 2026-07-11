@@ -4,44 +4,59 @@
 import { PromptContext, EvaluationSchema } from '../types/ai';
 
 export const EVALUATION_JSON_SCHEMA = `
-EVALUATION RESPONSE FORMAT - MANDATORY STRUCTURED OUTPUT:
+PRODUCTION MCQ EVALUATION FORMAT - CRITICAL ANSWER SEQUENCE:
+
+When user answers an MCQ, return structured feedback in this EXACT sequence:
+
+1. FIRST: Declare the absolute correct answer
+2. SECOND: Mark user's selection (Correct/Wrong/Partial)
+3. THIRD: Exhaustive technical explanation of why correct answer works
+4. FOURTH: Why each wrong option fails in production
 
 Return ONLY a valid JSON object with exactly this structure:
 {
-  "assessment": {
+  "correctAnswerDeclaration": {
+    "correctOption": "<Exact Option Letter/Number>",
+    "correctSolution": "<Exact technical solution text>",
+    "declaration": "The Correct Answer is: [Option X] - [Technical Solution]"
+  },
+  "userAnswerEvaluation": {
     "status": "correct|partial|incorrect",
-    "score": <number 0-100>,
-    "detectedSkillLevel": "Beginner|Intermediate|Advanced|Senior|Architect"
+    "userSelected": "<What user chose>",
+    "feedback": "Correct/Wrong/Partially Correct - [brief]"
   },
-  "technicalAccuracy": {
-    "summary": "<technical assessment summary>",
-    "missingConcepts": ["<concept1>", "<concept2>"],
-    "hiddenPrinciples": ["<principle1>", "<principle2>"]
+  "dayToDayContext": {
+    "dailyReality": "What engineers actually do daily with this skill",
+    "commonStruggles": ["Struggle 1", "Struggle 2"],
+    "productionFixes": ["Fix 1", "Fix 2"]
   },
-  "communicationCoaching": {
-    "clarity": "<feedback on clarity and structure>",
-    "terminology": "<assessment of industry terminology usage>",
-    "interviewPerspective": "<how this would appear to an interview panel>"
+  "technicalExplanation": {
+    "whyCorrectWorks": "Deep system physics - why this solution succeeds",
+    "productionImpact": "How this prevents outages or saves money",
+    "systemPhysics": "Underlying mechanics explanation"
   },
-  "comprehensiveCoaching": {
-    "whyExplanation": "<deep technical explanation of why>",
-    "betterAnswer": "<improved version of the response>",
-    "staffEngineerAnswer": "<ideal Staff Engineer level response>",
-    "productionRelevance": "<real-world production application>",
-    "tradeoffs": ["<tradeoff1>", "<tradeoff2>"],
-    "risks": ["<risk1>", "<risk2>"],
-    "commonPitfalls": ["<pitfall1>", "<pitfall2>"]
+  "whyAlternativesFail": {
+    "optionA": "Why Option A causes [specific production failure]",
+    "optionB": "Why Option B causes [specific production failure]",
+    "optionC": "Why Option C causes [specific production failure]",
+    "optionD": "Why Option D causes [specific production failure]"
   },
-  "nextSteps": {
-    "socraticQuestion": "<advanced probing question>",
-    "suggestedTopics": ["<topic1>", "<topic2>"]
-  }
+  "decisionRationale": "Why we MUST choose this decision over others"
 }
 `;
 
 export function buildEvaluatorPrompt(context: PromptContext, userResponse: string): string {
   return `
-You are conducting a structured technical evaluation for a ${context.skillLevel} level engineer in ${context.domain}.
+You are a PRODUCTION DECISION-MAKING COACH for ${context.domain}. Your mission is to build engineering confidence through day-to-day operational mastery.
+
+PRODUCTION-FOCUSED EVALUATION FOR: ${context.domain} | Skill Level: ${context.skillLevel}
+
+CORE TEACHING APPROACH:
+1. DAY-TO-DAY CONTEXT: Frame every concept around actual daily engineering work
+2. STRUGGLE IDENTIFICATION: Highlight common production struggles engineers face
+3. FIX METHODOLOGY: Teach exact commands, configurations, and fixes
+4. DECISION RATIONALE: Explain WHY we make specific technical choices
+5. 100% TECHNICAL ACCURACY: All explanations must be verifiable and correct
 
 EVALUATION CONTEXT:
 - Domain: ${context.domain}
