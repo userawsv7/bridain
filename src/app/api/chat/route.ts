@@ -17,83 +17,78 @@ CORE TEACHING PRINCIPLES:
     case 'scenario_game':
       return `${baseProductionContext}
 
-SCENARIO GAME: DECISION-MAKING THROUGH PRODUCTION SCENARIOS
+SCENARIO GAME: SPECIFIC DECISION-MAKING SCENARIOS
 
-Generate scenarios based on REAL production situations where engineers must make critical decisions. Each scenario should present:
+Generate CONCRETE production scenarios with EXACT technical details:
 
-SCENARIO STRUCTURE:
 ### [PRODUCTION CONTEXT]
-- Current system state and business impact
-- Time pressure and constraints
-- Team capabilities and resources available
-- Legacy systems or technical debt factors
+Example: "Production API cluster, 3 nodes, receiving 500 errors at 2:30 AM, 2000 rps, PostgreSQL connection pool at 95%"
 
 ### [THE STRUGGLE]
-- What makes this decision difficult?
-- Conflicting priorities or unclear requirements
-- Technical complexity or knowledge gaps
-- Risk of wrong decisions
+Example: "Must deploy fix before business hours, rollback means 30min downtime, new feature has memory leak risk"
 
 ### [DECISION POINT]
-- The exact moment a choice must be made
-- 4 distinct technical options with real implications
-- Options should include: optimal approach, common mistake, technically valid but wrong context, anti-pattern
-
-### [TECHNICAL SANDBOX]
-- Actual logs, metrics, configs, or error messages
-- Real system state data showing decision factors
-- Authentic ${skillName} tooling output
+"Choose deployment strategy:"
 
 ### [YOUR OPTIONS]
-1) [Production-optimal decision with technical justification]
-2) [Plausible but ignores key production constraint]
-3) [Technically sound approach that's wrong for this situation]
-4) [Common anti-pattern that fails in production]
+**Option A:** \`kubectl set image deployment/api api=registry/api:v2.1.4 --record && kubectl rollout status deployment/api\`
+**Option B:** \`kubectl apply -f deployment-v2.yaml && kubectl scale deployment/api --replicas=6\`
+**Option C:** \`docker build -t api:v2.1.4 . && kubectl create deployment api-v2 --image=api:v2.1.4\`
+**Option D:** \`kubectl patch deployment api -p '{"spec":{"template":{"spec":{"containers":[{"name":"api","image":"registry/api:v2.1.4"}]}}}}'\`
 
-### [NEXT STEP]
-Ask what decision they would make and why.
+### [TECHNICAL ANALYSIS]
+Each option has specific production consequences.
 
-MANDATORY: Use real ${skillName} commands, error messages, and configurations.`;
+### [CORRECT DECISION - ALWAYS PROVIDED]
+**Answer: Option A - using rollout strategy with status monitoring**
+
+**WHY THIS DECISION:**
+- Maintains zero-downtime with rolling updates
+- Provides instant rollback via \`kubectl rollout undo\`
+- Records deployment in history for audit trail
+- Monitors real deployment progress vs fire-and-forget
+
+### [OTHER OPTIONS ANALYSIS - ALWAYS PROVIDED]
+- Option B: Wrong - scales horizontally instead of deploying new version. System still runs old code with memory leak.
+- Option C: Wrong - creates duplicate deployment 'api-v2' instead of updating existing 'api'. Old deployment continues serving traffic.
+- Option D: Wrong - manual patching is error-prone, JSON syntax errors cause deployment failures, no automatic rollback mechanism.
+
+### [DECISION FRAMEWORK - ALWAYS PROVIDED]
+**Check current state → Choose zero-downtime method → Verify with status → Prepare rollback command**
+
+Ready to practice? Choose an option or ask about specific deployment scenarios.`;
 
     case 'scenario_feedback':
       return `${baseProductionContext}
 
-SCENARIO FEEDBACK: ANALYZE DECISION-MAKING
+SCENARIO FEEDBACK: EXACT TECHNICAL ANALYSIS
 
-When user selects an answer, provide DETAILED analysis:
+When user selects an answer, provide SPECIFIC technical analysis:
 
 ### [DECISION ANALYSIS]
-User selected: [restate choice]. Evaluating production implications.
+User selected: [OPTION X]. Analyzing technical implications.
 
-### [YOUR DECISION EVALUATION]
-- **Technical Accuracy:** Is the reasoning sound for ${skillName}?
-- **Production Reality:** Does this work under real constraints?
-- **Risk Assessment:** What production issues could arise?
+### [TECHNICAL EVALUATION]
+**Correctness:** [Is this command technically valid?]
+**Production Impact:** [Does this solve the specific problem?]
+**Risk Level:** [What breaks when this fails?]
 
-### [OPTIMAL DECISION ANALYSIS]
-**WHY_THIS_DECISION:**
-Provide 4-6 sentences explaining WHY this choice succeeds in production. Focus on:
-- Technical mechanisms (how ${skillName} tools/commands work)
-- Real-world production implications
-- System reliability/performance impact
-- Team workflow alignment
+### [WHY_CORRECT_ANSWER]
+If Option A is correct:
+**Technical Reason:** \`kubectl set image\` triggers rolling update which maintains service availability while updating containers one-by-one. The \`--record\` flag creates audit trail in deployment history.
 
-Specific technical benefits:
-- How this improves system reliability
-- What production metrics improve
-- How this aligns with engineering practices
+**Production Implication:** Zero downtime deployment, instant rollback capability via \`kubectl rollout undo deployment/api\`, deployment progress monitoring with status command.
 
-### [SUBOPTIMAL CHOICES ANALYSIS]
-For each wrong option:
-- **[Option X]:** 1-2 sentences on specific production failure mode
+### [WHY_OTHER_OPTIONS_FAIL]
+**Option B wrong:** \`kubectl scale\` only changes replica count, doesn't deploy new image version. System still runs old code.
+**Option C wrong:** Creates duplicate deployment 'api-v2' instead of updating existing 'api'. Old deployment continues receiving traffic.
+**Option D wrong:** Manual JSON patching is error-prone, syntax issues cause deployment failures, no automatic rollback mechanism.
 
-### [KEY LEARNING INSIGHT]
-One principle: When facing similar decisions, what framework guides thinking?
+### [DECISION FRAMEWORK]
+For deployment decisions: Check current state → Choose zero-downtime method → Verify with status monitoring → Prepare rollback command
 
-### [NEXT DECISION]
-Provide the next scenario OR ask about continuing learning.
-
-CRITICAL: Always explain the technical WHY using real ${skillName} tools and commands.`;
+### [NEXT SCENARIO]
+Generate new specific ${skillName} decision scenario with exact commands.`;
 
     case 'resources':
       return `You are providing comprehensive learning resources specifically for ${skillName}.
@@ -147,49 +142,61 @@ Provide real URLs, actual resource names, and specific certification details.`;
     case 'interview_feedback':
       return `${baseProductionContext}
 
-INTERVIEW MODE: DECISION-MAKING SKILLS ASSESSMENT
+INTERVIEW MODE: Generate specific ${skillName} interview questions with exact technical answers.
 
-Return ONLY valid JSON with these production-focused keys:
-{
-  "correctAnswer": "The actual text of the correct technical option",
-  "whyCorrectIsCorrect": "4-6 sentence technical explanation of WHY using specific ${skillName} commands, tools, and production implications",
-  "userAnswerEvaluation": "If correct: Explain technical reasoning accuracy. If incorrect: Identify exact technical knowledge gap.",
-  "whyOtherOptionsWrong": "For EACH incorrect option, explain 1-2 sentences of specific production failures",
-  "technicalConcept": "Detailed explanation of underlying ${skillName} technical concepts with real commands",
-  "productionPerspective": "How this is handled in real production with specific tooling/procedures",
-  "commonMistakes": "Common engineer mistakes with this ${skillName} concept",
-  "keyLearningPoints": ["3-4 specific technical takeaways with commands/concepts"],
-  "nextQuestion": "Generate next interview question with IDEA, SCENARIO, OPTIONS A/B/C/D, CORRECT format"
-}
+Return JSON with these fields:
+- question: specific technical scenario
+- options: A/B/C/D with exact commands like "kubectl get pods"
+- correctAnswer: "A", "B", "C", or "D"
+- whyCorrect: technical explanation of why answer is correct
+- whyWrong: object explaining why each wrong option fails
+- technicalConcept: underlying technical details
+- productionUse: how used in real production
+- commonMistake: typical engineer error
+- nextQuestion: new question topic
 
-Focus on decision-making confidence through technical accuracy.`;
+Use real commands. Provide definitive technical answers.`;
 
     case 'voice_coach':
       return `${baseProductionContext}
 
-VOICE COACH: DAY-TO-DAY PRODUCTION GUIDANCE
+VOICE COACH: SPECIFIC PRODUCTION GUIDANCE
 
-Provide practical guidance on real engineering work:
+Provide CONCRETE daily production guidance with exact commands:
 
 ### [TODAY'S ACTIVITY]
-Describe a common daily ${skillName} task with real-world context.
+Example: "Debug why production pods are CrashLoopBackOff after deployment"
 
 ### [COMMON STRUGGLES]
-What makes this difficult in production? Include time pressure, unclear requirements, legacy systems.
+- Time pressure: Issue started 15 minutes ago, impacting 5000 users
+- Legacy constraint: Using Kubernetes 1.18, limited observability tools
+- Knowledge gap: New team member deployed without proper health checks
 
-### [PRECISE FIX]
-Step-by-step solution using real ${skillName} commands and tools.
+### [PRECISE DEBUG STEPS]
+1. \`kubectl get pods -l app=api --all-namespaces\` - identify affected pods
+2. \`kubectl describe pod <pod-name>\` - check Events section for specific errors
+3. \`kubectl logs <pod-name> --previous\` - examine crash logs from last attempt
+4. \`kubectl get events --sort-by=.lastTimestamp\` - see deployment timeline
+
+### [ROOT CAUSE ANALYSIS]
+Example: "ImagePullBackOff - container registry credentials expired after 90 days"
+
+### [EXACT FIX]
+\`kubectl create secret docker-registry regcred --docker-server=registry.company.com --docker-username=svc-k8s --docker-password=<token>\`
+\`kubectl patch serviceaccount default -p '{"imagePullSecrets": [{"name": "regcred"}]}'\`
 
 ### [WHY_THIS_WORKS]
-Technical explanation of underlying mechanisms.
+- Secrets provide authenticated registry access
+- ServiceAccount patching applies to all pods using default SA
+- Prevents repeated authentication failures
 
-### [PRODUCTION CONFIDENCE]
-How this builds decision-making skills for similar situations.
+### [DECISION FRAMEWORK]
+When facing pod failures: LOGS → EVENTS → CONFIG → AUTH → NETWORK
 
-### [NEXT LEARNING]
-What related concept or struggle to tackle next.
+### [PREVENTION]
+Add registry credential rotation to monthly maintenance checklist
 
-Focus on building confidence through understanding daily activities and their technical solutions.`;
+Ask what specific ${skillName} issue they're facing today.`;
 
     default:
       return `${baseProductionContext}
