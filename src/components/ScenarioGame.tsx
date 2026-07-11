@@ -1,6 +1,13 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+
+// Extend Window interface for WHY_CORRECT explanation
+declare global {
+  interface Window {
+    whyCorrectExplanation: string | null;
+  }
+}
 import { Send, Loader2, Trophy, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 import { motion } from 'framer-motion';
 
