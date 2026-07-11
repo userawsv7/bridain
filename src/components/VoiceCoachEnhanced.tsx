@@ -213,7 +213,7 @@ Generate questions that simulate elite technical interviews and architectural re
         const decision = decisionMatch ? decisionMatch[1].trim() : '';
 
         const options = optionsMatch ?
-          optionsMatch[1].match(/\d+\)\s*([^\n]+)/g)?.map(o => o.replace(/^\d+\)\s*/, '')) || [] :
+          optionsMatch[1].match(/\d+\)\s*([^\n]+)/g)?.map((o: string) => o.replace(/^\d+\)\s*/, '')) || [] :
           [];
 
         const questionText = `${scenario}\n\n${constraints}\n\n${decision}`;

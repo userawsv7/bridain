@@ -153,7 +153,7 @@ CRITICAL REQUIREMENTS:
 
 PRIORITY ORDER: Official docs > Official learning platforms > Certifications > Community resources`,
           skill: skill,
-          mode: 'resource_generation'
+          mode: 'resources'
         })
       });
 

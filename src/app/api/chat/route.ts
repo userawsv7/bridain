@@ -31,6 +31,26 @@ const getSystemPrompt = (mode: string, skill: string, message?: string, context?
     return generateScenarioPrompt(promptContext);
   }
 
+  // Handle resources mode
+  if (mode === 'resources') {
+    return `You are a TECHNICAL LEARNING RESOURCES ARCHITECT. Generate structured learning resources for ${skillName}.
+
+Return ONLY a JSON object matching this exact schema:
+{
+  "coreConcepts": [{"level": "beginner|intermediate|advanced", "concept": "name", "explanation": "brief explanation"}],
+  "certifications": [{"name": "cert name", "officialUrl": "url", "studyGuidesAndDumps": ["guide1"], "cost": "price", "faqs": ["faq1"]}],
+  "interviewPrep": [{"question": "question", "answer": "answer", "difficulty": "beginner|intermediate|advanced"}],
+  "dayToDayRealWorld": [{"scenario": "scenario", "struggle": "struggle", "solution": "solution"}],
+  "learningResources": {
+    "bestYoutubeTutorials": [{"title": "title", "url": "url"}],
+    "githubRepos": [{"name": "name", "url": "url", "description": "desc"}],
+    "cheatsheets": [{"topic": "topic", "url": "url"}],
+    "popularWebsites": [{"name": "name", "url": "url", "description": "desc"}],
+    "otherValuableResources": [{"title": "title", "type": "type", "url": "url", "description": "desc"}]
+  }
+}`;
+  }
+
   // Fallback to new system for general coaching
   const skillLvl = (skillLevel as any) || 'Intermediate';
   const promptContext: PromptContext = {
