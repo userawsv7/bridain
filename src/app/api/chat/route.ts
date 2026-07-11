@@ -231,6 +231,9 @@ export async function POST(request: Request) {
       response = await callHuggingFace(message, context, hfKey, skill, mode);
       emoji = '🤗';
       powered = 'HuggingFace';
+    } else {
+      // This should never happen due to the check above, but TypeScript needs this
+      throw new Error('No API keys available');
     }
 
     return NextResponse.json({
