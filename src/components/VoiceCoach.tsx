@@ -332,7 +332,7 @@ EXAMPLE for ArgoCD:
 IDEA: Argo CD shows service-a sync failing with ImagePullBackOff error
 SCENARIO: Production deployment of service-a via Argo CD fails. The sync shows ImagePullBackOff in pod events. The argocd-app.yaml points to a private ECR repository.
 OPTIONS:
-1) Check `kubectl get events --field-selector involvedObject.name=service-a` to see pull errors
+1) Check kubectl get events to see pull errors
 2) Verify imagePullSecrets exist and reference correct ECR credentials
 3) Update syncPolicy to manual in argocd-app.yaml
 4) Check application logs in Argo CD UI for repository connection issues
