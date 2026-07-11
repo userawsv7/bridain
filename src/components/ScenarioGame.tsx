@@ -192,8 +192,8 @@ export function ScenarioGame() {
   };
 
   const parseScenarioQuestion = (response: string) => {
-    const questionMatch = response.match(/QUESTION:\s*(.+?)(?=\n[A-D]\))/is);
-    const optionsMatch = response.match(/([A-D]\)\s*.+?)(?=\nCORRECT:|$)/is);
+    const questionMatch = response.match(/QUESTION:\s*(.+?)(?=\n[A-D]\))/i);
+    const optionsMatch = response.match(/([A-D]\)\s*.+?)(?=\nCORRECT:|$)/i);
     const correctMatch = response.match(/CORRECT:\s*([A-D])/i);
 
     if (!questionMatch || !optionsMatch || !correctMatch) return null;
