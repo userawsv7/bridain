@@ -7,33 +7,36 @@ import { buildConversationContext } from '../../../lib/ai/utils/contextBuilder';
 import { PromptContext } from '../../../lib/ai/types/ai';
 
 // Centralized AI Prompt Engine - replaces inline prompts
-const getSystemPrompt = (mode: string, skill: string, message?: string, context?: string) => {
+const getSystemPrompt = (mode: string, skill: string, message?: string, context?: string, skillLevel?: string) => {
   // Use new centralized prompt engine for modern domains
   if (mode === 'evaluation' || mode === 'interview_feedback') {
+    const skillLvl = (skillLevel as any) || 'Intermediate';
     const promptContext: PromptContext = {
       domain: (skill as any) || 'Software Engineering',
       topic: context || 'General Programming',
-      skillLevel: 'Intermediate',
+      skillLevel: skillLvl,
       learningGoal: 'Interview Prep'
     };
     return buildEvaluatorPrompt(promptContext, message || '');
   }
 
   if (mode === 'scenario_game' || mode === 'scenario_feedback') {
+    const skillLvl = (skillLevel as any) || 'Intermediate';
     const promptContext: PromptContext = {
       domain: (skill as any) || 'DevOps',
       topic: context || 'Production Scenarios',
-      skillLevel: 'Intermediate',
+      skillLevel: skillLvl,
       learningGoal: 'Production Troubleshooting'
     };
     return generateScenarioPrompt(promptContext);
   }
 
   // Fallback to new system for general coaching
+  const skillLvl = (skillLevel as any) || 'Intermediate';
   const promptContext: PromptContext = {
     domain: (skill as any) || 'Software Engineering',
     topic: context || skill || 'General Programming',
-    skillLevel: 'Intermediate',
+    skillLevel: skillLvl,
     learningGoal: 'Concept Mastery',
     previousContext: context
   };
@@ -49,92 +52,104 @@ const getSystemPrompt = (mode: string, skill: string, message?: string, context?
   // Production-focused system prompts for different modes
 
   const skillName = skill || 'technology';
+  const userSkillLevel = skillLevel || 'Intermediate';
 
   const baseProductionContext = `You are an EXPERT ${skillName.toUpperCase()} PRODUCTION COACH. Your role is teaching decision-making skills through real production scenarios that mirror day-to-day engineering activities.
+
+SKILL LEVEL: ${userSkillLevel}
+ADAPT QUESTIONS TO SKILL LEVEL:
+- Beginner: Basic commands, single-service issues, straightforward solutions
+- Intermediate: Multi-service interactions, monitoring, deployment strategies
+- Advanced: Distributed systems, performance optimization, complex debugging
 
 CORE TEACHING PRINCIPLES:
 1. TEACH DAY-TO-DAY ACTIVITIES: Show exactly what engineers do daily
 2. REVEAL COMMON STRUGGLES: Expose real production challenges and pressure points
 3. PROVIDE PRECISE FIXES: Give technically accurate solutions with commands/tools
 4. BUILD CONFIDENCE: Explain WHY decisions work, not just what to do
-5. 100% TECHNICAL ACCURACY: Every command, config, and concept must be correct`;
+5. 100% TECHNICAL ACCURACY: Every command, config, and concept must be correct
+6. SKILL-APPROPRIATE COMPLEXITY: Match question difficulty to user skill level`;
 
   switch (mode) {
     case 'scenario_game':
       return `${baseProductionContext}
 
-SCENARIO GAME: SPECIFIC DECISION-MAKING SCENARIOS
+SCENARIO GAME: SPECIFIC DECISION-MAKING SCENARIOS FOR ${userSkillLevel} LEVEL
 
-Generate CONCRETE production scenarios with EXACT technical details:
+Generate CONCRETE production scenarios with EXACT technical details appropriate for ${userSkillLevel}:
 
 ### [PRODUCTION CONTEXT]
-Example: "Production API cluster, 3 nodes, receiving 500 errors at 2:30 AM, 2000 rps, PostgreSQL connection pool at 95%"
+Provide realistic ${userSkillLevel}-level scenario with specific metrics and logs
 
 ### [THE STRUGGLE]
-Example: "Must deploy fix before business hours, rollback means 30min downtime, new feature has memory leak risk"
+Define clear operational constraints and business impact
 
 ### [DECISION POINT]
-"Choose deployment strategy:"
+Present specific technical decision with command-line options
 
 ### [YOUR OPTIONS]
-**Option A:** \`kubectl set image deployment/api api=registry/api:v2.1.4 --record && kubectl rollout status deployment/api\`
-**Option B:** \`kubectl apply -f deployment-v2.yaml && kubectl scale deployment/api --replicas=6\`
-**Option C:** \`docker build -t api:v2.1.4 . && kubectl create deployment api-v2 --image=api:v2.1.4\`
-**Option D:** \`kubectl patch deployment api -p '{"spec":{"template":{"spec":{"containers":[{"name":"api","image":"registry/api:v2.1.4"}]}}}}'\`
+Provide 4 options with EXACT commands appropriate for ${userSkillLevel}:
+- Options must be technically achievable at the stated skill level
+- Include correct answer with precise technical reasoning
+- Explain exactly why each wrong option fails
 
-### [TECHNICAL ANALYSIS]
-Each option has specific production consequences.
+### [CORRECT ANSWER - ALWAYS PROVIDED FIRST]
+**Answer: Option [X] - [exact technical reason]**
 
-### [CORRECT DECISION - ALWAYS PROVIDED]
-**Answer: Option A - using rollout strategy with status monitoring**
-
-**WHY THIS DECISION:**
-- Maintains zero-downtime with rolling updates
-- Provides instant rollback via \`kubectl rollout undo\`
-- Records deployment in history for audit trail
-- Monitors real deployment progress vs fire-and-forget
+**WHY THIS IS CORRECT:**
+- Specific technical mechanism that makes this work
+- Production implications and safety guarantees
+- Exact commands and expected outputs
 
 ### [OTHER OPTIONS ANALYSIS - ALWAYS PROVIDED]
-- Option B: Wrong - scales horizontally instead of deploying new version. System still runs old code with memory leak.
-- Option C: Wrong - creates duplicate deployment 'api-v2' instead of updating existing 'api'. Old deployment continues serving traffic.
-- Option D: Wrong - manual patching is error-prone, JSON syntax errors cause deployment failures, no automatic rollback mechanism.
+For each wrong option, explain:
+- Why it fails technically
+- What production impact it causes
+- The specific configuration or command error
 
-### [DECISION FRAMEWORK - ALWAYS PROVIDED]
-**Check current state → Choose zero-downtime method → Verify with status → Prepare rollback command**
+### [SKILL-LEVEL VALIDATION]
+Ensure all scenarios, commands, and explanations match ${userSkillLevel} competency level.
 
-Ready to practice? Choose an option or ask about specific deployment scenarios.`;
+Ready to practice?`;
 
     case 'scenario_feedback':
       return `${baseProductionContext}
 
-SCENARIO FEEDBACK: EXACT TECHNICAL ANALYSIS
+SCENARIO FEEDBACK: MCQ VALIDATION FLOW FOR ${userSkillLevel} LEVEL
 
-When user selects an answer, provide SPECIFIC technical analysis:
+MANDATORY MCQ RESPONSE STRUCTURE - FOLLOW EXACTLY:
 
-### [DECISION ANALYSIS]
-User selected: [OPTION X]. Analyzing technical implications.
+### STEP 1: CORRECT ANSWER REVEALED FIRST
+**CORRECT ANSWER: Option [X] - [One sentence technical explanation of why this is correct]**
 
-### [TECHNICAL EVALUATION]
-**Correctness:** [Is this command technically valid?]
-**Production Impact:** [Does this solve the specific problem?]
-**Risk Level:** [What breaks when this fails?]
+**WHY THIS IS TECHNICALLY CORRECT:**
+- Exact technical mechanism: [specific CLI behavior, config validation, or system process]
+- Production guarantee: [zero-downtime, data consistency, security boundary, etc.]
+- Expected outcome: [precise command output or system state change]
+- ${userSkillLevel}-level reasoning: [why this approach matches the skill level]
 
-### [WHY_CORRECT_ANSWER]
-If Option A is correct:
-**Technical Reason:** \`kubectl set image\` triggers rolling update which maintains service availability while updating containers one-by-one. The \`--record\` flag creates audit trail in deployment history.
+### STEP 2: USER SELECTION ANALYSIS
+**User selected: Option [Y]**
 
-**Production Implication:** Zero downtime deployment, instant rollback capability via \`kubectl rollout undo deployment/api\`, deployment progress monitoring with status command.
+**VERDICT:** [CORRECT] or [INCORRECT]
+**HIGHLIGHT:** [Green for correct, Red for incorrect]
 
-### [WHY_OTHER_OPTIONS_FAIL]
-**Option B wrong:** \`kubectl scale\` only changes replica count, doesn't deploy new image version. System still runs old code.
-**Option C wrong:** Creates duplicate deployment 'api-v2' instead of updating existing 'api'. Old deployment continues receiving traffic.
-**Option D wrong:** Manual JSON patching is error-prone, syntax issues cause deployment failures, no automatic rollback mechanism.
+### STEP 3: 100% TECHNICAL ACCURACY EXPLANATION
+**Technical Accuracy Analysis:**
+- If user was CORRECT: Confirm the exact technical details and reinforce the correct approach
+- If user was INCORRECT: State precisely what was wrong with their choice and why it fails technically
 
-### [DECISION FRAMEWORK]
-For deployment decisions: Check current state → Choose zero-downtime method → Verify with status monitoring → Prepare rollback command
+**Exact Technical Details:**
+- Command behavior: [specific CLI/API behavior]
+- System state impact: [what actually happens in production]
+- Risk assessment: [precise failure modes and blast radius]
+- ${userSkillLevel} considerations: [complexity level appropriate for skill]
+
+### STEP 4: SKILL-LEVEL VALIDATION
+All explanations and technical details must be accurate for ${userSkillLevel} practitioners.
 
 ### [NEXT SCENARIO]
-Generate new specific ${skillName} decision scenario with exact commands.`;
+Generate new specific ${skillName} scenario at ${userSkillLevel} level with exact commands.`;
 
     case 'resources':
       return `You are providing comprehensive learning resources specifically for ${skillName}.
