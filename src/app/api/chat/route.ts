@@ -1,8 +1,53 @@
 import { NextResponse } from 'next/server';
 import { ChatRequest, ChatResponse } from '../../../types/bridain';
+import { buildSystemPrompt } from '../../../lib/ai/prompts/systemPrompts';
+import { buildEvaluatorPrompt } from '../../../lib/ai/prompts/evaluatorPrompts';
+import { generateScenarioPrompt } from '../../../lib/ai/prompts/scenarioPrompts';
+import { buildConversationContext } from '../../../lib/ai/utils/contextBuilder';
+import { PromptContext } from '../../../lib/ai/types/ai';
 
-// Production-focused system prompts for different modes
-const getSystemPrompt = (mode: string, skill: string, message?: string) => {
+// Centralized AI Prompt Engine - replaces inline prompts
+const getSystemPrompt = (mode: string, skill: string, message?: string, context?: string) => {
+  // Use new centralized prompt engine for modern domains
+  if (mode === 'evaluation' || mode === 'interview_feedback') {
+    const promptContext: PromptContext = {
+      domain: (skill as any) || 'Software Engineering',
+      topic: context || 'General Programming',
+      skillLevel: 'Intermediate',
+      learningGoal: 'Interview Prep'
+    };
+    return buildEvaluatorPrompt(promptContext, message || '');
+  }
+
+  if (mode === 'scenario_game' || mode === 'scenario_feedback') {
+    const promptContext: PromptContext = {
+      domain: (skill as any) || 'DevOps',
+      topic: context || 'Production Scenarios',
+      skillLevel: 'Intermediate',
+      learningGoal: 'Production Troubleshooting'
+    };
+    return generateScenarioPrompt(promptContext);
+  }
+
+  // Fallback to new system for general coaching
+  const promptContext: PromptContext = {
+    domain: (skill as any) || 'Software Engineering',
+    topic: context || skill || 'General Programming',
+    skillLevel: 'Intermediate',
+    learningGoal: 'Concept Mastery',
+    previousContext: context
+  };
+
+  const newPrompt = buildSystemPrompt(promptContext);
+
+  // If new prompt engine provides adequate response, use it
+  if (newPrompt.length > 100) {
+    return newPrompt;
+  }
+
+  // Legacy prompts for backward compatibility (kept for existing functionality)
+  // Production-focused system prompts for different modes
+
   const skillName = skill || 'technology';
 
   const baseProductionContext = `You are an EXPERT ${skillName.toUpperCase()} PRODUCTION COACH. Your role is teaching decision-making skills through real production scenarios that mirror day-to-day engineering activities.
