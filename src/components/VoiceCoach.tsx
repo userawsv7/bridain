@@ -310,12 +310,33 @@ export function VoiceCoach() {
         body: JSON.stringify({
           message: "Generate an interview scenario question with 4 options for " + skill,
           context: `INTERVIEW MODE for ${skill}:
-Generate a realistic interview scenario in this exact format:
-IDEA: [Brief practical scenario description]
-SCENARIO: [Detailed situation with real context]
-OPTIONS: 1) [option] 2) [option] 3) [option] 4) [option]
+Generate a REAL PRODUCTION interview question based on actual day-to-day engineering struggles and core concepts:
+
+CRITICAL REQUIREMENTS:
+- Focus on REAL troubleshooting scenarios engineers face daily
+- Include specific commands, tools, file names, and configurations
+- Base questions on CERTIFICATION-STYLE problems and production incidents
+- Cover basic concepts, common failure modes, and real debugging approaches
+
+FORMAT:
+IDEA: [Specific production issue or certification question]
+SCENARIO: [Detailed scenario with actual commands/files/configs mentioned]
+OPTIONS:
+1) [Specific command/tool/action]
+2) [Specific command/tool/action]
+3) [Specific command/tool/action]
+4) [Specific command/tool/action]
 CORRECT: [number 1-4]
-Create challenging but fair scenarios for ${skill} role.`,
+
+EXAMPLE for ArgoCD:
+IDEA: Argo CD shows service-a sync failing with ImagePullBackOff error
+SCENARIO: Production deployment of service-a via Argo CD fails. The sync shows ImagePullBackOff in pod events. The argocd-app.yaml points to a private ECR repository.
+OPTIONS:
+1) Check `kubectl get events --field-selector involvedObject.name=service-a` to see pull errors
+2) Verify imagePullSecrets exist and reference correct ECR credentials
+3) Update syncPolicy to manual in argocd-app.yaml
+4) Check application logs in Argo CD UI for repository connection issues
+CORRECT: 2`,
           skill: skill,
           mode: 'interview_question'
         })
@@ -370,13 +391,13 @@ Create challenging but fair scenarios for ${skill} role.`,
         speak(idea, 0.85);
       }
     } catch (error) {
-      const fallbackIdea = `Debugging a production issue in ${skill}`;
-      const fallbackScenario = `A critical ${skill} issue has been reported in production. You need to diagnose and fix it.`;
+      const fallbackIdea = `Troubleshooting ${skill} production issue`;
+      const fallbackScenario = `Production ${skill} deployment failing. Check specific commands and configurations.`;
       const fallbackOptions = [
-        "Check logs and metrics first to identify the root cause",
-        "Immediately restart all services to clear the issue",
-        "Roll back to the previous deployment version",
-        "Add more resources to handle the load"
+        `Run detailed logs check with specific ${skill} commands`,
+        `Verify configuration files and secrets are correct`,
+        `Check resource limits and scaling configuration`,
+        `Validate network policies and connectivity`
       ];
       const fallbackCorrect = 0;
       const fallbackQuestion: Message = {
