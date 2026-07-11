@@ -114,7 +114,6 @@ export function VoiceCoachEnhanced() {
       };
 
       currentUtteranceRef.current = utterance;
-      utteranceRef.current = utterance;
       setIsSpeaking(true);
       window.speechSynthesis.speak(utterance);
     });
