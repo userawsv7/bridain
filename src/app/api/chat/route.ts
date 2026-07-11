@@ -193,7 +193,7 @@ CRITICAL REQUIREMENTS:
 - Focus on production decision consequences, not abstract correctness
 - Explain specific technical mechanisms that make decisions succeed/fail
 - Use real ${skill} commands, tools, configurations in explanations
-- Help learners develop production intuition, not just memorize answers`;
+- Help learners develop production intuition, not just memorize answers
 
 CRITICAL: The user has selected an answer. Provide DETAILED explanation of WHY the correct answer is right, using the [CURRENT STATUS]/[THE SANDBOX]/[EVALUATION & CONSTRAINTS]/[NEXT ACTION] format.
 
