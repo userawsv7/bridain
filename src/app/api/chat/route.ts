@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { ChatRequest, ChatResponse } from '../../../types/bridain';
 
 // Production-focused system prompts for different modes
 const getSystemPrompt = (mode: string, skill: string, message?: string) => {
@@ -205,10 +206,20 @@ GENERAL COACHING: Provide helpful, technically accurate guidance for ${skillName
   }
 };
 
-// Main API handler
-export async function POST(request: Request) {
+// Main API handler with strict typing
+export async function POST(request: Request): Promise<NextResponse<ChatResponse>> {
   try {
-    const { message, context, skill, mode } = await request.json();
+    const body: ChatRequest = await request.json();
+    const { message, context, skill, mode } = body;
+
+    // Input validation
+    if (!message || typeof message !== 'string') {
+      return NextResponse.json({
+        response: "Invalid request: message is required and must be a string.",
+        emoji: '⚠️',
+        powered: 'Validation Error'
+      } as ChatResponse);
+    }
 
     // API Key validation
     const groqKey = process.env.GROQ_API_KEY;
@@ -219,27 +230,26 @@ export async function POST(request: Request) {
         response: "No API keys configured. Please set GROQ_API_KEY or HUGGINGFACE_API_KEY environment variables.",
         emoji: '⚠️',
         powered: 'Configuration Error'
-      });
+      } as ChatResponse);
     }
 
-    const systemPrompt = getSystemPrompt(mode, skill, message);
+    const systemPrompt = getSystemPrompt(mode || 'default', skill || 'technology', message);
     let response: string;
     let emoji = '🤖';
     let powered = 'Smart';
 
     // Primary: Groq for intelligent responses
     if (groqKey) {
-      response = await callGroq(message, context, groqKey, systemPrompt, mode);
+      response = await callGroq(message, context || '', groqKey, systemPrompt, mode);
       emoji = '⚡';
       powered = 'Groq';
     }
     // Fallback: Hugging Face
     else if (hfKey) {
-      response = await callHuggingFace(message, context, hfKey, skill, mode);
+      response = await callHuggingFace(message, context || '', hfKey, skill, mode);
       emoji = '🤗';
       powered = 'HuggingFace';
     } else {
-      // This should never happen due to the check above, but TypeScript needs this
       throw new Error('No API keys available');
     }
 
@@ -247,7 +257,7 @@ export async function POST(request: Request) {
       response,
       emoji,
       powered
-    });
+    } as ChatResponse);
 
   } catch (error) {
     console.error('Chat API error:', error);
@@ -256,7 +266,7 @@ export async function POST(request: Request) {
       response: `API Error: ${errorMessage}. Please check API keys and try again.`,
       emoji: '⚠️',
       powered: 'Error'
-    });
+    } as ChatResponse);
   }
 }
 
