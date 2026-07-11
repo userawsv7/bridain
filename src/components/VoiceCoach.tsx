@@ -4,29 +4,16 @@ import React, { useState, useRef } from 'react';
 import { Send, Loader2, Mic, MicOff, Volume2, VolumeX, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface DualText {
-  displayText: string;
-  audioScript: string;
-}
-
 interface Message {
   id: number;
   text: string;
   isUser: boolean;
+  question?: string;
+  options?: string[];
+  correctAnswer?: string;
   isCorrect?: boolean;
-  questionText?: DualText;
-  choices?: string[];
-  answered?: boolean;
+  explanation?: string;
   selectedAnswer?: string;
-  correctAnswerText?: string;
-  whyCorrectIsCorrect?: string;
-  userAnswerEvaluation?: string;
-  whyOtherOptionsWrong?: string;
-  technicalConcept?: string;
-  productionPerspective?: string;
-  commonMistakes?: string;
-  keyLearningPoints?: string;
-  countdown?: number;
 }
 
 type Mode = 'learning' | 'interview';
@@ -45,7 +32,7 @@ export function VoiceCoach() {
   const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
   const [speechRate, setSpeechRate] = useState(0.85);
   const [preferredVoice, setPreferredVoice] = useState<SpeechSynthesisVoice | null>(null);
-  const [autoProgress, setAutoProgress] = useState(true);
+  const [currentQuestion, setCurrentQuestion] = useState<{question: string, options: string[], correctAnswer: string} | null>(null);
 
   const voiceFlavors = {
     Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
@@ -57,7 +44,6 @@ export function VoiceCoach() {
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   // FEMALE-ONLY VOICE SELECTION
   const selectFemaleVoice = async (): Promise<SpeechSynthesisVoice | null> => {
@@ -78,16 +64,13 @@ export function VoiceCoach() {
       voices = window.speechSynthesis.getVoices();
     }
 
-    // PREMIUM FEMALE VOICES ONLY - Explicitly filter out male voices
     const femaleVoices = [
       'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan',
       'Moira', 'Tessa', 'Veena', 'Fiona', 'Serena', 'Zira', 'Hazel',
       'Rishi', 'Priya', 'Sangeeta', 'Heera', 'Linda', 'Joanna', 'Amy',
-      'Emma', 'Nicole', 'Salli', 'Joey', 'Justin', 'Matthew', 'Ivy',
-      'Kimberly', 'Kendra', 'Joanna', 'Ruth', 'Stephen', 'Salli'
+      'Emma', 'Nicole', 'Salli', 'Ivy', 'Kimberly', 'Kendra', 'Ruth'
     ];
 
-    // First try exact premium female voice matches
     for (const voiceName of femaleVoices) {
       const voice = voices.find(v =>
         v.name.includes(voiceName) &&
@@ -98,7 +81,6 @@ export function VoiceCoach() {
       if (voice) return voice;
     }
 
-    // Then filter for any female indicator while excluding male
     const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady'];
     for (const indicator of femaleIndicators) {
       const voice = voices.find(v =>
@@ -108,15 +90,12 @@ export function VoiceCoach() {
       if (voice) return voice;
     }
 
-    // Fallback to Google female-sounding voices
     const googleVoices = voices.filter(v =>
       v.name.includes('Google') &&
-      !v.name.toLowerCase().includes('male') &&
-      !v.name.toLowerCase().includes('uk english male')
+      !v.name.toLowerCase().includes('male')
     );
     if (googleVoices.length > 0) return googleVoices[0];
 
-    // Last resort - return first non-male voice
     const nonMaleVoice = voices.find(v =>
       !v.name.toLowerCase().includes('male') &&
       !v.name.toLowerCase().includes('guy') &&
@@ -136,18 +115,7 @@ export function VoiceCoach() {
       .trim();
   };
 
-  const sanitizeMessageText = (text: string): string => {
-    return text
-      .replace(/#{1,6}\s*/g, '')
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
-      .replace(/_{1,2}/g, '')
-      .replace(/`{1,3}/g, '')
-      .replace(/\s{3,}/g, '\n\n')
-      .trim();
-  };
-
-  // Initialize female voice on component mount
+  // Initialize female voice
   React.useEffect(() => {
     const initVoice = async () => {
       const voice = await selectFemaleVoice();
@@ -156,7 +124,6 @@ export function VoiceCoach() {
     initVoice();
   }, []);
 
-  // Speak with promise support - ONLY FEMALE VOICES
   const speakWithPromise = (text: string, rate: number = 0.9): Promise<void> => {
     return new Promise((resolve) => {
       if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -171,7 +138,7 @@ export function VoiceCoach() {
         if (voiceToUse) setPreferredVoice(voiceToUse);
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.rate = speechRate;
+        utterance.rate = rate;
         utterance.pitch = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors].pitch;
         utterance.volume = 0.85;
         utterance.voice = voiceToUse || preferredVoice || null;
@@ -210,10 +177,6 @@ export function VoiceCoach() {
       currentUtteranceRef.current = null;
     }
     setIsSpeaking(false);
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
   };
 
   React.useEffect(() => {
@@ -230,27 +193,6 @@ export function VoiceCoach() {
     setIsMuted(!isMuted);
   };
 
-  const handleSkillSubmit = () => {
-    if (!input.trim()) return;
-    const skill = input.trim();
-    setSelectedSkill(skill);
-
-    const welcomeMsg: Message = {
-      id: Date.now(),
-      text: mode === 'learning'
-        ? `🎓 Learning Mode: ${skill}\n\nI'll teach you concepts and interact based on your questions. Ask me anything!`
-        : `🎤 Interview Mode: ${skill}\n\nI'll ask you interview questions. Answer each one and I'll provide feedback.`,
-      isUser: false
-    };
-    setMessages(prev => [...prev, welcomeMsg]);
-    setInput('');
-
-    if (mode === 'interview') {
-      setTimeout(() => askInterviewQuestion(skill), 1000);
-    }
-  };
-
-  // COMPLETELY REBUILT - INTERVIEW MODE WITH STRICT FEMALE VOICE AND ACCURATE ANSWERS
   const askInterviewQuestion = async (skill: string) => {
     setIsLoading(true);
 
@@ -259,28 +201,24 @@ export function VoiceCoach() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Generate a realistic technical interview question for ${skill}`,
-          context: `INTERVIEW MODE - SENIOR TECHNICAL INTERVIEWER for ${skill}
+          message: `Generate an interview question for ${skill}`,
+          context: `INTERVIEW MODE - Generate questions with 4 options and one correct answer.
 
-You are a Senior Staff Engineer conducting a technical interview. Generate ORIGINAL, PRODUCTION-GRADE questions that test real engineering knowledge.
+Generate a technical interview question with:
+- A clear question
+- 4 options (A, B, C, D)
+- Only ONE correct answer
+- Technical, production-grade questions
 
-QUESTION REQUIREMENTS:
-- Questions from FAANG, Fortune 500, startup interviews
-- Cover: Fundamentals, Advanced concepts, Production issues, Troubleshooting, Architecture
-- Include: Specific commands, APIs, configurations, exact syntax
-- Never repeat questions - always generate unique content
-- Test: Core concepts, Best practices, Common pitfalls, Real scenarios
+Format exactly:
+QUESTION: [The question]
+A) [Option A]
+B) [Option B]
+C) [Option C]
+D) [Option D]
+CORRECT: [A/B/C/D]
 
-FORMAT EXACTLY:
-QUESTION: [Clear, specific interview question]
-OPTIONS:
-1) [Specific technical answer with exact syntax]
-2) [Specific technical answer with exact syntax]
-3) [Specific technical answer with exact syntax]
-4) [Specific technical answer with exact syntax]
-CORRECT: [1-4]
-
-Generate questions about: Linux, Networking, Cloud, Kubernetes, CI/CD, Databases, Security, Performance, Scalability, Monitoring, Logging, Disaster Recovery, High Availability, Infrastructure as Code, Cost Optimization, Design Decisions, Common Mistakes, Production Outages, Root Cause Analysis, Debugging, Architecture Trade-offs`,
+Test on: ${skill} fundamentals, best practices, production scenarios`,
           skill: skill,
           mode: 'interview_question'
         })
@@ -288,72 +226,85 @@ Generate questions about: Linux, Networking, Cloud, Kubernetes, CI/CD, Databases
 
       if (response.ok) {
         const data = await response.json();
-        const sanitizedResponse = sanitizeMessageText(data.response);
+        const parsed = parseQuestion(data.response);
 
-        const questionMatch = sanitizedResponse.match(/QUESTION:\s*([^\n]+)/i);
-        const optionsMatch = sanitizedResponse.match(/OPTIONS:\s*([\s\S]*?)(?=CORRECT:|$)/i);
-        const correctMatch = sanitizedResponse.match(/CORRECT:\s*(\d)/i);
+        if (parsed) {
+          const questionMsg: Message = {
+            id: Date.now(),
+            text: parsed.question,
+            isUser: false,
+            question: parsed.question,
+            options: parsed.options
+          };
 
-        const question = questionMatch ? questionMatch[1].trim() : '';
-        const optionsText = optionsMatch ? optionsMatch[1].trim() : '';
-        const correctIndex = correctMatch ? parseInt(correctMatch[1]) - 1 : 0;
+          setMessages(prev => [...prev, questionMsg]);
+          setCurrentQuestion({ question: parsed.question, options: parsed.options, correctAnswer: parsed.correctAnswer });
+          setAwaitingAnswer(true);
 
-        const options = optionsText.match(/\d+\)\s*([^\n]+)/g)?.map(o => o.replace(/^\d+\)\s*/, '')) || [];
-
-        const questionDual: DualText = {
-          displayText: question,
-          audioScript: question
-            .replace(/API/g, 'A P I')
-            .replace(/URL/g, 'U R L')
-            .replace(/AWS/g, 'A W S')
-            .replace(/CI\/CD/g, 'C I and C D')
-            .replace(/\/\//g, ' slash slash ')
-            .replace(/\//g, ' slash ')
-            .replace(/_/g, ' underscore ')
-            .replace(/-/g, ' dash ')
-        };
-
-        const questionMsg: Message = {
-          id: Date.now(),
-          text: sanitizedResponse,
-          isUser: false,
-          questionText: questionDual,
-          choices: options.length > 0 ? options : undefined,
-          correctAnswerText: options[correctIndex] || ''
-        };
-
-        setMessages(prev => [...prev, questionMsg]);
-        setAwaitingAnswer(true);
-
-        // Voice-led interview flow: Read question, options, then prompt
-        const narrationText = `${question}. Options: ${options.map((o, i) => `Option ${i + 1}: ${o}`).join('. ')}. Please select the answer you believe is most appropriate.`;
-        await speak(narrationText, 0.85);
+          // Speak the question
+          const speakText = `${parsed.question}. Options: ${parsed.options.join('. ')}. Choose your answer.`;
+          await speak(speakText, speechRate);
+        }
       }
     } catch (error) {
-      console.error('Error generating interview question:', error);
+      console.error('Error generating question:', error);
     }
 
     setIsLoading(false);
   };
 
-  // Handle answer with comprehensive 8-section educational feedback
-  const handleAnswer = async (answer: string) => {
-    if (!selectedSkill || !awaitingAnswer) return;
+  const parseQuestion = (response: string) => {
+    const questionMatch = response.match(/QUESTION:\s*(.+?)(?=\n[A-D]\))/is);
+    const optionsMatch = response.match(/([A-D]\)\s*.+?)(?=\nCORRECT:|$)/is);
+    const correctMatch = response.match(/CORRECT:\s*([A-D])/i);
 
-    setMessages(prev => prev.map(msg => {
-      if (msg.choices && !msg.answered) {
-        return { ...msg, answered: true, selectedAnswer: answer };
+    if (!questionMatch || !optionsMatch || !correctMatch) return null;
+
+    const question = questionMatch[1].trim();
+    const optionsText = optionsMatch[1];
+    const correctLetter = correctMatch[1].toUpperCase();
+
+    const optionRegex = /([A-D])\)\s*([^\n]+)/g;
+    const options: string[] = [];
+    let match;
+    let correctAnswer = '';
+
+    while ((match = optionRegex.exec(optionsText)) !== null) {
+      const optionText = match[2].trim();
+      const optionWithLetter = `${match[1]}) ${optionText}`;
+      options.push(optionText);
+
+      if (match[1] === correctLetter) {
+        correctAnswer = optionText;
       }
-      return msg;
-    }));
+    }
+
+    return { question, options, correctAnswer };
+  };
+
+  const handleAnswer = async (answer: string) => {
+    if (!currentQuestion || !awaitingAnswer) return;
+
+    setAwaitingAnswer(false);
 
     const userMsg: Message = {
       id: Date.now(),
       text: `Your answer: ${answer}`,
-      isUser: true
+      isUser: true,
+      selectedAnswer: answer
     };
     setMessages(prev => [...prev, userMsg]);
-    setAwaitingAnswer(false);
+
+    const isCorrect = answer === currentQuestion.correctAnswer;
+
+    // Speak result
+    if (isCorrect) {
+      await speak("Correct! Excellent job.", speechRate);
+    } else {
+      await speak(`Incorrect. The correct answer is ${currentQuestion.correctAnswer}.`, speechRate);
+    }
+
+    // Get explanation
     setIsLoading(true);
 
     try {
@@ -361,22 +312,8 @@ Generate questions about: Linux, Networking, Cloud, Kubernetes, CI/CD, Databases
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `User selected: ${answer}`,
-          context: `INTERVIEW MODE FEEDBACK - Provide comprehensive educational feedback
-
-Previous question context is in the system. User's answer: ${answer}
-
-MANDATORY 8-SECTION RESPONSE FORMAT:
-1. correctAnswerText: [The exact correct answer text]
-2. whyCorrectIsCorrect: [Why this answer is technically correct - include underlying concept, engineering principles]
-3. userAnswerEvaluation: [Evaluate user's selection - why correct or why wrong]
-4. whyOtherOptionsWrong: [Explain why EVERY incorrect option is wrong - technical reasons]
-5. technicalConcept: [The core technical concept being tested - fundamentals, mechanics]
-6. productionPerspective: [Production implications, real-world examples, operational impact]
-7. commonMistakes: [Common engineering mistakes, interview traps, gotchas]
-8. keyLearningPoints: [Key takeaways, tips, tricks, shortcuts, certification insights, interview expectations]
-
-Ensure 100% technical accuracy. No hallucination. Real commands, APIs, and concepts only.`,
+          message: `Explain why ${currentQuestion.correctAnswer} is correct for question: ${currentQuestion.question}`,
+          context: `INTERVIEW FEEDBACK - Explain the correct answer technically and accurately. User selected: ${answer}. Correct answer: ${currentQuestion.correctAnswer}. Provide a clear technical explanation.`,
           skill: selectedSkill,
           mode: 'interview_feedback'
         })
@@ -385,97 +322,37 @@ Ensure 100% technical accuracy. No hallucination. Real commands, APIs, and conce
       if (response.ok) {
         const data = await response.json();
 
-        // Try to parse structured feedback
-        let structuredFeedback: any = null;
-        try {
-          const jsonMatch = data.response.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            structuredFeedback = JSON.parse(jsonMatch[0]);
-          }
-        } catch (e) {
-          console.log('Could not parse JSON feedback');
-        }
+        const explanationMsg: Message = {
+          id: Date.now() + 1,
+          text: isCorrect
+            ? `✅ Correct! ${currentQuestion.correctAnswer}\n\n${data.response}`
+            : `❌ Incorrect. Your answer: ${answer}\n\n✅ Correct Answer: ${currentQuestion.correctAnswer}\n\n${data.response}`,
+          isUser: false,
+          question: currentQuestion.question,
+          correctAnswer: currentQuestion.correctAnswer,
+          isCorrect: isCorrect,
+          explanation: data.response,
+          selectedAnswer: answer
+        };
 
-        const lastQuestionMsg = [...messages].reverse().find(m => m.choices);
-        const isAnswerCorrect = lastQuestionMsg?.correctAnswerText === answer;
+        setMessages(prev => [...prev, explanationMsg]);
 
-        if (structuredFeedback && structuredFeedback.correctAnswerText) {
-          const feedbackMsg: Message = {
-            id: Date.now() + 1,
-            text: isAnswerCorrect
-              ? `✅ Correct! ${structuredFeedback.correctAnswerText}`
-              : `❌ Incorrect. The correct answer is: ${structuredFeedback.correctAnswerText}`,
-            isUser: false,
-            isCorrect: isAnswerCorrect,
-            correctAnswerText: structuredFeedback.correctAnswerText,
-            whyCorrectIsCorrect: structuredFeedback.whyCorrectIsCorrect,
-            userAnswerEvaluation: structuredFeedback.userAnswerEvaluation,
-            whyOtherOptionsWrong: structuredFeedback.whyOtherOptionsWrong,
-            technicalConcept: structuredFeedback.technicalConcept,
-            productionPerspective: structuredFeedback.productionPerspective,
-            commonMistakes: structuredFeedback.commonMistakes,
-            keyLearningPoints: structuredFeedback.keyLearningPoints
-          };
+        // Speak explanation
+        await speak(`Explanation: ${data.response}`, speechRate * 0.9);
 
-          setMessages(prev => [...prev, feedbackMsg]);
-
-          // Correct Answer Flow
-          if (isAnswerCorrect) {
-            await speak("Correct. Excellent job.", 0.9);
-            const explanationText = `${structuredFeedback.whyCorrectIsCorrect}. ${structuredFeedback.technicalConcept}. ${structuredFeedback.productionPerspective}`;
-            await speak(explanationText, 0.85);
-          } else {
-            // Incorrect Answer Flow
-            await speak("That answer is incorrect.", 0.9);
-            await speak(`The correct answer is ${structuredFeedback.correctAnswerText}.`, 0.85);
-            const explanationText = `${structuredFeedback.whyCorrectIsCorrect}. ${structuredFeedback.userAnswerEvaluation}. ${structuredFeedback.whyOtherOptionsWrong}. ${structuredFeedback.commonMistakes}`;
-            await speak(explanationText, 0.85);
-          }
-
-          // Automatic Progression
-          if (autoProgress && selectedSkill) {
-            startCountdown(selectedSkill);
-          }
+        // Auto-generate next question
+        if (selectedSkill) {
+          setTimeout(() => {
+            askInterviewQuestion(selectedSkill);
+          }, 3000);
         }
       }
     } catch (error) {
-      console.error('Error handling answer:', error);
+      console.error('Error getting explanation:', error);
     }
 
     setIsLoading(false);
-    setInput('');
-  };
-
-  // Countdown and Automatic Progression
-  const startCountdown = (skill: string) => {
-    let countdown = 5;
-
-    const updateCountdown = (value: number) => {
-      setMessages(prev => {
-        const updated = [...prev];
-        const lastFeedback = updated[updated.length - 1];
-        if (lastFeedback && !lastFeedback.isUser) {
-          lastFeedback.countdown = value;
-        }
-        return updated;
-      });
-    };
-
-    updateCountdown(countdown);
-
-    countdownRef.current = setInterval(() => {
-      countdown--;
-      updateCountdown(countdown);
-
-      if (countdown <= 0) {
-        if (countdownRef.current) {
-          clearInterval(countdownRef.current);
-          countdownRef.current = null;
-        }
-        stopSpeaking(); // Cancel any queued speech
-        askInterviewQuestion(skill);
-      }
-    }, 1000);
+    setCurrentQuestion(null);
   };
 
   const handleLearningMessage = async () => {
@@ -496,7 +373,7 @@ Ensure 100% technical accuracy. No hallucination. Real commands, APIs, and conce
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: `LEARNING MODE: Interactive teaching session for ${selectedSkill}.`,
+          context: `LEARNING MODE: Teaching session for ${selectedSkill}.`,
           skill: selectedSkill,
           mode: 'learning'
         })
@@ -510,7 +387,7 @@ Ensure 100% technical accuracy. No hallucination. Real commands, APIs, and conce
           isUser: false
         };
         setMessages(prev => [...prev, aiMsg]);
-        speak(data.response, 0.85);
+        speak(data.response, speechRate);
       }
     } catch (error) {
       const errorMsg: Message = {
@@ -524,16 +401,33 @@ Ensure 100% technical accuracy. No hallucination. Real commands, APIs, and conce
     setIsLoading(false);
   };
 
+  const handleSkillSubmit = () => {
+    if (!input.trim()) return;
+    const skill = input.trim();
+    setSelectedSkill(skill);
+
+    const welcomeMsg: Message = {
+      id: Date.now(),
+      text: mode === 'learning'
+        ? `🎓 Learning Mode: ${skill}\n\nI'll teach you concepts. Ask me anything!`
+        : `🎤 Interview Mode: ${skill}\n\nI'll ask you interview questions. Select the correct answer from the options.`,
+      isUser: false
+    };
+    setMessages(prev => [...prev, welcomeMsg]);
+    setInput('');
+
+    if (mode === 'interview') {
+      setTimeout(() => askInterviewQuestion(skill), 1000);
+    }
+  };
+
   const resetCoach = () => {
     stopSpeaking();
     setMessages([{ id: 0, text: "🎙️ Welcome to Voice Coach!\n\nChoose a mode and enter your skill to begin.", isUser: false }]);
     setSelectedSkill(null);
     setInput('');
     setAwaitingAnswer(false);
-    if (countdownRef.current) {
-      clearInterval(countdownRef.current);
-      countdownRef.current = null;
-    }
+    setCurrentQuestion(null);
   };
 
   return (
@@ -604,21 +498,10 @@ Ensure 100% technical accuracy. No hallucination. Real commands, APIs, and conce
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="px-4 py-2 rounded-xl bg-primary/20 border border-primary/30">
-                  {mode === 'learning' ? '🎓' : '🎤'} {mode === 'learning' ? 'Learning' : 'Interview'}: <span className="font-bold">{selectedSkill}</span>
-                </div>
+              <div className="px-4 py-2 rounded-xl bg-primary/20 border border-primary/30">
+                {mode === 'learning' ? '🎓' : '🎤'} {mode === 'learning' ? 'Learning' : 'Interview'}: <span className="font-bold">{selectedSkill}</span>
               </div>
               <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={autoProgress}
-                    onChange={(e) => setAutoProgress(e.target.checked)}
-                    className="text-primary"
-                  />
-                  Auto-advance
-                </label>
                 <button onClick={toggleMute} className={`p-2 rounded-xl ${isMuted ? 'bg-red-500/20 border border-red-500/30' : 'bg-white/5 border border-white/10'}`}>
                   {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>
@@ -641,91 +524,26 @@ Ensure 100% technical accuracy. No hallucination. Real commands, APIs, and conce
             <div className="bg-white/5 rounded-2xl p-6 h-[500px] overflow-y-auto space-y-4">
               {messages.map((msg) => (
                 <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] p-4 rounded-2xl ${msg.isUser ? 'bg-primary/20 border border-primary/30' : msg.isCorrect !== undefined ? (msg.isCorrect ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30') : 'bg-white/10 border border-white/20'}`}>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {(msg.questionText?.displayText) || sanitizeMessageText(msg.text)}
-                    </p>
+                  <div className={`max-w-[85%] p-4 rounded-2xl ${
+                    msg.isUser ? 'bg-primary/20 border border-primary/30' :
+                    msg.isCorrect !== undefined ? (msg.isCorrect ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30') :
+                    'bg-white/10 border border-white/20'
+                  }`}>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
 
-                    {/* 8-Section Educational Feedback Display */}
-                    {!msg.isUser && msg.correctAnswerText && (
-                      <div className="mt-4 space-y-3 text-sm">
-                        <div className="font-medium text-lg">{msg.isCorrect ? '✅ Correct' : '❌ Incorrect'}</div>
-
-                        <div className="bg-white/5 rounded p-3">
-                          <div className="text-xs text-white/50 mb-1">CORRECT ANSWER</div>
-                          <div>{msg.correctAnswerText}</div>
-                        </div>
-
-                        {msg.whyCorrectIsCorrect && (
-                          <div className="bg-white/5 rounded p-3">
-                            <div className="text-xs text-white/50 mb-1">WHY THIS IS CORRECT</div>
-                            <div>{msg.whyCorrectIsCorrect}</div>
-                          </div>
-                        )}
-
-                        {msg.userAnswerEvaluation && (
-                          <div className="bg-white/5 rounded p-3">
-                            <div className="text-xs text-white/50 mb-1">YOUR ANSWER</div>
-                            <div>{msg.userAnswerEvaluation}</div>
-                          </div>
-                        )}
-
-                        {msg.whyOtherOptionsWrong && (
-                          <div className="bg-white/5 rounded p-3">
-                            <div className="text-xs text-white/50 mb-1">WHY OTHER OPTIONS ARE WRONG</div>
-                            <div>{msg.whyOtherOptionsWrong}</div>
-                          </div>
-                        )}
-
-                        {msg.technicalConcept && (
-                          <div className="bg-white/5 rounded p-3">
-                            <div className="text-xs text-white/50 mb-1">TECHNICAL CONCEPT</div>
-                            <div>{msg.technicalConcept}</div>
-                          </div>
-                        )}
-
-                        {msg.productionPerspective && (
-                          <div className="bg-white/5 rounded p-3">
-                            <div className="text-xs text-white/50 mb-1">PRODUCTION PERSPECTIVE</div>
-                            <div>{msg.productionPerspective}</div>
-                          </div>
-                        )}
-
-                        {msg.commonMistakes && (
-                          <div className="bg-white/5 rounded p-3">
-                            <div className="text-xs text-white/50 mb-1">COMMON MISTAKES</div>
-                            <div>{msg.commonMistakes}</div>
-                          </div>
-                        )}
-
-                        {msg.keyLearningPoints && (
-                          <div className="bg-white/5 rounded p-3">
-                            <div className="text-xs text-white/50 mb-1">KEY LEARNING POINTS</div>
-                            <div>{msg.keyLearningPoints}</div>
-                          </div>
-                        )}
-
-                        {msg.countdown !== undefined && msg.countdown > 0 && (
-                          <div className="text-center text-primary font-medium">Next question in {msg.countdown}...</div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* MCQ Options */}
-                    {mode === 'interview' && !msg.isUser && msg.choices && (
+                    {/* Answer Options */}
+                    {msg.options && !msg.selectedAnswer && (
                       <div className="mt-4 space-y-2">
-                        {msg.choices.map((choice, index) => {
-                          const isAnswered = msg.answered === true;
-                          const isSelected = msg.selectedAnswer === choice;
-                          const isCorrect = isAnswered && msg.correctAnswerText === choice;
-
-                          return (
-                            <label key={index} className={`flex items-center gap-2 p-2 rounded-lg ${isAnswered ? isCorrect ? 'bg-green-500/20 border border-green-500/50' : isSelected ? 'bg-red-500/20 border border-red-500/50' : 'bg-white/5' : 'bg-white/5 hover:bg-white/10 cursor-pointer'}`}>
-                              <input type="radio" name={`interview-answer-${msg.id}`} value={choice} checked={isSelected} onChange={(e) => !isAnswered && handleAnswer(e.target.value)} disabled={isAnswered} />
-                              <span className="text-sm">{index + 1}. {choice} {isAnswered && isCorrect && " ✓"} {isAnswered && isSelected && !isCorrect && " ✗"}</span>
-                            </label>
-                          );
-                        })}
+                        {msg.options.map((option, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleAnswer(option)}
+                            disabled={!awaitingAnswer}
+                            className="w-full text-left p-3 rounded-xl border bg-white/5 border-white/20 hover:bg-white/10 hover:border-primary/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          >
+                            {option}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -743,19 +561,15 @@ Ensure 100% technical accuracy. No hallucination. Real commands, APIs, and conce
                 onKeyPress={e => {
                   if (e.key === 'Enter') {
                     if (mode === 'learning') handleLearningMessage();
-                    else if (awaitingAnswer) handleAnswer(input);
                   }
                 }}
-                placeholder={mode === 'learning' ? "Ask a question..." : awaitingAnswer ? "Type your answer..." : "Waiting for next question..."}
-                disabled={mode === 'interview' && !awaitingAnswer}
+                placeholder={mode === 'learning' ? "Ask a question..." : "Select an answer from the options above"}
+                disabled={mode === 'interview' || isLoading}
                 className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none disabled:opacity-50"
               />
               <button
-                onClick={() => {
-                  if (mode === 'learning') handleLearningMessage();
-                  else if (awaitingAnswer) handleAnswer(input);
-                }}
-                disabled={!input.trim() || isLoading || (mode === 'interview' && !awaitingAnswer)}
+                onClick={mode === 'learning' ? handleLearningMessage : undefined}
+                disabled={!input.trim() || isLoading || mode === 'interview'}
                 className="p-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50"
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
