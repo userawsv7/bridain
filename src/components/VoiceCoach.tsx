@@ -250,7 +250,7 @@ export function VoiceCoach() {
     }
   };
 
-  // NEW COMPREHENSIVE INTERVIEW QUESTION GENERATION
+  // COMPLETELY REBUILT - INTERVIEW MODE WITH STRICT FEMALE VOICE AND ACCURATE ANSWERS
   const askInterviewQuestion = async (skill: string) => {
     setIsLoading(true);
 

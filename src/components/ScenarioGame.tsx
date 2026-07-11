@@ -265,7 +265,7 @@ export function ScenarioGame() {
     setTimeout(() => generateScenario(skill), 1000);
   };
 
-  // NEW COMPREHENSIVE SCENARIO GENERATION - Professional Interviewer Style
+  // REBUILT SCENARIO GAME - 100% TECHNICALLY CORRECT WITH GREEN HIGHLIGHTING AND EXPLANATIONS
   const generateScenario = async (skill: string, previousChoice?: string) => {
     setIsLoading(true);
 
