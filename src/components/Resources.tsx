@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { ExternalLink, Search, Filter, BookOpen, Award, Users, Video, Code, Database, Shield, Cloud, Target, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { allResources, getUniqueCategories, getUniqueSkills, Resource } from '@/data/resources';
+import { matchSkill, generateDynamicResources } from '@/data/resources/universal-skills';
 
 export function Resources() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,22 +23,39 @@ export function Resources() {
   const sources = ['Official', 'Community'];
 
   const filteredResources = useMemo(() => {
-    let result = allResources;
+    let result = [...allResources];
+    let dynamicResources: Resource[] = [];
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(r =>
+      // First try to match with existing resources
+      const existingMatches = result.filter(r =>
         r.name.toLowerCase().includes(query) ||
         r.description.toLowerCase().includes(query) ||
         r.tags.some(tag => tag.toLowerCase().includes(query)) ||
         r.skills.some(skill => skill.toLowerCase().includes(query))
       );
+
+      // Generate dynamic resources for any skill
+      dynamicResources = generateDynamicResources(searchQuery) as Resource[];
+
+      // Combine and deduplicate
+      result = [...existingMatches, ...dynamicResources];
     }
 
     if (selectedSkill) {
+      const matchedSkills = matchSkill(selectedSkill);
       result = result.filter(r =>
-        r.skills.some(skill => skill.toLowerCase().includes(selectedSkill.toLowerCase()))
+        r.skills.some(skill =>
+          matchedSkills.some(ms => skill.toLowerCase().includes(ms.toLowerCase())) ||
+          skill.toLowerCase().includes(selectedSkill.toLowerCase())
+        )
       );
+
+      // If no results from existing resources, generate dynamic ones
+      if (result.length === 0) {
+        result = generateDynamicResources(selectedSkill) as Resource[];
+      }
     }
 
     if (selectedCategory) {

@@ -265,37 +265,45 @@ export function ProductionTroubleshooter() {
   const detectIssue = (content: string): { tool: string; issue: string } | null => {
     const lc = content.toLowerCase();
 
-    // Kubernetes patterns
+    // Match any skill using universal skill matching
+    const matchedSkills = matchSkill(lc.split(' ').find(w => w.length > 3) || '');
+
+    // Universal patterns that work for ANY skill/technology
+    if (lc.includes('error') || lc.includes('fail') || lc.includes('exception')) {
+      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Error/Failure Detected' };
+    }
+    if (lc.includes('timeout') || lc.includes('slow')) {
+      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Performance/Timeout Issue' };
+    }
+    if (lc.includes('crash') || lc.includes('down') || lc.includes('killed')) {
+      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Crash/Outage' };
+    }
+    if (lc.includes('permission') || lc.includes('forbidden') || lc.includes('unauthorized')) {
+      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Access/Permission Denied' };
+    }
+    if (lc.includes('connection') || lc.includes('network')) {
+      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Connectivity Issue' };
+    }
+
+    // Original DevOps tool patterns (enhanced with dynamic matching)
     if (lc.includes('crashloop') || lc.includes('exit code')) return { tool: 'kubernetes', issue: 'CrashLoopBackOff' };
     if (lc.includes('imagepull') || lc.includes('errimagepull')) return { tool: 'kubernetes', issue: 'ImagePullBackOff' };
     if (lc.includes('pending') && lc.includes('pod')) return { tool: 'kubernetes', issue: 'Pending Pod' };
-    if (lc.includes('connection refused') || lc.includes('timeout')) return { tool: 'kubernetes', issue: 'Network/Service Issue' };
-    if (lc.includes('forbidden') || lc.includes('rbac')) return { tool: 'kubernetes', issue: 'RBAC/Permission Denied' };
-
-    // Docker patterns
     if (lc.includes('docker') && (lc.includes('exit') || lc.includes('killed'))) return { tool: 'docker', issue: 'Container Exit' };
-    if (lc.includes('no space left') || lc.includes('disk full')) return { tool: 'docker', issue: 'Storage Full' };
-    if (lc.includes('port') && lc.includes('bind')) return { tool: 'docker', issue: 'Port Binding Conflict' };
-
-    // Helm patterns
     if (lc.includes('helm') && lc.includes('error')) return { tool: 'helm', issue: 'Chart Error' };
-    if (lc.includes('release') && lc.includes('failed')) return { tool: 'helm', issue: 'Release Failed' };
-
-    // Ansible patterns
     if (lc.includes('ansible') && lc.includes('failed')) return { tool: 'ansible', issue: 'Playbook Failed' };
-    if (lc.includes('unreachable') || lc.includes('ssh')) return { tool: 'ansible', issue: 'Host Unreachable' };
-
-    // Terraform patterns
     if (lc.includes('terraform') && lc.includes('error')) return { tool: 'terraform', issue: 'State/Plan Error' };
-    if (lc.includes('lock') && lc.includes('acquire')) return { tool: 'terraform', issue: 'State Lock' };
-
-    // ArgoCD patterns
     if (lc.includes('argocd') && lc.includes('sync')) return { tool: 'argocd', issue: 'Sync Failed' };
-    if (lc.includes('health') && lc.includes('degraded')) return { tool: 'argocd', issue: 'Health Degraded' };
-
-    // AI/ML patterns
     if (lc.includes('cuda') || lc.includes('gpu') || lc.includes('oom')) return { tool: 'ai', issue: 'GPU/Resource Issue' };
-    if (lc.includes('model') && lc.includes('load')) return { tool: 'ai', issue: 'Model Loading Failed' };
+    if (lc.includes('test') && (lc.includes('fail') || lc.includes('error'))) return { tool: 'testing', issue: 'Test Failure' };
+    if (lc.includes('api') && lc.includes('error')) return { tool: 'api', issue: 'API Error' };
+    if (lc.includes('ui') || lc.includes('frontend')) return { tool: 'ui', issue: 'UI Issue' };
+    if (lc.includes('db') || lc.includes('database') || lc.includes('sql')) return { tool: 'database', issue: 'Database Issue' };
+
+    // Return the first matched skill if any
+    if (matchedSkills.length > 0 && matchedSkills[0] !== lc) {
+      return { tool: matchedSkills[0].toLowerCase(), issue: `${matchedSkills[0]} Issue` };
+    }
 
     return null;
   };
