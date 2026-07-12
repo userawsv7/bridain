@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mic, MicOff, Send, Volume2, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Send, Volume2, Loader2, Trophy, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -15,6 +15,9 @@ interface Message {
   text: DualText | string;
   isUser: boolean;
   emoji: string;
+  options?: string[];
+  correctAnswer?: string;
+  explanation?: string;
 }
 
 const encouragingMessages = [
@@ -33,15 +36,21 @@ const responses: { [key: string]: { text: string; emoji: string } } = {
   default: { text: "Great question! 🤔 Remember: there's no such thing as a silly question in learning. What specific area would you like to explore?", emoji: "💭" }
 };
 
+type VoiceMode = 'learning' | 'interview';
+
 export function VoiceAssistant() {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 0, text: "Hi! I'm your friendly AI coach! 🎙️ Ask me anything about DevOps, AI, or testing. I'm here to help you learn! ✨", isUser: false, emoji: "👋" }
+    { id: 0, text: "Hi! I'm your friendly AI coach! 🎙️ Two modes:\n• 📚 Learning Mode - Ask questions, get explanations\n• 🎯 Interview Mode - MCQ practice for any skill\n\nEnter any skill to begin!", isUser: false, emoji: "👋" }
   ]);
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
+  const [mode, setMode] = useState<VoiceMode>('learning');
+  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+  const [answered, setAnswered] = useState(0);
 
   const speak = (text: DualText | string) => {
     if ('speechSynthesis' in window) {
@@ -56,6 +65,99 @@ export function VoiceAssistant() {
   };
 
   const [isLoading, setIsLoading] = useState(false);
+
+  // Generate MCQ question
+  const generateMCQQuestion = async (skill: string) => {
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Generate a technical interview MCQ question for ${skill}`,
+          context: `INTERVIEW MODE - Generate ONE specific MCQ question for ${skill} with 100% technical accuracy. Format exactly: QUESTION, A), B), C), D), CORRECT, EXPLANATION`,
+          skill: skill,
+          mode: 'interview_mode'
+        })
+      });
+
+      const data = await response.json();
+      const parsed = parseMCQQuestion(data.response);
+
+      if (parsed) {
+        const questionMsg: Message = {
+          id: Date.now(),
+          text: parsed.question,
+          isUser: false,
+          emoji: "❓",
+          options: parsed.options,
+          correctAnswer: parsed.correctAnswer,
+          explanation: parsed.explanation
+        };
+        setMessages(prev => [...prev, questionMsg]);
+      } else {
+        const rawMsg: Message = {
+          id: Date.now(),
+          text: data.response,
+          isUser: false,
+          emoji: "❓"
+        };
+        setMessages(prev => [...prev, rawMsg]);
+      }
+    } catch (error) {
+      toast.error('Failed to generate question');
+    }
+
+    setIsLoading(false);
+  };
+
+  const parseMCQQuestion = (response: string) => {
+    const lines = response.split('\n').filter(l => l.trim());
+    let question = '';
+    const options: string[] = [];
+    let correctAnswer = '';
+    let explanation = '';
+
+    lines.forEach(line => {
+      const upperLine = line.toUpperCase();
+      if (upperLine.startsWith('QUESTION:')) question = line.replace(/QUESTION:/i, '').trim();
+      if (line.match(/^[A-D]\)/)) options.push(line.trim());
+      if (upperLine.startsWith('CORRECT:')) correctAnswer = line.replace(/CORRECT:/i, '').trim();
+      if (upperLine.startsWith('EXPLANATION:')) explanation = line.replace(/EXPLANATION:/i, '').trim();
+    });
+
+    return question && options.length === 4 && correctAnswer ? { question, options, correctAnswer, explanation } : null;
+  };
+
+  const handleMCQAnswer = (answer: string, messageIndex: number) => {
+    const message = messages[messageIndex];
+    if (!message.correctAnswer || !message.explanation) return;
+
+    setAnswered(prev => prev + 1);
+    const isCorrect = answer === message.correctAnswer;
+
+    if (isCorrect) {
+      setScore(prev => prev + 10);
+      toast.success('+10 XP! Excellent!');
+    } else {
+      toast.info('Learn from this explanation');
+    }
+
+    const resultMsg: Message = {
+      id: Date.now(),
+      text: `${isCorrect ? '✅ CORRECT!' : '❌ INCORRECT'}\n\nYour answer: ${answer}\nCorrect answer: ${message.correctAnswer}\n\n${message.explanation}`,
+      isUser: false,
+      emoji: isCorrect ? "✅" : "❌"
+    };
+    setMessages(prev => [...prev, resultMsg]);
+  };
+
+  const handleNextMCQQuestion = () => {
+    if (selectedSkill) {
+      generateMCQQuestion(selectedSkill);
+    }
+  };
 
   // Detect if input contains a technical skill for production coaching
   const detectSkillFromInput = (text: string): string | null => {
@@ -95,6 +197,25 @@ export function VoiceAssistant() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    // If in interview mode and no skill selected yet
+    if (mode === 'interview' && !selectedSkill) {
+      const skill = input.trim();
+      setSelectedSkill(skill);
+
+      const welcomeMsg: Message = {
+        id: Date.now(),
+        text: `🎯 Interview Mode: ${skill}\n\nI'll test your knowledge with technical MCQs. Select your answer, get the correct answer with detailed explanation.`,
+        isUser: false,
+        emoji: "🎯"
+      };
+      setMessages([welcomeMsg]);
+      setInput('');
+
+      // Generate first question
+      setTimeout(() => generateMCQQuestion(skill), 500);
+      return;
+    }
+
     const detectedSkill = detectSkillFromInput(input);
     const isProductionMode = detectedSkill !== null;
 
@@ -109,38 +230,69 @@ export function VoiceAssistant() {
     setIsLoading(true);
 
     try {
+      const apiMode = mode === 'interview' ? 'interview_mode' :
+                      isProductionMode ? 'production_coach' : 'general';
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: isProductionMode
+          context: mode === 'interview'
+            ? `INTERVIEW MODE - Generate a specific MCQ question for ${selectedSkill || input} interviews. Format: QUESTION, A), B), C), D), CORRECT, EXPLANATION`
+            : isProductionMode
             ? `PRODUCTION COACH for ${detectedSkill}: Teach real production issues, troubleshooting scenarios, and debugging techniques. Focus on: 1) Common production problems with ${detectedSkill} 2) How to diagnose them 3) Real troubleshooting steps 4) Prevention strategies`
             : 'User is learning technical skills through interactive simulation',
-          skill: detectedSkill,
-          mode: isProductionMode ? 'production_coach' : 'general'
+          skill: mode === 'interview' ? selectedSkill : detectedSkill,
+          mode: apiMode
         })
       });
 
       const data = await response.json();
 
-      const responseText: DualText = typeof data.response === 'string'
-        ? { displayText: data.response, audioScript: data.response }
-        : data.response;
-      const aiMessage: Message = {
-        id: Date.now() + 1,
-        text: responseText,
-        isUser: false,
-        emoji: data.emoji
-      };
-      setMessages(prev => [...prev, aiMessage]);
+      // Handle MCQ response
+      if (mode === 'interview') {
+        const parsed = parseMCQQuestion(data.response);
+        if (parsed) {
+          const questionMsg: Message = {
+            id: Date.now() + 1,
+            text: parsed.question,
+            isUser: false,
+            emoji: "❓",
+            options: parsed.options,
+            correctAnswer: parsed.correctAnswer,
+            explanation: parsed.explanation
+          };
+          setMessages(prev => [...prev, questionMsg]);
+        } else {
+          const aiMessage: Message = {
+            id: Date.now() + 1,
+            text: data.response,
+            isUser: false,
+            emoji: data.emoji
+          };
+          setMessages(prev => [...prev, aiMessage]);
+        }
+      } else {
+        // Normal learning mode response
+        const responseText: DualText = typeof data.response === 'string'
+          ? { displayText: data.response, audioScript: data.response }
+          : data.response;
+        const aiMessage: Message = {
+          id: Date.now() + 1,
+          text: responseText,
+          isUser: false,
+          emoji: data.emoji
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }
 
       if (Math.random() > 0.7) {
         toast.success(encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)]);
       }
 
       // Auto-speak response if voice is enabled
-      if (voiceEnabled && data.response) {
+      if (voiceEnabled && data.response && mode !== 'interview') {
         speak(data.response);
       }
     } catch (error) {
@@ -217,6 +369,48 @@ export function VoiceAssistant() {
           <p className="text-white/60">Your personal mentor for interview prep and skill building</p>
         </div>
 
+        {/* Mode Selection */}
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={() => {
+              setMode('learning');
+              setSelectedSkill(null);
+              setMessages([{ id: 0, text: "Learning Mode: Ask me anything!", isUser: false, emoji: "📚" }]);
+            }}
+            className={`px-4 py-2 rounded-xl border transition-all ${
+              mode === 'learning' ? 'bg-primary/20 border-primary' : 'bg-white/5 border-white/10'
+            }`}
+          >
+            📚 Learning Mode
+          </button>
+          <button
+            onClick={() => {
+              setMode('interview');
+              setSelectedSkill(null);
+              setScore(0);
+              setAnswered(0);
+              setMessages([{ id: 0, text: "Interview Mode: Enter any skill for MCQ practice!", isUser: false, emoji: "🎯" }]);
+            }}
+            className={`px-4 py-2 rounded-xl border transition-all ${
+              mode === 'interview' ? 'bg-primary/20 border-primary' : 'bg-white/5 border-white/10'
+            }`}
+          >
+            🎯 Interview Mode
+          </button>
+        </div>
+
+        {/* Score Display for Interview Mode */}
+        {mode === 'interview' && selectedSkill && (
+          <div className="flex justify-center gap-4">
+            <div className="px-4 py-2 rounded-xl bg-primary/20 border border-primary/30">
+              <span className="text-accent font-bold">{score}</span> XP
+            </div>
+            <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+              {answered} answered
+            </div>
+          </div>
+        )}
+
         {/* Chat Messages */}
         <div className="bg-white/5 rounded-2xl p-6 h-96 overflow-y-auto space-y-4">
           {messages.map((msg, index) => (
@@ -234,8 +428,24 @@ export function VoiceAssistant() {
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{msg.emoji}</span>
                   <div className="space-y-1">
-                    <p className="text-sm leading-relaxed">{typeof msg.text === 'string' ? msg.text : msg.text.displayText}</p>
-                    {!msg.isUser && voiceEnabled && (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{typeof msg.text === 'string' ? msg.text : msg.text.displayText}</p>
+
+                    {/* MCQ Options */}
+                    {msg.options && !msg.explanation && (
+                      <div className="mt-4 space-y-2">
+                        {msg.options.map((option, optIndex) => (
+                          <button
+                            key={optIndex}
+                            onClick={() => handleMCQAnswer(option.split(')')[0].trim() + ')', index)}
+                            className="w-full text-left p-3 rounded-xl border bg-white/5 border-white/20 hover:bg-white/10 hover:border-primary/50 transition-all"
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {!msg.isUser && voiceEnabled && !msg.options && (
                       <button
                         onClick={() => speak(msg.text)}
                         className="text-xs text-white/40 hover:text-white/60 flex items-center gap-1"
@@ -250,6 +460,19 @@ export function VoiceAssistant() {
             </motion.div>
           ))}
         </div>
+
+        {/* Next Question Button for Interview Mode */}
+        {mode === 'interview' && selectedSkill && messages.length > 0 && (
+          <div className="flex justify-center">
+            <button
+              onClick={handleNextMCQQuestion}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50 font-medium"
+            >
+              Next Question <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Input Area */}
         <div className="flex gap-3">

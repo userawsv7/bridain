@@ -39,6 +39,7 @@ const skills = [
 
 export function Resources() {
   const [selectedSkill, setSelectedSkill] = useState('');
+  const [customSkill, setCustomSkill] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resources, setResources] = useState<ResourcesData | null>(null);
 
@@ -70,7 +71,14 @@ export function Resources() {
   };
 
   const handleSkillSelect = (skill: string) => {
+    setCustomSkill('');
     fetchResources(skill);
+  };
+
+  const handleCustomSkillSubmit = () => {
+    if (!customSkill.trim()) return;
+    fetchResources(customSkill.trim());
+    setCustomSkill('');
   };
 
   const ResourceSection = ({
@@ -124,6 +132,26 @@ export function Resources() {
           </button>
         ))}
       </div>
+
+      {/* Any Skill Input - Works for ANY skill input */}
+      <div className="flex gap-3 max-w-md mx-auto">
+        <input
+          type="text"
+          value={customSkill}
+          onChange={(e) => setCustomSkill(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleCustomSkillSubmit()}
+          placeholder="Enter ANY skill (Flutter, GraphQL, Ansible, Rust...)"
+          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none"
+        />
+        <button
+          onClick={handleCustomSkillSubmit}
+          disabled={!customSkill.trim() || isLoading}
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50 font-medium"
+        >
+          Load Resources
+        </button>
+      </div>
+      <p className="text-center text-sm text-white/60">Supports ANY skill input - not limited to listed options</p>
 
       {isLoading && (
         <div className="flex justify-center py-16">

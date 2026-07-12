@@ -117,7 +117,7 @@ export function ScenarioGame() {
       if (upperLine.startsWith('EXPLANATION:')) explanation = line.replace(/EXPLANATION:/i, '').trim();
     });
 
-    return question && options.length === 4 ? { question, options, correctAnswer, explanation } : null;
+    return question && options.length === 4 && correctAnswer ? { question, options, correctAnswer, explanation } : null;
   };
 
   const generateQuestion = async (skill: string) => {
@@ -451,14 +451,14 @@ export function ScenarioGame() {
               </div>
             )}
 
-            {mode === 'interview' && hasAnsweredCurrentQuestion() && (
+            {mode === 'interview' && (
               <div className="flex justify-center">
                 <button
                   onClick={handleNextQuestion}
                   disabled={isLoading}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50 font-medium"
                 >
-                  Next Question <ArrowRight className="w-4 h-4" />
+                  {hasAnsweredCurrentQuestion() ? 'Next Question' : 'Generate Question'} <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             )}
