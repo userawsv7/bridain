@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Send, Loader2, Mic, MicOff, Volume2, VolumeX, Target, Award, Book } from 'lucide-react';
+import { Send, Loader2, Mic, MicOff, Volume2, VolumeX, Target, Award, Book, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -21,7 +21,7 @@ export function VoiceCoach() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
-      text: "Hi! I'm your Voice Interview Coach 🎤\n\nTwo modes available:\n• 📚 Learning Mode - Chat about concepts and get explanations\n• 🎯 Interview Mode - MCQ practice for interviews & certifications\n\nEnter any skill to begin!",
+      text: "Hi! I'm your Voice Interview Coach 🎤\n\nTwo modes available:\n• 📚 Learning Mode - Interactive voice teaching with explanations\n• 🎯 Interview Mode - MCQ with voice explanations\n\nEnter any skill to begin!",
       isUser: false
     }
   ]);
@@ -31,24 +31,36 @@ export function VoiceCoach() {
   const [mode, setMode] = useState<Mode>('learning');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
-  const [speechRate, setSpeechRate] = useState(0.9);
+  const [speechRate] = useState(1.0); // Optimal female voice rate
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(0);
-  const [currentQuestion, setCurrentQuestion] = useState<{question: string, options: string[], correctAnswer: string, explanation: string} | null>(null);
-
-  const voiceFlavors = {
-    Aphrodite: { name: 'Aphrodite', pitch: 1.15 },
-    Amba: { name: 'Amba', pitch: 1.1 },
-    Venus: { name: 'Venus', pitch: 1.2 },
-    Ishtar: { name: 'Ishtar', pitch: 1.05 },
-    Freyja: { name: 'Freyja', pitch: 1.12 }
-  };
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const sanitizeForTTS = (text: string): string => {
-    return text
+  const selectFemaleVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    // Premium female voices only
+    const premiumFemaleVoices = [
+      'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira',
+      'Tessa', 'Veena', 'Fiona', 'Serena', 'Monica', 'Agnes', 'Kathy'
+    ];
+
+    for (const voiceName of premiumFemaleVoices) {
+      const voice = voices.find(v => v.name.includes(voiceName) && !v.name.toLowerCase().includes('male'));
+      if (voice) return voice;
+    }
+
+    // Fallback to any non-male voice
+    return voices.find(v =>
+      !v.name.toLowerCase().includes('male') &&
+      v.name !== 'Google UK English Male'
+    ) || voices[0];
+  };
+
+  const speak = (text: string, rate: number = 1.0) => {
+    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const cleanText = text
       .replace(/#{1,6}\s*/g, '')
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/\*([^*]+)\*/g, '$1')
@@ -56,32 +68,12 @@ export function VoiceCoach() {
       .replace(/`{1,3}/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-  };
 
-  const selectFemaleVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
-    const femaleVoices = ['Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira', 'Tessa', 'Veena', 'Fiona'];
-
-    for (const voiceName of femaleVoices) {
-      const voice = voices.find(v => v.name.includes(voiceName));
-      if (voice) return voice;
-    }
-
-    const googleVoice = voices.find(v => v.name.includes('Google') && v.name.toLowerCase().includes('en'));
-    return googleVoice || voices.find(v => !v.name.toLowerCase().includes('male')) || voices[0];
-  };
-
-  const speak = (text: string, rate: number = 0.9) => {
-    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    const cleanText = sanitizeForTTS(text);
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    const flavor = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors];
-
     utterance.rate = rate;
-    utterance.pitch = flavor.pitch;
+    utterance.pitch = 1.12; // Optimized for female voice
     utterance.volume = 0.85;
 
     const femaleVoice = selectFemaleVoice();
@@ -101,13 +93,15 @@ export function VoiceCoach() {
     setIsMuted(!isMuted);
   };
 
-  // Real-time voice updates
+  // Load voices on mount
   React.useEffect(() => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
     }
-  }, [speechRate, selectedVoiceFlavor]);
+  }, []);
 
   const parseQuestion = (response: string) => {
     const lines = response.split('\n').filter(l => l.trim());
@@ -117,10 +111,10 @@ export function VoiceCoach() {
     let explanation = '';
 
     lines.forEach(line => {
-      if (line.startsWith('QUESTION:')) question = line.replace('QUESTION:', '').trim();
+      if (line.toUpperCase().startsWith('QUESTION:')) question = line.replace(/QUESTION:/i, '').trim();
       if (line.match(/^[A-D]\)/)) options.push(line.trim());
-      if (line.startsWith('CORRECT:')) correctAnswer = line.replace('CORRECT:', '').trim();
-      if (line.startsWith('EXPLANATION:')) explanation = line.replace('EXPLANATION:', '').trim();
+      if (line.toUpperCase().startsWith('CORRECT:')) correctAnswer = line.replace(/CORRECT:/i, '').trim();
+      if (line.toUpperCase().startsWith('EXPLANATION:')) explanation = line.replace(/EXPLANATION:/i, '').trim();
     });
 
     return question && options.length === 4 ? { question, options, correctAnswer, explanation } : null;
@@ -134,19 +128,10 @@ export function VoiceCoach() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Generate an interview/certification MCQ for ${skill}`,
-          context: `INTERVIEW & CERTIFICATION MODE - Generate questions for interviews and exams.
-
-Format exactly:
-QUESTION: [Interview/certification style question]
-A) [Option]
-B) [Option]
-C) [Option]
-D) [Option]
-CORRECT: [A/B/C/D]
-EXPLANATION: [100% technically accurate explanation with commands, configs, production scenarios]
-
-Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system design`
+          message: `Generate a technical interview MCQ for ${skill}`,
+          context: `Generate a production-focused MCQ question with 100% technical accuracy`,
+          skill: skill,
+          mode: 'interview_feedback'
         })
       });
 
@@ -163,7 +148,13 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
           explanation: parsed.explanation
         };
         setMessages(prev => [...prev, questionMsg]);
-        setCurrentQuestion(parsed);
+
+        // Auto-read with optimal female voice
+        if (!isMuted) {
+          setTimeout(() => {
+            speak(`${parsed.question}. ${parsed.options.join('. ')}`, speechRate);
+          }, 500);
+        }
       }
     } catch (error) {
       toast.error('Failed to generate question');
@@ -193,8 +184,22 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
     };
     setMessages(prev => [...prev, resultMsg]);
 
+    // Voice explanation with female voice
+    if (!isMuted) {
+      speak(`${isCorrect ? 'Correct!' : 'Incorrect.'} The correct answer is ${message.correctAnswer}. ${message.explanation}`, speechRate);
+    }
+
+    // Auto-progress to next question after 3.5 seconds
     if (selectedSkill) {
-      setTimeout(() => generateQuestion(selectedSkill), 1500);
+      setTimeout(() => {
+        generateQuestion(selectedSkill);
+      }, 3500);
+    }
+  };
+
+  const handleNextQuestion = () => {
+    if (selectedSkill) {
+      generateQuestion(selectedSkill);
     }
   };
 
@@ -218,7 +223,9 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: `LEARNING MODE for ${selectedSkill} - Teach concepts, daily tasks, scenarios, problem-solving. Structure with: CONCEPT → EXPLANATION → DAILY TASKS → REAL SCENARIOS → SOLUTIONS. Be specific with commands and configurations.`
+          context: `As an expert voice coach for ${selectedSkill}, explain concepts clearly with voice, demonstrate with real scenarios`,
+          skill: selectedSkill,
+          mode: 'voice_coach'
         })
       });
 
@@ -231,7 +238,11 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
       };
 
       setMessages(prev => [...prev, aiMessage]);
-      if (!isMuted) speak(data.response, speechRate);
+
+      // Read with optimal female voice
+      if (!isMuted) {
+        speak(data.response, speechRate);
+      }
     } catch (error) {
       toast.error('Failed to get response');
     }
@@ -247,15 +258,20 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
     const welcomeMsg: Message = {
       id: Date.now(),
       text: mode === 'learning'
-        ? `📚 Learning Mode: ${skill}\n\nI'll teach you concepts, explain daily activities, real scenarios, and problem-solving with voice. Ask me anything!`
-        : `🎯 Interview Mode: ${skill}\n\nI'll ask MCQ questions for interviews and certifications. Select your answer to get 100% accurate technical explanations.`,
+        ? `📚 Learning Mode: ${skill}\n\nI'm your voice coach for ${skill}. I'll explain with voice, demonstrate real scenarios, and answer your questions. What would you like to learn?`
+        : `🎯 Interview Mode: ${skill}\n\nI'll ask MCQ questions for interviews with voice explanations. Select your answer to get 100% accurate technical explanations with voice readout.`,
       isUser: false
     };
     setMessages([welcomeMsg]);
     setInput('');
 
+    // Welcome voice with premium female voice
+    if (!isMuted) {
+      speak(welcomeMsg.text, speechRate);
+    }
+
     if (mode === 'interview') {
-      setTimeout(() => generateQuestion(skill), 1000);
+      setTimeout(() => generateQuestion(skill), 1500);
     }
   };
 
@@ -266,7 +282,7 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
     }
     setMessages([{
       id: 0,
-      text: "Hi! I'm your Voice Interview Coach 🎤\n\nTwo modes available:\n• 📚 Learning Mode - Chat about concepts and get explanations\n• 🎯 Interview Mode - MCQ practice for interviews & certifications\n\nEnter any skill to begin!",
+      text: "Hi! I'm your Voice Interview Coach 🎤\n\nTwo modes available:\n• 📚 Learning Mode - Interactive voice teaching with explanations\n• 🎯 Interview Mode - MCQ with voice explanations\n\nEnter any skill to begin!",
       isUser: false
     }]);
     setSelectedSkill(null);
@@ -274,7 +290,6 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
     setInput('');
     setScore(0);
     setAnswered(0);
-    setCurrentQuestion(null);
   };
 
   return (
@@ -287,7 +302,7 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
             </div>
             <div>
               <h3 className="text-2xl font-bold">Voice Coach</h3>
-              <p className="text-white/60">Any skill • Learning & Interview modes • Voice-enabled explanations</p>
+              <p className="text-white/60">Female voice • Learning & Interview modes • Technical explanations</p>
             </div>
           </div>
 
@@ -366,26 +381,6 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
                 <button onClick={resetCoach} className="p-2 rounded-xl bg-white/5 border border-white/10">
                   <Target className="w-4 h-4" />
                 </button>
-
-                {/* Voice Controls - Real-time updates */}
-                <select value={selectedVoiceFlavor} onChange={(e) => setSelectedVoiceFlavor(e.target.value)} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs">
-                  {Object.keys(voiceFlavors).map(flavor => (
-                    <option key={flavor} value={flavor}>{flavor}</option>
-                  ))}
-                </select>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-white/60">Rate:</span>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.1"
-                    value={speechRate}
-                    onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
-                    className="w-16 accent-primary"
-                  />
-                  <span className="text-xs w-8">{speechRate.toFixed(1)}x</span>
-                </div>
               </div>
             </div>
 
@@ -454,8 +449,22 @@ Test: ${skill} interviews, CKA, AWS, Docker, Python certifications, system desig
               </div>
             )}
 
+            {mode === 'interview' && messages.length > 1 && (
+              <div className="flex justify-center">
+                <button
+                  onClick={handleNextQuestion}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50 font-medium"
+                >
+                  Next Question <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             <div className="text-xs text-center text-white/40">
-              {mode === 'learning' ? '📚 Learn with voice: Concepts → Daily Tasks → Scenarios → Solutions' : '🎯 Voice MCQ: Select answer → Get explanation → Next question'}
+              {mode === 'learning'
+                ? '🎤 Voice Learning: Concepts → Real Scenarios → Questions → Mastery'
+                : '🎯 Voice MCQ: Select answer → Voice explanation → Auto/Next question'}
             </div>
           </>
         )}

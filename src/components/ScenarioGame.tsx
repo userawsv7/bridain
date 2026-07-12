@@ -194,7 +194,10 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
     setMessages(prev => [...prev, resultMsg]);
 
     if (selectedSkill) {
-      setTimeout(() => generateQuestion(selectedSkill), 1500);
+      // Auto-progress to next question after 3-4 seconds
+      setTimeout(() => {
+        generateQuestion(selectedSkill);
+      }, 3500);
     }
   };
 
