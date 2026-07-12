@@ -353,12 +353,12 @@ Supported tools: Kubernetes, Docker, Helm, Ansible, Terraform, ArgoCD, AI/ML, In
 
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    const response = generateResponse(text, selectedTool || undefined);
+    const response = generateResponse(text);
     const responseMsg: Message = {
       id: Date.now() + 1,
       text: response,
       isUser: false,
-      tool: selectedTool?.id
+      category: detectedSkill
     };
 
     setMessages(prev => [...prev, responseMsg]);
