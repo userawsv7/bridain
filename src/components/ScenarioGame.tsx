@@ -214,9 +214,9 @@ export function ScenarioGame() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: `As an expert teacher for ${selectedSkill}, explain concepts clearly, ask probing questions, provide real-world scenarios`,
+          context: `LEARNING MODE for ${selectedSkill}: Teach core concepts first, then provide real-world scenarios. Structure: 1) Explain the concept clearly 2) Show real scenario where this applies 3) Ask a question to check understanding`,
           skill: selectedSkill,
-          mode: 'voice_coach'
+          mode: 'learning_teacher'
         })
       });
 

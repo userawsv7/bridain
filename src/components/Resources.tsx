@@ -37,6 +37,8 @@ const skills = [
   'Node.js', 'Java', 'Go', 'Rust', 'TypeScript', 'MongoDB', 'PostgreSQL', 'Redis'
 ];
 
+// Any skill input is supported, not just predefined ones
+
 export function Resources() {
   const [selectedSkill, setSelectedSkill] = useState('');
   const [isLoading, setIsLoading] = useState(false);

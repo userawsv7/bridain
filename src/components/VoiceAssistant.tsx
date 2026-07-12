@@ -60,6 +60,11 @@ export function VoiceAssistant() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    const skill = input.toLowerCase();
+    const isSkillInput = skill.includes('docker') || skill.includes('kubernetes') || skill.includes('aws') ||
+                        skill.includes('python') || skill.includes('react') || skill.includes('ci') ||
+                        skill.includes('ml') || skill.includes('devops') || skill.includes('linux');
+
     const userMessage: Message = {
       id: Date.now(),
       text: input,
@@ -76,7 +81,11 @@ export function VoiceAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: 'User is learning technical skills through interactive simulation'
+          context: isSkillInput
+            ? `PRODUCTION COACH for ${input}: Teach real production issues, troubleshooting scenarios, and debugging techniques. Focus on: 1) Common production problems 2) How to diagnose them 3) Real troubleshooting steps 4) Prevention strategies`
+            : 'User is learning technical skills through interactive simulation',
+          skill: isSkillInput ? input : null,
+          mode: isSkillInput ? 'production_coach' : 'general'
         })
       });
 
