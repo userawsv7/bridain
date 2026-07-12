@@ -265,24 +265,21 @@ export function ProductionTroubleshooter() {
   const detectIssue = (content: string): { tool: string; issue: string } | null => {
     const lc = content.toLowerCase();
 
-    // Match any skill using universal skill matching
-    const matchedSkills = matchSkill(lc.split(' ').find(w => w.length > 3) || '');
-
     // Universal patterns that work for ANY skill/technology
     if (lc.includes('error') || lc.includes('fail') || lc.includes('exception')) {
-      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Error/Failure Detected' };
+      return { tool: 'general', issue: 'Error/Failure Detected' };
     }
     if (lc.includes('timeout') || lc.includes('slow')) {
-      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Performance/Timeout Issue' };
+      return { tool: 'general', issue: 'Performance/Timeout Issue' };
     }
     if (lc.includes('crash') || lc.includes('down') || lc.includes('killed')) {
-      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Crash/Outage' };
+      return { tool: 'general', issue: 'Crash/Outage' };
     }
     if (lc.includes('permission') || lc.includes('forbidden') || lc.includes('unauthorized')) {
-      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Access/Permission Denied' };
+      return { tool: 'general', issue: 'Access/Permission Denied' };
     }
     if (lc.includes('connection') || lc.includes('network')) {
-      return { tool: matchedSkills[0]?.toLowerCase() || 'general', issue: 'Connectivity Issue' };
+      return { tool: 'general', issue: 'Connectivity Issue' };
     }
 
     // Original DevOps tool patterns (enhanced with dynamic matching)
