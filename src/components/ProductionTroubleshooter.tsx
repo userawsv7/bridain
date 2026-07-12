@@ -367,7 +367,7 @@ Supported tools: Kubernetes, Docker, Helm, Ansible, Terraform, ArgoCD, AI/ML, In
   };
 
   const selectTool = (tool: Tool) => {
-    setSelectedTool(tool);
+    selectTool(tool);
     const msg: Message = {
       id: Date.now(),
       text: `### ${tool.label} Troubleshooting Mode
