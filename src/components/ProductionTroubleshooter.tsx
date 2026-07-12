@@ -25,72 +25,49 @@ interface Tool {
   quickCommands: string[];
 }
 
-const tools: Tool[] = [
-  {
-    id: 'kubernetes',
-    label: 'Kubernetes',
-    icon: <Server className="w-4 h-4" />,
-    description: 'Pods, deployments, services, networking',
-    commonIssues: ['CrashLoopBackOff', 'ImagePullBackOff', 'Pending', 'Connection refused'],
-    quickCommands: ['kubectl get pods -A', 'kubectl describe pod', 'kubectl logs --previous']
-  },
-  {
-    id: 'docker',
-    label: 'Docker',
-    icon: <Container className="w-4 h-4" />,
-    description: 'Containers, images, volumes, networks',
-    commonIssues: ['Container exit', 'Image not found', 'Port binding', 'Volume mount'],
-    quickCommands: ['docker ps -a', 'docker logs', 'docker inspect']
-  },
-  {
-    id: 'helm',
-    label: 'Helm',
-    icon: <Settings className="w-4 h-4" />,
-    description: 'Charts, releases, values, templates',
-    commonIssues: ['Chart not found', 'Template error', 'Values mismatch', 'Release failed'],
-    quickCommands: ['helm list', 'helm status', 'helm template']
-  },
-  {
-    id: 'ansible',
-    label: 'Ansible',
-    icon: <Zap className="w-4 h-4" />,
-    description: 'Playbooks, inventory, modules, facts',
-    commonIssues: ['Host unreachable', 'Module failed', 'Permission denied', 'Syntax error'],
-    quickCommands: ['ansible-playbook --check', 'ansible-inventory --graph', 'ansible-doc']
-  },
-  {
-    id: 'terraform',
-    label: 'Terraform',
-    icon: <Cloud className="w-4 h-4" />,
-    description: 'State, plans, providers, resources',
-    commonIssues: ['State lock', 'Provider error', 'Resource conflict', 'Plan failed'],
-    quickCommands: ['terraform plan', 'terraform show', 'terraform state list']
-  },
-  {
-    id: 'argocd',
-    label: 'ArgoCD',
-    icon: <GitBranch className="w-4 h-4" />,
-    description: 'Applications, sync, health, repos',
-    commonIssues: ['Sync failed', 'Health unknown', 'Repo error', 'App out of sync'],
-    quickCommands: ['argocd app list', 'argocd app get', 'argocd app sync']
-  },
-  {
-    id: 'ai',
-    label: 'AI/ML',
-    icon: <Target className="w-4 h-4" />,
-    description: 'Models, inference, training, deployment',
-    commonIssues: ['Model loading', 'Inference timeout', 'GPU OOM', 'Version mismatch'],
-    quickCommands: ['kubectl get pods -l app=ml', 'kubectl logs deployment/model', 'nvidia-smi']
-  },
-  {
-    id: 'infrastructure',
-    label: 'Infrastructure',
-    icon: <Database className="w-4 h-4" />,
-    description: 'Cloud resources, networking, security',
-    commonIssues: ['Resource limits', 'Network ACLs', 'IAM policies', 'Cost spikes'],
-    quickCommands: ['aws sts get-caller-identity', 'terraform show', 'kubectl get nodes']
+// Universal skill categories - no more mode selection needed
+const skillCategories = {
+  'devops': ['kubernetes', 'docker', 'helm', 'ansible', 'terraform', 'argocd', 'jenkins', 'gitlab-ci', 'github-actions'],
+  'cloud': ['aws', 'azure', 'gcp', 'cloudflare', 'digitalocean', 'linode'],
+  'programming': ['python', 'javascript', 'java', 'golang', 'rust', 'c++', 'typescript', 'ruby', 'php'],
+  'databases': ['mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'cassandra', 'dynamodb'],
+  'ai-ml': ['tensorflow', 'pytorch', 'scikit-learn', 'openai', 'langchain', 'huggingface', 'mlflow'],
+  'frontend': ['react', 'vue', 'angular', 'svelte', 'nextjs', 'nuxtjs', 'tailwind'],
+  'backend': ['nodejs', 'express', 'django', 'flask', 'spring-boot', 'fastapi', 'graphql'],
+  'networking': ['nginx', 'apache', 'haproxy', 'envoy', 'istio', 'consul'],
+  'security': ['vault', 'keycloak', 'oauth', 'jwt', 'ssl/tls', 'firewall', 'waf'],
+  'monitoring': ['prometheus', 'grafana', 'datadog', 'newrelic', 'elk-stack', 'splunk'],
+  'testing': ['jest', 'pytest', 'cypress', 'playwright', 'selenium', 'junit'],
+  'infrastructure': ['linux', 'bash', 'powershell', 'systemd', 'vmware', 'hyper-v']
+};
+
+// Dynamic skill detector - maps any input to relevant category
+const detectSkillCategory = (input: string): string => {
+  const lc = input.toLowerCase();
+
+  // Check each category for matches
+  for (const [category, skills] of Object.entries(skillCategories)) {
+    if (skills.some(skill => lc.includes(skill) || lc.includes(skill.replace('-', '')))) {
+      return category;
+    }
   }
-];
+
+  // Pattern matching for common terms
+  if (lc.includes('deploy') || lc.includes('orchestrat') || lc.includes('container')) return 'devops';
+  if (lc.includes('cloud') || lc.includes('serverless')) return 'cloud';
+  if (lc.includes('code') || lc.includes('program') || lc.includes('script')) return 'programming';
+  if (lc.includes('data') || lc.includes('query') || lc.includes('sql')) return 'databases';
+  if (lc.includes('model') || lc.includes('train') || lc.includes('inference')) return 'ai-ml';
+  if (lc.includes('ui') || lc.includes('component') || lc.includes('web')) return 'frontend';
+  if (lc.includes('api') || lc.includes('server') || lc.includes('endpoint')) return 'backend';
+  if (lc.includes('network') || lc.includes('proxy') || lc.includes('load')) return 'networking';
+  if (lc.includes('auth') || lc.includes('secure') || lc.includes('encrypt')) return 'security';
+  if (lc.includes('monitor') || lc.includes('metric') || lc.includes('log')) return 'monitoring';
+  if (lc.includes('test') || lc.includes('qa') || lc.includes('spec')) return 'testing';
+  if (lc.includes('linux') || lc.includes('unix') || lc.includes('command')) return 'infrastructure';
+
+  return 'general';
+};
 
 interface DiagnosticTemplate {
   issue: string;
@@ -153,7 +130,7 @@ export function ProductionTroubleshooter() {
   }]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+  const [detectedSkill, setDetectedSkill] = useState<string>('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -428,31 +405,21 @@ Describe your issue or paste logs. I'll detect the problem and provide RCA + fix
         </p>
       </div>
 
-      {/* Tool Selection */}
+      {/* Universal Skill Detection - Auto-detects any technology */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3 px-1">
-          <span className="text-sm text-gray-400">Select Tool/Technology</span>
+          <span className="text-sm text-gray-400">Universal Mode - Ask about ANY skill/technology</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
-          {tools.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => selectTool(tool)}
-              className={`group p-3 rounded-xl border transition-all text-left ${
-                selectedTool?.id === tool.id
-                  ? 'bg-orange-500/10 border-orange-500/50'
-                  : 'bg-gray-900 border-gray-800 hover:border-gray-700'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <div className="p-1.5 rounded-lg bg-gray-800 text-gray-400 group-hover:text-orange-400">
-                  {tool.icon}
-                </div>
-                <span className="font-medium text-sm text-white">{tool.label}</span>
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(skillCategories).slice(0, 6).map(([category, skills]) => (
+              <div key={category} className="px-3 py-1.5 bg-gray-950 rounded-lg border border-gray-800">
+                <span className="text-xs text-orange-400 font-medium">{category}</span>
+                <span className="text-xs text-gray-500 ml-1">({skills.slice(0, 3).join(', ')}...)</span>
               </div>
-              <p className="text-xs text-gray-500 line-clamp-2">{tool.description}</p>
-            </button>
-          ))}
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-2">Supports 100+ technologies • Auto-detects from your query</p>
         </div>
       </div>
 
