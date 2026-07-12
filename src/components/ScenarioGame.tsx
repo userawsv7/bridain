@@ -129,9 +129,9 @@ export function ScenarioGame() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: `Generate a technical interview MCQ question for ${skill}`,
-          context: `INTERVIEW MODE - Generate a specific MCQ question for ${skill} interviews. Format: QUESTION, A), B), C), D), CORRECT, EXPLANATION`,
+          context: `INTERVIEW MODE - Generate ONE specific MCQ question for ${skill} with 100% technical accuracy. Format exactly: QUESTION, A), B), C), D), CORRECT, EXPLANATION`,
           skill: skill,
-          mode: 'interview_feedback'
+          mode: 'interview_mode'
         })
       });
 
@@ -154,6 +154,14 @@ export function ScenarioGame() {
             speak(`${parsed.question}. ${parsed.options.join('. ')}`, speechRate);
           }, 500);
         }
+      } else {
+        // If parsing fails, show the raw response
+        const rawMsg: Message = {
+          id: Date.now(),
+          text: data.response,
+          isUser: false
+        };
+        setMessages(prev => [...prev, rawMsg]);
       }
     } catch (error) {
       toast.error('Failed to generate question');

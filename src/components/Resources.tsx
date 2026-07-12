@@ -37,8 +37,6 @@ const skills = [
   'Node.js', 'Java', 'Go', 'Rust', 'TypeScript', 'MongoDB', 'PostgreSQL', 'Redis'
 ];
 
-// Any skill input is supported, not just predefined ones
-
 export function Resources() {
   const [selectedSkill, setSelectedSkill] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +44,7 @@ export function Resources() {
 
   const fetchResources = async (skill: string) => {
     setIsLoading(true);
+    setSelectedSkill(skill);
 
     try {
       const response = await fetch('/api/chat', {
@@ -71,7 +70,6 @@ export function Resources() {
   };
 
   const handleSkillSelect = (skill: string) => {
-    setSelectedSkill(skill);
     fetchResources(skill);
   };
 

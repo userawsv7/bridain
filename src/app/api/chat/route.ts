@@ -31,12 +31,12 @@ const getSystemPrompt = (mode: string, skill: string, message?: string, context?
     return generateScenarioPrompt(promptContext);
   }
 
-  // Handle resources mode
+  // Handle resources mode - works for ANY skill
   if (mode === 'resources') {
     const rsSkillName = skill || 'technology';
-    return `You are a TECHNICAL LEARNING RESOURCES ARCHITECT. Generate structured learning resources for ${rsSkillName}.
+    return `You are a TECHNICAL LEARNING RESOURCES ARCHITECT. Generate comprehensive learning resources for ANY skill: ${rsSkillName}.
 
-Return ONLY a JSON object matching this exact schema:
+Return ONLY a valid JSON object matching this exact schema:
 {
   "coreConcepts": [{"level": "beginner|intermediate|advanced", "concept": "name", "explanation": "brief explanation"}],
   "certifications": [{"name": "cert name", "officialUrl": "url", "studyGuidesAndDumps": ["guide1"], "cost": "price", "faqs": ["faq1"]}],
@@ -49,7 +49,9 @@ Return ONLY a JSON object matching this exact schema:
     "popularWebsites": [{"name": "name", "url": "url", "description": "desc"}],
     "otherValuableResources": [{"title": "title", "type": "type", "url": "url", "description": "desc"}]
   }
-}`;
+}
+
+Generate 4-6 core concepts, 2-4 real certifications with actual URLs, 5-8 interview questions, 4 real-world scenarios, and include actual resource URLs. Make it 100% accurate for ${rsSkillName}.`;
   }
 
   // Fallback to new system for general coaching
@@ -221,6 +223,22 @@ Step-by-step progression showing concept dependencies and building knowledge.
 
 Provide real URLs, actual resource names, and specific certification details.`;
 
+    case 'interview_mode':
+      return `You are generating a TECHNICALLY ACCURATE MCQ interview question for ${skillName}.
+
+Generate exactly ONE question with 4 options. Format precisely:
+
+QUESTION: [Clear, specific technical question about ${skillName}]
+
+A) [Exact technical option - could be a command, concept, or configuration]
+B) [Exact technical option - could be a command, concept, or configuration]
+C) [Exact technical option - could be a command, concept, or configuration]
+D) [Exact technical option - could be a command, concept, or configuration]
+
+CORRECT: [A/B/C/D]
+
+EXPLANATION: [100% technical explanation of why the correct answer is right, including: what the correct option does, technical mechanism, production implications, and why it works correctly. Must be factually accurate with real technical details.]`;
+
     case 'interview_feedback':
       return `${baseProductionContext}
 
@@ -238,6 +256,33 @@ Return JSON with these fields:
 - nextQuestion: new question topic
 
 Use real commands. Provide definitive technical answers.`;
+
+    case 'learning_teacher':
+      return `You are an EXPERT ${skillName.toUpperCase()} TEACHER. Teach concepts clearly for ${userSkillLevel} learners.
+
+TEACHING STRUCTURE:
+1. EXPLAIN THE CONCEPT: Break down the core concept in simple terms
+2. PROVIDE REAL SCENARIOS: Show exactly when/how this concept applies in real work
+3. CHECK UNDERSTANDING: Ask a specific question to verify comprehension
+4. BUILD PROGRESSIVELY: Start with basics, then add complexity based on responses
+
+Focus on ${skillName} concepts, daily tasks, and practical scenarios. Be encouraging and thorough.`;
+
+    case 'production_coach':
+      return `${baseProductionContext}
+
+PRODUCTION COACH: Real production issues and troubleshooting for ${skillName}.
+
+Focus on:
+1. COMMON PRODUCTION PROBLEMS with ${skillName}
+2. DIAGNOSIS TECHNIQUES and debugging steps
+3. REAL TROUBLESHOOTING with exact commands
+4. PREVENTION STRATEGIES
+
+Provide specific, actionable guidance with real commands and scenarios.`;
+
+    case 'general':
+      return `You are a helpful technical assistant. Provide clear, accurate information about the user's question.`;
 
     case 'voice_coach':
       return `${baseProductionContext}

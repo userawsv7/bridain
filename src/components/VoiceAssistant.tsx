@@ -57,13 +57,46 @@ export function VoiceAssistant() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // Detect if input contains a technical skill for production coaching
+  const detectSkillFromInput = (text: string): string | null => {
+    const lowerText = text.toLowerCase();
+
+    // Common technical skill patterns
+    const skillPatterns = [
+      // Infrastructure & DevOps
+      'docker', 'kubernetes', 'k8s', 'aws', 'azure', 'gcp', 'terraform', 'ansible', 'jenkins',
+      'ci/cd', 'pipeline', 'deployment', 'helm', 'istio', 'prometheus', 'grafana', 'elk',
+      // Programming
+      'python', 'javascript', 'java', 'go', 'golang', 'rust', 'typescript', 'csharp', 'php', 'ruby',
+      // Databases
+      'sql', 'mysql', 'postgresql', 'postgres', 'mongodb', 'redis', 'elasticsearch', 'cassandra',
+      // Web & Frameworks
+      'react', 'vue', 'angular', 'node', 'express', 'django', 'flask', 'spring', 'laravel',
+      // Other technical skills
+      'linux', 'nginx', 'apache', 'git', 'github', 'gitlab', 'api', 'microservice', 'system design',
+      'machine learning', 'ml', 'ai', 'data science', 'devops', 'sre', 'security', 'networking'
+    ];
+
+    for (const pattern of skillPatterns) {
+      if (lowerText.includes(pattern)) {
+        // Extract the skill from the input
+        const words = text.split(' ');
+        for (const word of words) {
+          if (word.toLowerCase().includes(pattern) || pattern.includes(word.toLowerCase())) {
+            return word;
+          }
+        }
+        return pattern;
+      }
+    }
+    return null;
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const skill = input.toLowerCase();
-    const isSkillInput = skill.includes('docker') || skill.includes('kubernetes') || skill.includes('aws') ||
-                        skill.includes('python') || skill.includes('react') || skill.includes('ci') ||
-                        skill.includes('ml') || skill.includes('devops') || skill.includes('linux');
+    const detectedSkill = detectSkillFromInput(input);
+    const isProductionMode = detectedSkill !== null;
 
     const userMessage: Message = {
       id: Date.now(),
@@ -81,11 +114,11 @@ export function VoiceAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: isSkillInput
-            ? `PRODUCTION COACH for ${input}: Teach real production issues, troubleshooting scenarios, and debugging techniques. Focus on: 1) Common production problems 2) How to diagnose them 3) Real troubleshooting steps 4) Prevention strategies`
+          context: isProductionMode
+            ? `PRODUCTION COACH for ${detectedSkill}: Teach real production issues, troubleshooting scenarios, and debugging techniques. Focus on: 1) Common production problems with ${detectedSkill} 2) How to diagnose them 3) Real troubleshooting steps 4) Prevention strategies`
             : 'User is learning technical skills through interactive simulation',
-          skill: isSkillInput ? input : null,
-          mode: isSkillInput ? 'production_coach' : 'general'
+          skill: detectedSkill,
+          mode: isProductionMode ? 'production_coach' : 'general'
         })
       });
 
