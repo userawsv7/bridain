@@ -129,7 +129,7 @@ export function VoiceCoach() {
           message: `Generate a technical interview MCQ for ${skill}`,
           context: `INTERVIEW MODE - Generate a specific MCQ question for ${skill} interviews. Format: QUESTION, A), B), C), D), CORRECT, EXPLANATION`,
           skill: skill,
-          mode: 'interview_feedback'
+          mode: 'interview_mode'
         })
       });
 

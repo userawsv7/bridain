@@ -60,7 +60,26 @@ export function Resources() {
       });
 
       const data = await response.json();
-      const parsed = JSON.parse(data.response.replace(/```json\n?/g, '').replace(/```\n?/g, ''));
+      let parsed;
+      try {
+        // First try to parse as direct JSON
+        parsed = JSON.parse(data.response.replace(/```json\n?/g, '').replace(/```\n?/g, ''));
+      } catch {
+        // If that fails, create a fallback resources object
+        parsed = {
+          coreConcepts: [{level: "beginner", concept: `${skill} Basics`, explanation: `Introduction to ${skill}`}],
+          certifications: [],
+          interviewPrep: [],
+          dayToDayRealWorld: [],
+          learningResources: {
+            bestYoutubeTutorials: [],
+            githubRepos: [],
+            cheatsheets: [],
+            popularWebsites: [],
+            otherValuableResources: []
+          }
+        };
+      }
 
       setResources(parsed);
     } catch (error) {

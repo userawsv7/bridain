@@ -102,6 +102,14 @@ export function ScenarioGame() {
     }
   }, []);
 
+  const cleanSpecialChars = (text: string) => text
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/_{1,2}/g, '')
+    .replace(/`{1,3}/g, '')
+    .trim();
+
   const parseQuestion = (response: string) => {
     const lines = response.split('\n').filter(l => l.trim());
     let question = '';
@@ -111,10 +119,10 @@ export function ScenarioGame() {
 
     lines.forEach(line => {
       const upperLine = line.toUpperCase();
-      if (upperLine.startsWith('QUESTION:')) question = line.replace(/QUESTION:/i, '').trim();
-      if (line.match(/^[A-D]\)/)) options.push(line.trim());
-      if (upperLine.startsWith('CORRECT:')) correctAnswer = line.replace(/CORRECT:/i, '').trim();
-      if (upperLine.startsWith('EXPLANATION:')) explanation = line.replace(/EXPLANATION:/i, '').trim();
+      if (upperLine.startsWith('QUESTION:')) question = cleanSpecialChars(line.replace(/QUESTION:/i, '').trim());
+      if (line.match(/^[A-D]\)/)) options.push(cleanSpecialChars(line.trim()));
+      if (upperLine.startsWith('CORRECT:')) correctAnswer = cleanSpecialChars(line.replace(/CORRECT:/i, '').trim());
+      if (upperLine.startsWith('EXPLANATION:')) explanation = cleanSpecialChars(line.replace(/EXPLANATION:/i, '').trim());
     });
 
     return question && options.length === 4 && correctAnswer ? { question, options, correctAnswer, explanation } : null;
@@ -141,11 +149,11 @@ export function ScenarioGame() {
       if (parsed) {
         const questionMsg: Message = {
           id: Date.now(),
-          text: parsed.question,
+          text: cleanSpecialChars(parsed.question),
           isUser: false,
-          options: parsed.options,
-          correctAnswer: parsed.correctAnswer,
-          explanation: parsed.explanation
+          options: parsed.options.map(opt => cleanSpecialChars(opt)),
+          correctAnswer: cleanSpecialChars(parsed.correctAnswer),
+          explanation: cleanSpecialChars(parsed.explanation)
         };
         setMessages(prev => [...prev, questionMsg]);
 
