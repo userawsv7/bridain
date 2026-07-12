@@ -13,6 +13,7 @@ interface Message {
   correctAnswer?: string;
   explanation?: string;
   type?: 'chat';
+  scenario?: string;
 }
 
 type Mode = 'learning' | 'interview';
@@ -21,7 +22,7 @@ export function ScenarioGame() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
-      text: "Welcome to Scenario Game! 🎮\n\nTwo modes available:\n• 📚 Learning Mode - Interactive teaching with concepts and real scenarios\n• 🎯 Interview Mode - MCQ practice with explanations\n\nEnter any skill to begin!",
+      text: "🎮 Welcome to Scenario Game!\n\nReal production scenarios • 100% technical accuracy\n\n• 📚 Learning Mode: Concepts + Real scenarios\n• 🎯 Interview Mode: Production troubleshooting MCQs\n\nEnter any skill to begin!",
       isUser: false
     }
   ]);
@@ -33,31 +34,32 @@ export function ScenarioGame() {
   const [answered, setAnswered] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [speechRate, setSpeechRate] = useState(1.0);
+  const [speechRate] = useState(1.3);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const selectFemaleVoice = () => {
     const voices = window.speechSynthesis.getVoices();
-    const premiumFemaleVoices = [
+    const strictlyFemaleVoices = [
       'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira',
-      'Tessa', 'Veena', 'Fiona', 'Alex', 'Serena', 'Kathy', 'Princess',
-      'Junior', 'Monica', 'Agnes'
+      'Tessa', 'Veena', 'Fiona', 'Serena', 'Monica', 'Agnes', 'Kathy',
+      'Princess', 'Junior', 'Google US English Female'
     ];
 
-    for (const voiceName of premiumFemaleVoices) {
+    for (const voiceName of strictlyFemaleVoices) {
       const voice = voices.find(v => v.name.includes(voiceName) && !v.name.toLowerCase().includes('male'));
       if (voice) return voice;
     }
 
-    const femaleVoice = voices.find(v =>
+    return voices.find(v =>
       !v.name.toLowerCase().includes('male') &&
-      v.name !== 'Google UK English Male'
-    );
-    return femaleVoice || voices[0];
+      v.name !== 'Google UK English Male' &&
+      v.name !== 'Microsoft David Desktop' &&
+      v.name !== 'Alex'
+    ) || voices[0];
   };
 
-  const speak = (text: string, rate: number = 1.0) => {
+  const speak = (text: string, rate: number = speechRate) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     const cleanText = text
@@ -73,8 +75,8 @@ export function ScenarioGame() {
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = rate;
-    utterance.pitch = 1.1;
-    utterance.volume = 0.9;
+    utterance.pitch = 1.15;
+    utterance.volume = 0.95;
 
     const femaleVoice = selectFemaleVoice();
     if (femaleVoice) utterance.voice = femaleVoice;
@@ -110,8 +112,9 @@ export function ScenarioGame() {
     .replace(/`{1,3}/g, '')
     .trim();
 
-  const parseQuestion = (response: string) => {
+  const parseScenarioQuestion = (response: string) => {
     const lines = response.split('\n').filter(l => l.trim());
+    let scenario = '';
     let question = '';
     const options: string[] = [];
     let correctAnswer = '';
@@ -119,16 +122,17 @@ export function ScenarioGame() {
 
     lines.forEach(line => {
       const upperLine = line.toUpperCase();
+      if (upperLine.startsWith('SCENARIO:')) scenario = cleanSpecialChars(line.replace(/SCENARIO:/i, '').trim());
       if (upperLine.startsWith('QUESTION:')) question = cleanSpecialChars(line.replace(/QUESTION:/i, '').trim());
       if (line.match(/^[A-D]\)/)) options.push(cleanSpecialChars(line.trim()));
       if (upperLine.startsWith('CORRECT:')) correctAnswer = cleanSpecialChars(line.replace(/CORRECT:/i, '').trim());
       if (upperLine.startsWith('EXPLANATION:')) explanation = cleanSpecialChars(line.replace(/EXPLANATION:/i, '').trim());
     });
 
-    return question && options.length === 4 && correctAnswer ? { question, options, correctAnswer, explanation } : null;
+    return scenario && question && options.length === 4 && correctAnswer ? { scenario, question, options, correctAnswer, explanation } : null;
   };
 
-  const generateQuestion = async (skill: string) => {
+  const generateProductionScenario = async (skill: string) => {
     setIsLoading(true);
 
     try {
@@ -136,34 +140,34 @@ export function ScenarioGame() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Generate a technical interview MCQ question for ${skill}`,
-          context: `INTERVIEW MODE - Generate ONE specific MCQ question for ${skill} with 100% technical accuracy. Format exactly: QUESTION, A), B), C), D), CORRECT, EXPLANATION`,
+          message: `Generate a real production scenario MCQ for ${skill}`,
+          context: `INTERVIEW MODE - Generate a REAL production troubleshooting scenario for ${skill}. Focus on: actual issues users face in production (crashes, performance issues, scaling problems, configuration errors, networking issues). Include STRUGGLES, correct technical solution, and 100% accurate technical explanation. Format: SCENARIO, QUESTION, A), B), C), D), CORRECT, EXPLANATION`,
           skill: skill,
-          mode: 'interview_mode'
+          mode: 'production_scenario'
         })
       });
 
       const data = await response.json();
-      const parsed = parseQuestion(data.response);
+      const parsed = parseScenarioQuestion(data.response);
 
       if (parsed) {
         const questionMsg: Message = {
           id: Date.now(),
-          text: cleanSpecialChars(parsed.question),
+          text: `${parsed.scenario}\n\n${parsed.question}`,
           isUser: false,
           options: parsed.options.map(opt => cleanSpecialChars(opt)),
           correctAnswer: cleanSpecialChars(parsed.correctAnswer),
-          explanation: cleanSpecialChars(parsed.explanation)
+          explanation: cleanSpecialChars(parsed.explanation),
+          scenario: parsed.scenario
         };
         setMessages(prev => [...prev, questionMsg]);
 
         if (!isMuted) {
           setTimeout(() => {
-            speak(`${parsed.question}. ${parsed.options.join('. ')}`, speechRate);
+            speak(`${parsed.scenario}. ${parsed.question}. ${parsed.options.join('. ')}`, speechRate);
           }, 500);
         }
       } else {
-        // If parsing fails, show the raw response
         const rawMsg: Message = {
           id: Date.now(),
           text: data.response,
@@ -172,7 +176,7 @@ export function ScenarioGame() {
         setMessages(prev => [...prev, rawMsg]);
       }
     } catch (error) {
-      toast.error('Failed to generate question');
+      toast.error('Failed to generate scenario');
     }
 
     setIsLoading(false);
@@ -186,15 +190,15 @@ export function ScenarioGame() {
     const isCorrect = answer === message.correctAnswer;
 
     if (isCorrect) {
-      setScore(prev => prev + 10);
-      toast.success('+10 XP! Excellent!');
+      setScore(prev => prev + 15);
+      toast.success('+15 XP! Production Ready! 🎉');
     } else {
-      toast.info('Learn from this explanation');
+      toast.info('Study this for production troubleshooting');
     }
 
     const resultMsg: Message = {
       id: Date.now(),
-      text: `${isCorrect ? '✅ CORRECT!' : '❌ INCORRECT'}\n\nYour answer: ${answer}\nCorrect answer: ${message.correctAnswer}\n\n${message.explanation}`,
+      text: `${isCorrect ? '✅ CORRECT SOLUTION!' : '❌ INCORRECT'}\n\nYour answer: ${answer}\nCorrect answer: ${message.correctAnswer}\n\n${message.explanation}`,
       isUser: false
     };
     setMessages(prev => [...prev, resultMsg]);
@@ -206,7 +210,7 @@ export function ScenarioGame() {
 
   const handleNextQuestion = () => {
     if (selectedSkill) {
-      generateQuestion(selectedSkill);
+      generateProductionScenario(selectedSkill);
     }
   };
 
@@ -230,9 +234,9 @@ export function ScenarioGame() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: `LEARNING MODE for ${selectedSkill}: Teach core concepts first, then provide real-world scenarios. Structure: 1) Explain the concept clearly 2) Show real scenario where this applies 3) Ask a question to check understanding`,
+          context: `LEARNING MODE for ${selectedSkill}: Explain production concepts, show real scenarios users struggle with daily. Always use female voice. Structure: 1) Technical concept 2) Real production scenario 3) Common struggles 4) Solution`,
           skill: selectedSkill,
-          mode: 'learning_teacher'
+          mode: 'production_learning'
         })
       });
 
@@ -264,8 +268,8 @@ export function ScenarioGame() {
     const welcomeMsg: Message = {
       id: Date.now(),
       text: mode === 'learning'
-        ? `📚 Learning Mode: ${skill}\n\nI'm your personal teacher for ${skill}. I'll explain core concepts, demonstrate with real scenarios, ask questions to check understanding. What would you like to learn first?`
-        : `🎯 Interview Mode: ${skill}\n\nI'll test your knowledge with technical MCQs. Each question has 4 options. Select your answer, get the correct answer with detailed explanation, then move to the next question.`,
+        ? `📚 Production Learning: ${skill}\n\nI'll explain technical concepts and show you real production scenarios with actual struggles. Female voice explanations included.`
+        : `🎯 Production Interview Mode: ${skill}\n\nReal production scenarios you'll face in interviews and jobs. Each question has actual system failures, correct technical solutions, and 100% accurate explanations.`,
       isUser: false
     };
     setMessages([welcomeMsg]);
@@ -276,7 +280,7 @@ export function ScenarioGame() {
     }
 
     if (mode === 'interview') {
-      setTimeout(() => generateQuestion(skill), 1500);
+      setTimeout(() => generateProductionScenario(skill), 1500);
     }
   };
 
@@ -287,7 +291,7 @@ export function ScenarioGame() {
     }
     setMessages([{
       id: 0,
-      text: "Welcome to Scenario Game! 🎮\n\nTwo modes available:\n• 📚 Learning Mode - Interactive teaching with concepts and real scenarios\n• 🎯 Interview Mode - MCQ practice with explanations\n\nEnter any skill to begin!",
+      text: "🎮 Welcome to Scenario Game!\n\nReal production scenarios • 100% technical accuracy\n\n• 📚 Learning Mode: Concepts + Real scenarios\n• 🎯 Interview Mode: Production troubleshooting MCQs\n\nEnter any skill to begin!",
       isUser: false
     }]);
     setSelectedSkill(null);
@@ -303,7 +307,7 @@ export function ScenarioGame() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="glass rounded-3xl p-8 space-y-6 border border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -311,8 +315,8 @@ export function ScenarioGame() {
               <Trophy className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-2xl font-bold">Scenario Game</h3>
-              <p className="text-white/60">Expert teaching • Technical MCQs • Any skill supported</p>
+              <h3 className="text-2xl font-bold">Production Scenario Game</h3>
+              <p className="text-white/60">Real scenarios • 100% technical accuracy • Female voice</p>
             </div>
           </div>
 
@@ -322,7 +326,7 @@ export function ScenarioGame() {
                 <span className="text-accent font-bold">{score}</span> XP
               </div>
               <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-                {answered} answered
+                {answered} scenarios
               </div>
             </div>
           )}
@@ -351,7 +355,7 @@ export function ScenarioGame() {
                       : 'bg-white/5 border-white/20 hover:bg-white/10'
                   }`}
                 >
-                  <Award className="w-5 h-5" /> Interview Mode
+                  <Award className="w-5 h-5" /> Production Scenarios
                 </button>
               </div>
             </div>
@@ -372,7 +376,7 @@ export function ScenarioGame() {
                   disabled={!input.trim()}
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50 font-medium"
                 >
-                  Start {mode === 'learning' ? 'Learning' : 'Interview'}
+                  Start {mode === 'learning' ? 'Learning' : 'Scenarios'}
                 </button>
               </div>
             </div>
@@ -381,7 +385,7 @@ export function ScenarioGame() {
           <>
             <div className="flex items-center justify-between">
               <div className="px-4 py-2 rounded-xl bg-primary/20 border border-primary/30">
-                {mode === 'learning' ? '📚' : '🎯'} {mode === 'learning' ? 'Learning' : 'Interview'}: <span className="font-bold">{selectedSkill}</span>
+                {mode === 'learning' ? '📚' : '🎯'} {mode === 'learning' ? 'Learning' : 'Production'}: <span className="font-bold">{selectedSkill}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -394,7 +398,7 @@ export function ScenarioGame() {
               </div>
             </div>
 
-            <div className="bg-white/5 rounded-2xl p-6 h-[500px] overflow-y-auto space-y-4">
+            <div className="bg-white/5 rounded-2xl p-6 h-[550px] overflow-y-auto space-y-4">
               {messages.map((msg, index) => (
                 <motion.div
                   key={msg.id}
@@ -402,31 +406,32 @@ export function ScenarioGame() {
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] p-4 rounded-2xl ${
+                  <div className={`max-w-[92%] p-4 rounded-2xl ${
                     msg.isUser ? 'bg-primary/20 border border-primary/30' : 'bg-white/10 border border-white/20'
                   }`}>
                     <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</div>
 
                     {msg.options && !msg.explanation && (
-                      <div className="mt-4 space-y-2">
+                      <div className="mt-4 space-y-3">
                         {msg.options.map((option, optIndex) => (
                           <label
                             key={optIndex}
-                            className="flex items-center gap-3 p-4 rounded-xl border bg-white/5 border-white/20 hover:bg-white/10 hover:border-primary/50 transition-all cursor-pointer"
+                            className="flex items-start gap-3 p-4 rounded-xl border bg-white/5 border-white/20 hover:bg-white/10 hover:border-primary/50 transition-all cursor-pointer group"
                           >
                             <input
                               type="radio"
                               name={`question-${msg.id}`}
                               onChange={() => handleAnswer(option.split(')')[0].trim() + ')', index)}
-                              className="w-4 h-4 text-primary"
+                              className="w-4 h-4 mt-0.5 text-primary accent-primary"
                             />
-                            <span className="text-sm">{option}</span>
+                            <span className="text-sm leading-relaxed group-hover:text-white transition-colors">{option}</span>
                           </label>
                         ))}
                       </div>
                     )}
+
                     {msg.explanation && msg.options && (
-                      <div className="mt-4 space-y-2">
+                      <div className="mt-4 space-y-3">
                         {msg.options.map((option, optIndex) => {
                           const optionLetter = option.split(')')[0].trim() + ')';
                           const isCorrect = optionLetter === msg.correctAnswer;
@@ -436,9 +441,9 @@ export function ScenarioGame() {
                           return (
                             <div
                               key={optIndex}
-                              className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
-                                isCorrect ? 'bg-green-500/20 border-green-500/50' :
-                                isUserAnswer && !isCorrect ? 'bg-red-500/20 border-red-500/50' :
+                              className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${
+                                isCorrect ? 'bg-green-500/15 border-green-500/50 text-green-400' :
+                                isUserAnswer && !isCorrect ? 'bg-red-500/15 border-red-500/50 text-red-400' :
                                 'bg-white/5 border-white/20'
                               }`}
                             >
@@ -446,12 +451,18 @@ export function ScenarioGame() {
                                 type="radio"
                                 checked={isUserAnswer || false}
                                 disabled
-                                className="w-4 h-4"
+                                className="w-4 h-4 mt-0.5"
                               />
-                              <span className={`text-sm ${isCorrect ? 'text-green-400 font-medium' : isUserAnswer ? 'text-red-400' : ''}`}>
-                                {option}
-                              </span>
-                              {isCorrect && <span className="ml-auto text-xs text-green-400">✓ Correct</span>}
+                              <div className="flex-1">
+                                <span className={`text-sm leading-relaxed ${isCorrect ? 'font-medium' : ''}`}>
+                                  {option}
+                                </span>
+                                {isCorrect && (
+                                  <div className="mt-1 flex items-center gap-1">
+                                    <span className="text-xs text-green-400/80">✓ CORRECT TECHNICAL SOLUTION</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -469,8 +480,9 @@ export function ScenarioGame() {
               )}
               {isSpeaking && (
                 <div className="flex justify-start">
-                  <div className="p-2 rounded-xl bg-primary/20">
+                  <div className="p-2 rounded-xl bg-primary/20 flex items-center gap-2">
                     <Volume2 className="w-4 h-4 animate-pulse" />
+                    <span className="text-xs text-white/60">Female voice active</span>
                   </div>
                 </div>
               )}
@@ -483,7 +495,7 @@ export function ScenarioGame() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && handleLearningMessage()}
-                  placeholder={`Ask about ${selectedSkill} concepts, daily tasks, or scenarios...`}
+                  placeholder={`Ask about ${selectedSkill} production concepts, daily struggles, or scenarios...`}
                   className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder:text-white/40"
                 />
                 <button
@@ -503,15 +515,15 @@ export function ScenarioGame() {
                   disabled={isLoading}
                   className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50 font-medium"
                 >
-                  {hasAnsweredCurrentQuestion() ? 'Next Question' : 'Generate Question'} <ArrowRight className="w-4 h-4" />
+                  {hasAnsweredCurrentQuestion() ? 'Next Production Scenario' : 'Generate Production Scenario'} <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             )}
 
             <div className="text-xs text-center text-white/40">
               {mode === 'learning'
-                ? '📚 Teacher Mode: Concepts → Scenarios → Questions → Deep Understanding | Works with any skill'
-                : '🎯 Interview Mode: Select answer → Get explanation → Click Next for new question | Works with any skill'}
+                ? '📚 Production Learning: Concepts → Real Scenarios → Struggles → Technical Solutions | Female voice'
+                : '🎯 Production MCQs: Real failures → Technical solutions → 100% accurate explanations → Female voice'}
             </div>
           </>
         )}

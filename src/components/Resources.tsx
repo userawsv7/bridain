@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { ExternalLink, Github, Award, Target, Search, Loader2, BookOpen, PlayCircle, FileText, Users, Star, Trophy, Book, Video, FileCode, Globe, Send, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { ExternalLink, Target, Loader2, BookOpen, Send, Mic, MicOff, Volume2, VolumeX, Award, Star, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -10,6 +10,7 @@ interface ChatMessage {
   text: string;
   isUser: boolean;
   resources?: ResourceSection[];
+  skill?: string;
 }
 
 interface ResourceSection {
@@ -19,6 +20,7 @@ interface ResourceSection {
     url: string;
     description: string;
     type: string;
+    priority: string;
   }>;
 }
 
@@ -26,7 +28,7 @@ export function Resources() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 0,
-      text: "Hi! I'm your Resource Assistant 📚\n\nTell me any skill and I'll provide:\n• GitHub repos & tasks\n• Best online resources\n• YouTube tutorials\n• Cheatsheets & concepts\n• Day-to-day activities\n• Official certifications\n• Free & paid resources\n\nWhat skill would you like to explore?",
+      text: "🎯 Resource Assistant\n\nI'll find the BEST websites for any skill to help you:\n• Crack interviews & certification exams\n• Master core concepts\n• Practice with real scenarios\n\nTell me any skill and I'll research the top-tier websites specifically for that skill.",
       isUser: false
     }
   ]);
@@ -40,23 +42,26 @@ export function Resources() {
 
   const selectFemaleVoice = () => {
     const voices = window.speechSynthesis.getVoices();
-    const premiumFemaleVoices = [
+    const strictlyFemaleVoices = [
       'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira',
-      'Tessa', 'Veena', 'Fiona', 'Serena', 'Monica', 'Agnes', 'Kathy'
+      'Tessa', 'Veena', 'Fiona', 'Serena', 'Monica', 'Agnes', 'Kathy',
+      'Princess', 'Google US English Female'
     ];
 
-    for (const voiceName of premiumFemaleVoices) {
+    for (const voiceName of strictlyFemaleVoices) {
       const voice = voices.find(v => v.name.includes(voiceName) && !v.name.toLowerCase().includes('male'));
       if (voice) return voice;
     }
 
     return voices.find(v =>
       !v.name.toLowerCase().includes('male') &&
-      v.name !== 'Google UK English Male'
+      v.name !== 'Google UK English Male' &&
+      v.name !== 'Microsoft David Desktop' &&
+      v.name !== 'Alex'
     ) || voices[0];
   };
 
-  const speak = (text: string, rate: number = 1.2) => {
+  const speak = (text: string, rate: number = 1.25) => {
     if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     const cleanText = text
@@ -72,7 +77,7 @@ export function Resources() {
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = rate;
-    utterance.pitch = 1.1;
+    utterance.pitch = 1.12;
     utterance.volume = 0.9;
 
     const femaleVoice = selectFemaleVoice();
@@ -94,7 +99,7 @@ export function Resources() {
 
   const startListening = () => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      toast.error('Speech recognition not supported in this browser');
+      toast.error('Speech recognition not supported');
       return;
     }
 
@@ -139,7 +144,7 @@ export function Resources() {
     }
   }, []);
 
-  const generateResources = async (skill: string) => {
+  const generateSkillResources = async (skill: string) => {
     setIsLoading(true);
 
     try {
@@ -147,10 +152,10 @@ export function Resources() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Provide comprehensive resources for ${skill}`,
-          context: `Generate a complete resource guide for ${skill} including: GitHub repos with good issues/tasks, best online learning sites, YouTube tutorials, cheatsheets, concept explanations, day-to-day activities and struggles, scenarios, official certifications (free and paid), documentation. Format as organized sections with real URLs where possible.`,
+          message: `Find the BEST websites for ${skill} to crack interviews, certifications and master concepts`,
+          context: `Analyze and provide the TOP-TIER, most valuable websites specifically for ${skill}. Focus on: 1) Best interview preparation sites 2) Official certification paths 3) Concept mastery platforms 4) Real scenario practice 5) Documentation and tutorials. Rank by quality and interview/certification success rate. Use LLM knowledge to identify genuinely valuable sites, not generic ones.`,
           skill: skill,
-          mode: 'resource_assistant'
+          mode: 'skill_resource_research'
         })
       });
 
@@ -158,90 +163,78 @@ export function Resources() {
 
       const resourceMsg: ChatMessage = {
         id: Date.now(),
-        text: `Here are comprehensive resources for ${skill}:`,
+        text: `Here are the BEST websites for ${skill} to help you crack interviews and master concepts:`,
         isUser: false,
-        resources: parseResources(data.response, skill)
+        resources: parseSkillResources(data.response, skill),
+        skill: skill
       };
 
       setMessages(prev => [...prev, resourceMsg]);
 
       if (!isMuted) {
-        speak(`I've found comprehensive resources for ${skill}. Check out the sections below.`, 1.2);
+        speak(`I've researched the best websites specifically for ${skill}. These will help you crack interviews and certifications.`, 1.2);
       }
     } catch (error) {
-      toast.error('Failed to fetch resources');
+      toast.error('Failed to research resources');
     }
 
     setIsLoading(false);
   };
 
-  const parseResources = (response: string, skill: string): ResourceSection[] => {
+  const parseSkillResources = (response: string, skill: string): ResourceSection[] => {
     const sections: ResourceSection[] = [
       {
-        title: "🚀 GitHub Repositories & Tasks",
+        title: "🎯 Interview Mastery Platforms",
         items: [
-          { title: `${skill} Awesome List`, url: `https://github.com/topics/${skill.toLowerCase()}`, description: "Curated list of best resources", type: "repo" },
-          { title: `${skill} Examples`, url: `https://github.com/search?q=${encodeURIComponent(skill)}+example`, description: "Real-world implementations", type: "repo" },
-          { title: `Good First Issues - ${skill}`, url: `https://github.com/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22+${encodeURIComponent(skill)}`, description: "Beginner-friendly tasks", type: "tasks" }
+          { title: "LeetCode", url: "https://leetcode.com/", description: "Technical interviews & coding practice", type: "practice", priority: "high" },
+          { title: "InterviewBit", url: "https://www.interviewbit.com/", description: "Structured interview preparation", type: "practice", priority: "high" },
+          { title: "Pramp", url: "https://www.pramp.com/", description: "Mock interview practice", type: "practice", priority: "medium" },
+          { title: "Glassdoor", url: `https://www.glassdoor.com/Interview/${skill.toLowerCase()}-interview-questions-SRCH_KO0,${skill.length}.htm`, description: "Real interview questions", type: "research", priority: "medium" }
         ]
       },
       {
-        title: "📚 Best Online Learning Sites",
+        title: "🏆 Certification Excellence",
         items: [
-          { title: "freeCodeCamp", url: "https://www.freecodecamp.org/", description: "Free comprehensive tutorials", type: "course" },
-          { title: "MDN Web Docs", url: "https://developer.mozilla.org/", description: "Official documentation", type: "docs" },
-          { title: "roadmap.sh", url: "https://roadmap.sh/", description: "Visual learning paths", type: "roadmap" },
-          { title: "DevDocs", url: "https://devdocs.io/", description: "Unified API documentation", type: "docs" }
+          { title: "Official Certification Portal", url: `https://www.${skill.toLowerCase()}.org/certification`, description: "Primary certification path", type: "cert", priority: "high" },
+          { title: "AWS Training", url: "https://aws.amazon.com/training/", description: "Cloud certifications", type: "cert", priority: "high" },
+          { title: "Microsoft Learn", url: "https://learn.microsoft.com/training/", description: "Microsoft certifications", type: "cert", priority: "high" },
+          { title: "Google Cloud Skills", url: "https://cloud.google.com/learn/training", description: "GCP certifications", type: "cert", priority: "medium" }
         ]
       },
       {
-        title: "🎥 YouTube Tutorials",
+        title: "📚 Concept Mastery",
         items: [
-          { title: `${skill} Crash Course - freeCodeCamp`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(skill)}+crash+course+freecodecamp+2024`, description: "Complete tutorial series", type: "video" },
-          { title: `${skill} Official Tutorial`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(skill)}+official+tutorial+2024`, description: "Official channel tutorials", type: "video" },
-          { title: `${skill} Hands-on Lab`, url: `https://www.youtube.com/results?search_query=${encodeURIComponent(skill)}+hands+on+lab+tutorial`, description: "Practical demonstrations", type: "video" }
+          { title: "Official Documentation", url: `https://docs.${skill.toLowerCase()}.org`, description: "Authoritative concept reference", type: "docs", priority: "high" },
+          { title: "MDN Web Docs", url: "https://developer.mozilla.org/", description: "Web technologies mastery", type: "docs", priority: "high" },
+          { title: "DevDocs", url: "https://devdocs.io/", description: "Unified API documentation", type: "docs", priority: "medium" },
+          { title: "roadmap.sh", url: "https://roadmap.sh/", description: "Structured learning paths", type: "roadmap", priority: "high" }
         ]
       },
       {
-        title: "📋 Cheatsheets & Quick References",
+        title: "🎥 Video Learning Excellence",
         items: [
-          { title: `${skill} Cheatsheet`, url: `https://devhints.io/${skill.toLowerCase()}`, description: "Quick reference guide", type: "cheatsheet" },
-          { title: "QuickRef.me", url: `https://quickref.me/${skill.toLowerCase()}`, description: "Command references", type: "cheatsheet" },
-          { title: "OverAPI", url: `https://overapi.com/${skill.toLowerCase()}`, description: "API cheat sheets", type: "cheatsheet" }
+          { title: "freeCodeCamp YouTube", url: "https://www.youtube.com/c/Freecodecamp", description: "Comprehensive tutorials", type: "video", priority: "high" },
+          { title: "Traversy Media", url: "https://www.youtube.com/c/TraversyMedia", description: "Practical development tutorials", type: "video", priority: "high" },
+          { title: "TechWorld with Nana", url: "https://www.youtube.com/c/TechWorldwithNana", description: "DevOps and cloud tutorials", type: "video", priority: "medium" },
+          { title: "official " + skill + " tutorials", url: `https://www.youtube.com/results?search_query=site:youtube.com+${encodeURIComponent(skill)}+official+tutorial`, description: "Official channel content", type: "video", priority: "medium" }
         ]
       },
       {
-        title: "💡 Concept Explanations",
+        title: "💡 Real-World Practice",
         items: [
-          { title: "freeCodeCamp Articles", url: "https://www.freecodecamp.org/news/", description: "In-depth concept articles", type: "article" },
-          { title: "DEV Community", url: "https://dev.to/", description: "Real-world explanations", type: "article" },
-          { title: "Medium Tech", url: "https://medium.com/tag/technology", description: "Expert insights", type: "article" }
+          { title: "GitHub", url: `https://github.com/topics/${skill.toLowerCase()}`, description: "Real projects and issues", type: "projects", priority: "high" },
+          { title: "Stack Overflow", url: `https://stackoverflow.com/questions/tagged/${skill.toLowerCase()}`, description: "Production problem solving", type: "community", priority: "high" },
+          { title: "Reddit Community", url: `https://reddit.com/r/${skill.toLowerCase()}`, description: "Community insights", type: "community", priority: "medium" },
+          { title: "Kubernetes the Hard Way", url: "https://github.com/kelseyhightower/kubernetes-the-hard-way", description: "Hands-on production scenarios", type: "projects", priority: "high" }
         ]
       },
       {
-        title: "📅 Day-to-Day Activities & Scenarios",
+        title: "🚀 Premium Learning",
         items: [
-          { title: "Real Production Scenarios", url: `https://stackoverflow.com/questions/tagged/${skill.toLowerCase()}`, description: "Common daily challenges", type: "forum" },
-          { title: "Interview Questions", url: `https://www.interviewbit.com/${skill.toLowerCase()}-interview-questions/`, description: "Practice scenarios", type: "practice" },
-          { title: "LeetCode Explore", url: "https://leetcode.com/explore/", description: "Structured practice", type: "practice" }
-        ]
-      },
-      {
-        title: "🏆 Official Certifications",
-        items: [
-          { title: `${skill} Professional Cert`, url: `https://www.${skill.toLowerCase()}.org/certification`, description: "Official certification", type: "cert" },
-          { title: "AWS Certifications", url: "https://aws.amazon.com/certification/", description: "Cloud certifications", type: "cert" },
-          { title: "Google Cloud Certs", url: "https://cloud.google.com/certification/", description: "GCP certifications", type: "cert" },
-          { title: "Microsoft Learn", url: "https://learn.microsoft.com/certifications/", description: "Azure certifications", type: "cert" }
-        ]
-      },
-      {
-        title: "💰 Free & Paid Resources",
-        items: [
-          { title: "Harvard CS50", url: "https://cs50.harvard.edu/", description: "Free world-class education", type: "course" },
-          { title: "MIT OpenCourseWare", url: "https://ocw.mit.edu/", description: "Free MIT courses", type: "course" },
-          { title: "Frontend Masters", url: "https://frontendmasters.com/", description: "Premium frontend courses", type: "course" },
-          { title: "Udemy Courses", url: `https://www.udemy.com/courses/search/?q=${encodeURIComponent(skill)}`, description: "Affordable video courses", type: "course" }
+          { title: "Frontend Masters", url: "https://frontendmasters.com/", description: "Expert frontend education", type: "premium", priority: "high" },
+          { title: "Udemy", url: `https://www.udemy.com/courses/search/?q=${encodeURIComponent(skill)}&sort=relevance`, description: "Affordable comprehensive courses", type: "premium", priority: "medium" },
+          { title: "Coursera", url: `https://www.coursera.org/search?query=${encodeURIComponent(skill)}`, description: "University-level courses", type: "premium", priority: "medium" },
+          { title: "Pluralsight", url: "https://www.pluralsight.com/", description: "Technical skill development", type: "premium", priority: "medium" }
         ]
       }
     ];
@@ -264,7 +257,7 @@ export function Resources() {
     setInput('');
 
     setTimeout(() => {
-      generateResources(skill);
+      generateSkillResources(skill);
     }, 500);
   };
 
@@ -275,22 +268,22 @@ export function Resources() {
     }
     setMessages([{
       id: 0,
-      text: "Hi! I'm your Resource Assistant 📚\n\nTell me any skill and I'll provide:\n• GitHub repos & tasks\n• Best online resources\n• YouTube tutorials\n• Cheatsheets & concepts\n• Day-to-day activities\n• Official certifications\n• Free & paid resources\n\nWhat skill would you like to explore?",
+      text: "🎯 Resource Assistant\n\nI'll find the BEST websites for any skill to help you:\n• Crack interviews & certification exams\n• Master core concepts\n• Practice with real scenarios\n\nTell me any skill and I'll research the top-tier websites specifically for that skill.",
       isUser: false
     }]);
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="glass rounded-3xl p-8 space-y-6 border border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <BookOpen className="w-7 h-7" />
+              <Trophy className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-2xl font-bold">Resources Assistant</h3>
-              <p className="text-white/60">Chat-based • Voice input • Comprehensive skill resources</p>
+              <h3 className="text-2xl font-bold">Skill Resource Researcher</h3>
+              <p className="text-white/60">Finds best websites • Interview & certification focused • Female voice</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -303,7 +296,7 @@ export function Resources() {
           </div>
         </div>
 
-        <div className="bg-white/5 rounded-2xl p-6 h-[500px] overflow-y-auto space-y-4">
+        <div className="bg-white/5 rounded-2xl p-6 h-[550px] overflow-y-auto space-y-4">
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
@@ -317,8 +310,8 @@ export function Resources() {
                 <div className="text-sm leading-relaxed whitespace-pre-wrap mb-4">{msg.text}</div>
 
                 {msg.resources && msg.resources.map((section, idx) => (
-                  <div key={idx} className="mb-6 last:mb-0">
-                    <h4 className="font-semibold text-base mb-3 text-primary">{section.title}</h4>
+                  <div key={idx} className="mb-8 last:mb-0">
+                    <h4 className="font-semibold text-lg mb-4 pb-2 border-b border-white/20 text-primary">{section.title}</h4>
                     <div className="grid md:grid-cols-2 gap-3">
                       {section.items.map((item, itemIdx) => (
                         <a
@@ -326,14 +319,28 @@ export function Resources() {
                           href={item.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block p-4 bg-white/5 rounded-xl border border-white/10 hover:border-primary/50 transition-all group"
+                          className="group block p-4 bg-white/5 rounded-xl border border-white/10 hover:border-primary/50 hover:bg-white/8 transition-all"
                         >
-                          <div className="flex items-start justify-between">
-                            <div>
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
                               <span className="font-medium group-hover:text-primary transition-colors">{item.title}</span>
-                              <p className="text-xs text-white/60 mt-1">{item.description}</p>
+                              {item.priority === "high" && (
+                                <Star className="w-3 h-3 text-yellow-400" />
+                              )}
                             </div>
-                            <ExternalLink className="w-4 h-4 text-white/40 mt-0.5 flex-shrink-0" />
+                            <ExternalLink className="w-4 h-4 text-white/40 group-hover:text-primary/60 mt-0.5 flex-shrink-0" />
+                          </div>
+                          <p className="text-xs text-white/70 leading-relaxed">{item.description}</p>
+                          <div className="mt-2">
+                            <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${
+                              item.type === 'practice' ? 'bg-blue-500/20 text-blue-400' :
+                              item.type === 'cert' ? 'bg-green-500/20 text-green-400' :
+                              item.type === 'docs' ? 'bg-purple-500/20 text-purple-400' :
+                              item.type === 'video' ? 'bg-red-500/20 text-red-400' :
+                              'bg-orange-500/20 text-orange-400'
+                            }`}>
+                              {item.type}
+                            </span>
                           </div>
                         </a>
                       ))}
@@ -346,14 +353,18 @@ export function Resources() {
           {isLoading && (
             <div className="flex justify-start">
               <div className="p-4 rounded-2xl bg-white/10">
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <div className="flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-sm text-white/60">Researching best websites for this skill...</span>
+                </div>
               </div>
             </div>
           )}
           {isSpeaking && (
             <div className="flex justify-start">
-              <div className="p-2 rounded-xl bg-primary/20">
+              <div className="p-2 rounded-xl bg-primary/20 flex items-center gap-2">
                 <Volume2 className="w-4 h-4 animate-pulse" />
+                <span className="text-xs text-white/60">Female voice guidance</span>
               </div>
             </div>
           )}
@@ -371,7 +382,7 @@ export function Resources() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyPress={e => e.key === 'Enter' && handleSubmit()}
-            placeholder="Enter any skill (Docker, React, AWS, Python, Kubernetes...)"
+            placeholder="Enter any skill (Docker, React, AWS, Python, System Design, Kubernetes...)"
             className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none"
           />
           <button
@@ -384,7 +395,7 @@ export function Resources() {
         </div>
 
         <div className="text-xs text-center text-white/40">
-          💬 Chat-based resources • 🎤 Voice input supported • Female voice explanations • All skills supported
+          🎯 LLM-powered skill research • Best websites for interviews & certifications • Voice & chat input • Female voice explanations
         </div>
       </div>
     </div>
