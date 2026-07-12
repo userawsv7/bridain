@@ -31,7 +31,7 @@ export function VoiceCoach() {
   const [mode, setMode] = useState<Mode>('learning');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [speechRate] = useState(1.0); // Optimal female voice rate
+  const speechRate = 1.0;
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(0);
 
@@ -39,7 +39,6 @@ export function VoiceCoach() {
 
   const selectFemaleVoice = () => {
     const voices = window.speechSynthesis.getVoices();
-    // Premium female voices only
     const premiumFemaleVoices = [
       'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira',
       'Tessa', 'Veena', 'Fiona', 'Serena', 'Monica', 'Agnes', 'Kathy'
@@ -50,7 +49,6 @@ export function VoiceCoach() {
       if (voice) return voice;
     }
 
-    // Fallback to any non-male voice
     return voices.find(v =>
       !v.name.toLowerCase().includes('male') &&
       v.name !== 'Google UK English Male'
@@ -73,7 +71,7 @@ export function VoiceCoach() {
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = rate;
-    utterance.pitch = 1.12; // Optimized for female voice
+    utterance.pitch = 1.12;
     utterance.volume = 0.85;
 
     const femaleVoice = selectFemaleVoice();
@@ -93,7 +91,6 @@ export function VoiceCoach() {
     setIsMuted(!isMuted);
   };
 
-  // Load voices on mount
   React.useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.getVoices();
@@ -111,10 +108,11 @@ export function VoiceCoach() {
     let explanation = '';
 
     lines.forEach(line => {
-      if (line.toUpperCase().startsWith('QUESTION:')) question = line.replace(/QUESTION:/i, '').trim();
+      const upperLine = line.toUpperCase();
+      if (upperLine.startsWith('QUESTION:')) question = line.replace(/QUESTION:/i, '').trim();
       if (line.match(/^[A-D]\)/)) options.push(line.trim());
-      if (line.toUpperCase().startsWith('CORRECT:')) correctAnswer = line.replace(/CORRECT:/i, '').trim();
-      if (line.toUpperCase().startsWith('EXPLANATION:')) explanation = line.replace(/EXPLANATION:/i, '').trim();
+      if (upperLine.startsWith('CORRECT:')) correctAnswer = line.replace(/CORRECT:/i, '').trim();
+      if (upperLine.startsWith('EXPLANATION:')) explanation = line.replace(/EXPLANATION:/i, '').trim();
     });
 
     return question && options.length === 4 ? { question, options, correctAnswer, explanation } : null;
@@ -129,7 +127,7 @@ export function VoiceCoach() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: `Generate a technical interview MCQ for ${skill}`,
-          context: `Generate a production-focused MCQ question with 100% technical accuracy`,
+          context: `INTERVIEW MODE - Generate a specific MCQ question for ${skill} interviews. Format: QUESTION, A), B), C), D), CORRECT, EXPLANATION`,
           skill: skill,
           mode: 'interview_feedback'
         })
@@ -149,7 +147,6 @@ export function VoiceCoach() {
         };
         setMessages(prev => [...prev, questionMsg]);
 
-        // Auto-read with optimal female voice
         if (!isMuted) {
           setTimeout(() => {
             speak(`${parsed.question}. ${parsed.options.join('. ')}`, speechRate);
@@ -179,21 +176,13 @@ export function VoiceCoach() {
 
     const resultMsg: Message = {
       id: Date.now(),
-      text: `${isCorrect ? '✅ CORRECT!' : '❌ INCORRECT'}\n\nYour answer: ${answer}\nCorrect answer: ${message.correctAnswer}\n\n${message.explanation}\n\n💡 Interview tip: This tests concepts frequently asked in technical interviews and certification exams.`,
+      text: `${isCorrect ? '✅ CORRECT!' : '❌ INCORRECT'}\n\nYour answer: ${answer}\nCorrect answer: ${message.correctAnswer}\n\n${message.explanation}`,
       isUser: false
     };
     setMessages(prev => [...prev, resultMsg]);
 
-    // Voice explanation with female voice
     if (!isMuted) {
       speak(`${isCorrect ? 'Correct!' : 'Incorrect.'} The correct answer is ${message.correctAnswer}. ${message.explanation}`, speechRate);
-    }
-
-    // Auto-progress to next question after 3.5 seconds
-    if (selectedSkill) {
-      setTimeout(() => {
-        generateQuestion(selectedSkill);
-      }, 3500);
     }
   };
 
@@ -239,7 +228,6 @@ export function VoiceCoach() {
 
       setMessages(prev => [...prev, aiMessage]);
 
-      // Read with optimal female voice
       if (!isMuted) {
         speak(data.response, speechRate);
       }
@@ -265,7 +253,6 @@ export function VoiceCoach() {
     setMessages([welcomeMsg]);
     setInput('');
 
-    // Welcome voice with premium female voice
     if (!isMuted) {
       speak(welcomeMsg.text, speechRate);
     }
@@ -292,9 +279,14 @@ export function VoiceCoach() {
     setAnswered(0);
   };
 
+  const hasAnsweredCurrentQuestion = () => {
+    const lastMsg = messages[messages.length - 1];
+    return lastMsg && lastMsg.explanation;
+  };
+
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="glass rounded-3xl p-8 space-y-6">
+      <div className="glass rounded-3xl p-8 space-y-6 border border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
@@ -302,7 +294,7 @@ export function VoiceCoach() {
             </div>
             <div>
               <h3 className="text-2xl font-bold">Voice Coach</h3>
-              <p className="text-white/60">Female voice • Learning & Interview modes • Technical explanations</p>
+              <p className="text-white/60">Female voice • Learning & Interview modes • Any skill supported</p>
             </div>
           </div>
 
@@ -354,7 +346,7 @@ export function VoiceCoach() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && handleSkillSubmit()}
-                  placeholder="Enter any skill (Docker, React, AWS, System Design, Python...)"
+                  placeholder="Enter any skill (Docker, React, AWS, System Design, Python, Go, Rust...)"
                   className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none"
                 />
                 <button
@@ -449,7 +441,7 @@ export function VoiceCoach() {
               </div>
             )}
 
-            {mode === 'interview' && messages.length > 1 && (
+            {mode === 'interview' && hasAnsweredCurrentQuestion() && (
               <div className="flex justify-center">
                 <button
                   onClick={handleNextQuestion}
@@ -463,8 +455,8 @@ export function VoiceCoach() {
 
             <div className="text-xs text-center text-white/40">
               {mode === 'learning'
-                ? '🎤 Voice Learning: Concepts → Real Scenarios → Questions → Mastery'
-                : '🎯 Voice MCQ: Select answer → Voice explanation → Auto/Next question'}
+                ? '🎤 Voice Learning: Concepts → Real Scenarios → Questions → Mastery | Any skill supported'
+                : '🎯 Voice MCQ: Select answer → Voice explanation → Next question | Any skill supported'}
             </div>
           </>
         )}

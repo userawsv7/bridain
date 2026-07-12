@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Send, Loader2, Trophy, RotateCcw, Volume2, VolumeX, Book, Award } from 'lucide-react';
+import { Send, Loader2, Trophy, RotateCcw, Volume2, VolumeX, Book, Award, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -21,7 +21,7 @@ export function ScenarioGame() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
-      text: "Welcome to Scenario Game! 🎮\n\nTwo modes available:\n• 📚 Learning Mode - Chat about concepts and get explanations\n• 🎯 Interview Mode - MCQ practice with explanations\n\nEnter any skill to begin!",
+      text: "Welcome to Scenario Game! 🎮\n\nTwo modes available:\n• 📚 Learning Mode - Interactive teaching with concepts and real scenarios\n• 🎯 Interview Mode - MCQ practice with explanations\n\nEnter any skill to begin!",
       isUser: false
     }
   ]);
@@ -33,22 +33,34 @@ export function ScenarioGame() {
   const [answered, setAnswered] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
-  const [speechRate, setSpeechRate] = useState(0.9);
-  const [currentQuestion, setCurrentQuestion] = useState<{question: string, options: string[], correctAnswer: string, explanation: string} | null>(null);
-
-  const voiceFlavors = {
-    Aphrodite: { name: 'Aphrodite', pitch: 1.15 },
-    Amba: { name: 'Amba', pitch: 1.1 },
-    Venus: { name: 'Venus', pitch: 1.2 },
-    Ishtar: { name: 'Ishtar', pitch: 1.05 },
-    Freyja: { name: 'Freyja', pitch: 1.12 }
-  };
+  const speechRate = 1.0;
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  const sanitizeForTTS = (text: string): string => {
-    return text
+  const selectFemaleVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const premiumFemaleVoices = [
+      'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira',
+      'Tessa', 'Veena', 'Fiona', 'Alex', 'Serena', 'Kathy', 'Princess',
+      'Junior', 'Monica', 'Agnes'
+    ];
+
+    for (const voiceName of premiumFemaleVoices) {
+      const voice = voices.find(v => v.name.includes(voiceName) && !v.name.toLowerCase().includes('male'));
+      if (voice) return voice;
+    }
+
+    const femaleVoice = voices.find(v =>
+      !v.name.toLowerCase().includes('male') &&
+      v.name !== 'Google UK English Male'
+    );
+    return femaleVoice || voices[0];
+  };
+
+  const speak = (text: string, rate: number = 1.0) => {
+    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const cleanText = text
       .replace(/#{1,6}\s*/g, '')
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/\*([^*]+)\*/g, '$1')
@@ -56,33 +68,13 @@ export function ScenarioGame() {
       .replace(/`{1,3}/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-  };
 
-  const selectFemaleVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
-    const femaleVoices = ['Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan', 'Moira', 'Tessa', 'Veena', 'Fiona'];
-
-    for (const voiceName of femaleVoices) {
-      const voice = voices.find(v => v.name.includes(voiceName));
-      if (voice) return voice;
-    }
-
-    const googleVoice = voices.find(v => v.name.includes('Google') && v.name.toLowerCase().includes('en'));
-    return googleVoice || voices.find(v => !v.name.toLowerCase().includes('male')) || voices[0];
-  };
-
-  const speak = (text: string, rate: number = 0.9) => {
-    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    const cleanText = sanitizeForTTS(text);
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    const flavor = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors];
-
     utterance.rate = rate;
-    utterance.pitch = flavor.pitch;
-    utterance.volume = 0.85;
+    utterance.pitch = 1.1;
+    utterance.volume = 0.9;
 
     const femaleVoice = selectFemaleVoice();
     if (femaleVoice) utterance.voice = femaleVoice;
@@ -101,13 +93,14 @@ export function ScenarioGame() {
     setIsMuted(!isMuted);
   };
 
-  // Real-time voice updates
   React.useEffect(() => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
     }
-  }, [speechRate, selectedVoiceFlavor]);
+  }, []);
 
   const parseQuestion = (response: string) => {
     const lines = response.split('\n').filter(l => l.trim());
@@ -117,10 +110,11 @@ export function ScenarioGame() {
     let explanation = '';
 
     lines.forEach(line => {
-      if (line.startsWith('QUESTION:')) question = line.replace('QUESTION:', '').trim();
+      const upperLine = line.toUpperCase();
+      if (upperLine.startsWith('QUESTION:')) question = line.replace(/QUESTION:/i, '').trim();
       if (line.match(/^[A-D]\)/)) options.push(line.trim());
-      if (line.startsWith('CORRECT:')) correctAnswer = line.replace('CORRECT:', '').trim();
-      if (line.startsWith('EXPLANATION:')) explanation = line.replace('EXPLANATION:', '').trim();
+      if (upperLine.startsWith('CORRECT:')) correctAnswer = line.replace(/CORRECT:/i, '').trim();
+      if (upperLine.startsWith('EXPLANATION:')) explanation = line.replace(/EXPLANATION:/i, '').trim();
     });
 
     return question && options.length === 4 ? { question, options, correctAnswer, explanation } : null;
@@ -134,19 +128,10 @@ export function ScenarioGame() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Generate an interview/certification MCQ for ${skill}`,
-          context: `INTERVIEW MODE - Generate production-ready questions with MCQ.
-
-Format exactly:
-QUESTION: [Interview/certification style question]
-A) [Option]
-B) [Option]
-C) [Option]
-D) [Option]
-CORRECT: [A/B/C/D]
-EXPLANATION: [100% technically accurate detailed explanation of why correct answer is right, why others are wrong, real production impact, and commands/configs]
-
-Include actual commands, configurations, and production scenarios for: ${skill}`
+          message: `Generate a technical interview MCQ question for ${skill}`,
+          context: `INTERVIEW MODE - Generate a specific MCQ question for ${skill} interviews. Format: QUESTION, A), B), C), D), CORRECT, EXPLANATION`,
+          skill: skill,
+          mode: 'interview_feedback'
         })
       });
 
@@ -163,7 +148,12 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
           explanation: parsed.explanation
         };
         setMessages(prev => [...prev, questionMsg]);
-        setCurrentQuestion(parsed);
+
+        if (!isMuted) {
+          setTimeout(() => {
+            speak(`${parsed.question}. ${parsed.options.join('. ')}`, speechRate);
+          }, 500);
+        }
       }
     } catch (error) {
       toast.error('Failed to generate question');
@@ -181,23 +171,26 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
 
     if (isCorrect) {
       setScore(prev => prev + 10);
-      toast.success('+10 XP! Interview ready!');
+      toast.success('+10 XP! Excellent!');
     } else {
-      toast.info('Learn from this scenario');
+      toast.info('Learn from this explanation');
     }
 
     const resultMsg: Message = {
       id: Date.now(),
-      text: `${isCorrect ? '✅ CORRECT!' : '❌ INCORRECT'}\n\nYour answer: ${answer}\nCorrect answer: ${message.correctAnswer}\n\n${message.explanation}\n\n💡 Interview tip: This appears in technical interviews and certification exams.`,
+      text: `${isCorrect ? '✅ CORRECT!' : '❌ INCORRECT'}\n\nYour answer: ${answer}\nCorrect answer: ${message.correctAnswer}\n\n${message.explanation}`,
       isUser: false
     };
     setMessages(prev => [...prev, resultMsg]);
 
+    if (!isMuted) {
+      speak(`${isCorrect ? 'Correct!' : 'Incorrect.'} The correct answer is ${message.correctAnswer}. ${message.explanation}`, speechRate);
+    }
+  };
+
+  const handleNextQuestion = () => {
     if (selectedSkill) {
-      // Auto-progress to next question after 3-4 seconds
-      setTimeout(() => {
-        generateQuestion(selectedSkill);
-      }, 3500);
+      generateQuestion(selectedSkill);
     }
   };
 
@@ -221,7 +214,9 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: `LEARNING MODE for ${selectedSkill} - Teach concepts, explain daily activities, real scenarios, and problem-solving. Structure: CONCEPT → DAILY TASKS → SCENARIOS → SOLUTIONS. Use actual ${selectedSkill} commands and configurations.`
+          context: `As an expert teacher for ${selectedSkill}, explain concepts clearly, ask probing questions, provide real-world scenarios`,
+          skill: selectedSkill,
+          mode: 'voice_coach'
         })
       });
 
@@ -234,7 +229,10 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
       };
 
       setMessages(prev => [...prev, aiMessage]);
-      if (!isMuted) speak(data.response, speechRate);
+
+      if (!isMuted) {
+        speak(data.response, speechRate);
+      }
     } catch (error) {
       toast.error('Failed to get response');
     }
@@ -250,15 +248,19 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
     const welcomeMsg: Message = {
       id: Date.now(),
       text: mode === 'learning'
-        ? `📚 Learning Mode: ${skill}\n\nI'll teach you concepts, daily tasks, scenarios, and problem-solving. Ask me anything!`
-        : `🎯 Interview Mode: ${skill}\n\nI'll ask MCQ questions. Select your answer and get explanations.`,
+        ? `📚 Learning Mode: ${skill}\n\nI'm your personal teacher for ${skill}. I'll explain core concepts, demonstrate with real scenarios, ask questions to check understanding. What would you like to learn first?`
+        : `🎯 Interview Mode: ${skill}\n\nI'll test your knowledge with technical MCQs. Each question has 4 options. Select your answer, get the correct answer with detailed explanation, then move to the next question.`,
       isUser: false
     };
     setMessages([welcomeMsg]);
     setInput('');
 
+    if (!isMuted) {
+      speak(welcomeMsg.text, speechRate);
+    }
+
     if (mode === 'interview') {
-      setTimeout(() => generateQuestion(skill), 1000);
+      setTimeout(() => generateQuestion(skill), 1500);
     }
   };
 
@@ -269,7 +271,7 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
     }
     setMessages([{
       id: 0,
-      text: "Welcome to Scenario Game! 🎮\n\nTwo modes available:\n• 📚 Learning Mode - Chat about concepts and get explanations\n• 🎯 Interview Mode - MCQ practice with explanations\n\nEnter any skill to begin!",
+      text: "Welcome to Scenario Game! 🎮\n\nTwo modes available:\n• 📚 Learning Mode - Interactive teaching with concepts and real scenarios\n• 🎯 Interview Mode - MCQ practice with explanations\n\nEnter any skill to begin!",
       isUser: false
     }]);
     setSelectedSkill(null);
@@ -277,7 +279,11 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
     setScore(0);
     setAnswered(0);
     setInput('');
-    setCurrentQuestion(null);
+  };
+
+  const hasAnsweredCurrentQuestion = () => {
+    const lastMsg = messages[messages.length - 1];
+    return lastMsg && lastMsg.explanation;
   };
 
   return (
@@ -290,7 +296,7 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
             </div>
             <div>
               <h3 className="text-2xl font-bold">Scenario Game</h3>
-              <p className="text-white/60">Any skill • Learning & Interview modes • MCQ with explanations</p>
+              <p className="text-white/60">Expert teaching • Technical MCQs • Any skill supported</p>
             </div>
           </div>
 
@@ -335,14 +341,14 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
             </div>
 
             <div>
-              <p className="text-lg mb-4">What skill would you like to practice?</p>
+              <p className="text-lg mb-4">What skill would you like to master?</p>
               <div className="flex gap-3">
                 <input
                   type="text"
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyPress={e => e.key === 'Enter' && handleSkillSubmit()}
-                  placeholder="Enter any skill (Docker, React, AWS, Kubernetes, Python...)"
+                  placeholder="Enter any skill (Docker, React, AWS, Kubernetes, Python, Go, Rust...)"
                   className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none"
                 />
                 <button
@@ -369,26 +375,6 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
                 <button onClick={resetGame} className="p-2 rounded-xl bg-white/5 border border-white/10">
                   <RotateCcw className="w-4 h-4" />
                 </button>
-
-                {/* Voice Controls */}
-                <select value={selectedVoiceFlavor} onChange={(e) => setSelectedVoiceFlavor(e.target.value)} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs">
-                  {Object.keys(voiceFlavors).map(flavor => (
-                    <option key={flavor} value={flavor}>{flavor}</option>
-                  ))}
-                </select>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-white/60">Rate:</span>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2.0"
-                    step="0.1"
-                    value={speechRate}
-                    onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
-                    className="w-16 accent-primary"
-                  />
-                  <span className="text-xs w-8">{speechRate.toFixed(1)}x</span>
-                </div>
               </div>
             </div>
 
@@ -457,8 +443,22 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
               </div>
             )}
 
+            {mode === 'interview' && hasAnsweredCurrentQuestion() && (
+              <div className="flex justify-center">
+                <button
+                  onClick={handleNextQuestion}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50 font-medium"
+                >
+                  Next Question <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             <div className="text-xs text-center text-white/40">
-              {mode === 'learning' ? '📚 Learn: Concepts → Daily Tasks → Scenarios → Solutions' : '🎯 MCQ: Select answer → Get explanation → Next question'}
+              {mode === 'learning'
+                ? '📚 Teacher Mode: Concepts → Scenarios → Questions → Deep Understanding | Works with any skill'
+                : '🎯 Interview Mode: Select answer → Get explanation → Click Next for new question | Works with any skill'}
             </div>
           </>
         )}
