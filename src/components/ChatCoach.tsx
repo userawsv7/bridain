@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { Send, Volume2, VolumeX, Loader2, Mic, MicOff, Award, Target, Book } from 'lucide-react';
+import React, { useState } from 'react';
+import { Send, Loader2, Target, Book, Play, Code, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -9,10 +9,7 @@ interface Message {
   id: number;
   text: string;
   isUser: boolean;
-  type?: 'mcq' | 'chat' | 'tip';
-  options?: string[];
-  correctAnswer?: number;
-  explanation?: string;
+  type?: 'chat';
 }
 
 interface Skill {
@@ -37,7 +34,7 @@ export function ChatCoach() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
-      text: "Hi! I'm your AI Learning Coach 🤖\n\nI can help you with:\n• MCQ practice for interviews & certifications\n• Troubleshooting & debugging scenarios\n• Best practices & production tips\n• Monitoring, logging & observability\n• Safety, security & automation\n\nSelect a skill below or ask me anything!",
+      text: "Hi! I'm your Learning Coach 🤖\n\nI teach you:\n• Core concepts with examples\n• Day-to-day activities & workflows\n• Real production scenarios\n• How to solve actual problems\n\nSelect a skill to start learning!",
       isUser: false,
       type: 'chat'
     }
@@ -45,243 +42,20 @@ export function ChatCoach() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
-  const [mode, setMode] = useState<'mcq' | 'chat'>('mcq');
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
-  const [speechRate, setSpeechRate] = useState(0.9);
-  const [isListening, setIsListening] = useState(false);
-  const [score, setScore] = useState(0);
-  const [answered, setAnswered] = useState(0);
-
-  const voiceFlavors = {
-    Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
-    Amba: { name: 'Amba', pitch: 1.1, description: 'Gentle, melodic Indian goddess' },
-    Venus: { name: 'Venus', pitch: 1.2, description: 'Elegant, romantic Roman goddess' },
-    Ishtar: { name: 'Ishtar', pitch: 1.05, description: 'Strong, confident Babylonian goddess' },
-    Freyja: { name: 'Freyja', pitch: 1.12, description: 'Nurturing, wise Norse goddess' }
-  };
-
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-
-  const sanitizeForTTS = (text: string): string => {
-    return text
-      .replace(/#{1,6}\s*/g, '')
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\*([^*]+)\*/g, '$1')
-      .replace(/_{1,2}/g, '')
-      .replace(/`{1,3}/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-
-  const selectPreferredFemaleVoice = () => {
-    const voices = window.speechSynthesis.getVoices();
-
-    // Priority order for premium female voices
-    const premiumVoices = [
-      'Samantha', 'Karen', 'Victoria', 'Allison', 'Ava', 'Susan',
-      'Moira', 'Tessa', 'Veena', 'Fiona', 'Serena'
-    ];
-
-    // First try exact premium voice matches
-    for (const voiceName of premiumVoices) {
-      const voice = voices.find(v => v.name.includes(voiceName));
-      if (voice) return voice;
-    }
-
-    // Then try any female voice indicators - strictly female only
-    const femaleIndicators = ['Female', 'Woman', 'Girl', 'Lady', 'WOMAN', 'FEMALE'];
-    for (const indicator of femaleIndicators) {
-      const voice = voices.find(v => v.name.includes(indicator));
-      if (voice) return voice;
-    }
-
-    // Look for any voice that contains common female name patterns
-    const commonFemaleVoices = voices.filter(v =>
-      v.name.toLowerCase().includes('alice') ||
-      v.name.toLowerCase().includes('emma') ||
-      v.name.toLowerCase().includes('olivia') ||
-      v.name.toLowerCase().includes('sophia') ||
-      v.name.toLowerCase().includes('isabella') ||
-      v.name.toLowerCase().includes('mary') ||
-      v.name.toLowerCase().includes('patricia') ||
-      v.name.toLowerCase().includes('jennifer') ||
-      v.name.toLowerCase().includes('linda') ||
-      v.name.toLowerCase().includes('barbara')
-    );
-    if (commonFemaleVoices.length > 0) return commonFemaleVoices[0];
-
-    // Fallback to Google female voices specifically
-    const googleFemale = voices.find(v => v.name.includes('Google') && v.name.toLowerCase().includes('female'));
-    if (googleFemale) return googleFemale;
-
-    // Last resort: use any voice with explicitly female gender info if available
-    const anyVoice = voices.find(v => v.name.toLowerCase().includes('en') && !v.name.toLowerCase().includes('male'));
-    return anyVoice || voices.find(v => v.name.includes('Google')) || voices[0];
-  };
-
-  const speak = (text: string, rate: number = 0.9) => {
-    if (isMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    const cleanText = sanitizeForTTS(text);
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    const flavor = voiceFlavors[selectedVoiceFlavor as keyof typeof voiceFlavors];
-
-    // Always use female voice by default
-    utterance.rate = rate;
-    utterance.pitch = flavor.pitch;
-    utterance.volume = 0.85;
-
-    // Ensure female voice is selected
-    const selectFemaleVoice = () => {
-      const voices = window.speechSynthesis.getVoices();
-      // Female voice priority list
-      const femaleVoices = ['Samantha', 'Karen', 'Victoria', 'Susan', 'Allison', 'Ava', 'Moira', 'Fiona', 'Veena', 'Tessa'];
-
-      // Try to find a female voice
-      for (const name of femaleVoices) {
-        const voice = voices.find(v => v.name.includes(name));
-        if (voice) return voice;
-      }
-
-      // Fallback to any female-indicated voice
-      const voice = voices.find(v =>
-        v.name.toLowerCase().includes('female') ||
-        v.name.toLowerCase().includes('woman') ||
-        v.name.includes('Google') && v.name.toLowerCase().includes('en')
-      );
-
-      return voice || voices[0];
-    };
-
-    // Load voices if needed
-    const setVoiceAndSpeak = () => {
-      const femaleVoice = selectFemaleVoice();
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
-      }
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-    };
-
-    // Handle voices not loaded yet
-    if (window.speechSynthesis.getVoices().length === 0) {
-      window.speechSynthesis.onvoiceschanged = setVoiceAndSpeak;
-    } else {
-      setVoiceAndSpeak();
-    }
-  };
-
-  const toggleMute = () => {
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
-    setIsMuted(!isMuted);
-  };
-
-  const generateMCQ = async (skill: string) => {
-    setIsLoading(true);
-
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `Generate a PRACTICAL multiple choice question for ${skill} that tests real-world engineering scenarios. Focus on: 1) Common day-to-day struggles engineers face, 2) Production incidents and firefighting, 3) Certification exam patterns (CKA, AWS, Docker, etc.), 4) Troubleshooting commands and debugging workflows, 5) Best practices that prevent disasters. Format exactly: Q: [question], A) [option1], B) [option2], C) [option3], D) [option4], ANSWER: [letter], EXPLANATION: [why this is correct and what happens in production]`,
-          context: `Real production scenarios for ${skill}. Include actual error messages, log outputs, kubectl/docker commands, deployment issues, scaling problems, and the exact commands needed to diagnose and fix. Make it feel like helping an engineer at 3 AM with a production incident.`
-        })
-      });
-
-      const data = await response.json();
-
-      // Parse the LLM response into structured MCQ
-      const parsedResponse = data.response;
-      const lines = parsedResponse.split('\n').filter((l: string) => l.trim());
-
-      let question = '';
-      const options: string[] = [];
-      let correctAnswer = 0;
-      let explanation = '';
-
-      lines.forEach((line: string, index: number) => {
-        if (line.startsWith('Q:')) question = line.replace('Q:', '').trim();
-        if (line.match(/^[A-D]\)/)) {
-          // Clean up the option text and ensure proper spacing
-          const cleanOption = line.replace(/^[A-D]\)\s*/, '').trim();
-          options.push(cleanOption);
-        }
-        if (line.startsWith('ANSWER:')) {
-          const ans = line.replace('ANSWER:', '').trim().toUpperCase();
-          correctAnswer = ans.charCodeAt(0) - 65; // Convert A->0, B->1, etc
-        }
-        if (line.startsWith('EXPLANATION:')) explanation = line.replace('EXPLANATION:', '').trim();
-      });
-
-      const mcqMessage: Message = {
-        id: Date.now(),
-        text: question || parsedResponse,
-        isUser: false,
-        type: 'mcq',
-        options: options.length === 4 ? options : ['A) Option 1', 'B) Option 2', 'C) Option 3', 'D) Option 4'],
-        correctAnswer: correctAnswer + 1,
-        explanation: explanation || 'Review the production implications carefully.'
-      };
-      setMessages(prev => [...prev, mcqMessage]);
-    } catch (error) {
-      toast.error('Failed to generate practical scenario');
-    }
-
-    setIsLoading(false);
-  };
 
   const handleSkillSelect = (skill: Skill) => {
     setSelectedSkill(skill);
-    setMessages(prev => [...prev, {
+    const welcomeMessage: Message = {
       id: Date.now(),
-      text: `Great choice! Let's practice ${skill.name} ${skill.emoji}\n\nI'll provide MCQs covering:\n• Interview & certification questions\n• Real-world troubleshooting scenarios\n• Best practices & gotchas\n• Production tips from experienced engineers`,
-      isUser: false,
-      type: 'chat'
-    }]);
-    generateMCQ(skill.name);
-  };
-
-  const handleAnswer = (optionIndex: number, messageIndex: number) => {
-    const message = messages[messageIndex];
-    if (!message.correctAnswer) return;
-
-    const isCorrect = optionIndex === message.correctAnswer - 1;
-    setAnswered(prev => prev + 1);
-
-    // Show answer with explanation in chat
-    const resultMessage: Message = {
-      id: Date.now(),
-      text: `${isCorrect ? '✅ CORRECT!' : '❌ INCORRECT'} The answer is ${String.fromCharCode(64 + message.correctAnswer)}.\n\n${message.explanation}\n\n💡 Real-world impact: ${isCorrect ? 'You prevented a 3 AM incident!' : 'This mistake causes production outages - learn from it!'}`,
+      text: `Let's master ${skill.name} ${skill.emoji}\n\nI'll teach you:\n• Core concepts explained clearly\n• Daily tasks and workflows\n• Real production scenarios\n• Step-by-step problem solving\n\nWhat would you like to learn first? (concepts/activities/scenarios/troubleshooting)`,
       isUser: false,
       type: 'chat'
     };
-    setMessages(prev => [...prev, resultMessage]);
-
-    if (isCorrect) {
-      setScore(prev => prev + 10);
-      toast.success('+10 XP! Production-ready! 🎉');
-    } else {
-      toast.error('Study this scenario - it\'s a common production issue');
-    }
-
-    // Generate next practical question
-    if (selectedSkill) {
-      setTimeout(() => generateMCQ(selectedSkill.name), 1500);
-    }
+    setMessages([welcomeMessage]);
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !selectedSkill) return;
 
     const userMessage: Message = {
       id: Date.now(),
@@ -300,7 +74,7 @@ export function ChatCoach() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: `PRACTICAL ${selectedSkill?.name || 'technical'} EXPERT MODE: User needs real production help. Provide: 1) Exact commands to diagnose issues, 2) Step-by-step troubleshooting workflows, 3) Common day-to-day struggles and firefighting scenarios, 4) Production monitoring/logging/observability commands, 5) Safety checks and prevention strategies, 6) Automation/scripts to prevent recurrence, 7) Real incident examples from experienced engineers. Be specific with kubectl, docker, aws cli, terraform, python, etc. commands. Structure as: DIAGNOSIS → COMMANDS → ROOT CAUSE → FIX → PREVENTION. Make every response feel like on-call help at 3 AM.`
+          context: `You are a technical instructor teaching ${selectedSkill.name}. Cover: 1) Core concepts with clear explanations and examples, 2) Day-to-day activities and workflows, 3) Real production scenarios engineers face, 4) Step-by-step problem solving approaches. Be specific with commands, configurations, and actual troubleshooting steps. Structure your response with clear sections: CONCEPT → DAILY TASKS → SCENARIO → SOLUTION. Use actual ${selectedSkill.name} commands and configurations.`
         })
       });
 
@@ -313,49 +87,16 @@ export function ChatCoach() {
       };
 
       setMessages(prev => [...prev, aiMessage]);
-
-      if (!isMuted) {
-        speak(data.response, speechRate);
-      }
     } catch (error) {
-      toast.error('Connection issue');
+      toast.error('Failed to get response');
     }
 
     setIsLoading(false);
   };
 
-  const toggleListening = () => {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      toast.error("Speech recognition not supported");
-      return;
-    }
-
-    if (isListening) {
-      setIsListening(false);
-    } else {
-      setIsListening(true);
-      const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      const recognition = new SpeechRecognitionAPI();
-
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-        setIsListening(false);
-      };
-
-      recognition.onerror = () => {
-        setIsListening(false);
-        toast.error("Could not hear you");
-      };
-
-      recognition.start();
-    }
-  };
-
   return (
     <div className="max-w-5xl mx-auto">
       <div className="glass rounded-3xl p-8 space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
@@ -363,85 +104,11 @@ export function ChatCoach() {
             </div>
             <div>
               <h3 className="text-2xl font-bold">AI Learning Coach</h3>
-              <p className="text-white/60">Chat-based skill mastery • MCQ practice • Expert guidance</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-accent font-bold">{score}</span> XP
-            </div>
-            <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-              {answered} answered
+              <p className="text-white/60">Core concepts • Daily activities • Real scenarios • Problem solving</p>
             </div>
           </div>
         </div>
 
-        {/* Mode Toggle */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setMode('mcq')}
-            className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
-              mode === 'mcq'
-                ? 'bg-primary/20 border border-primary text-primary'
-                : 'bg-white/5 border border-white/10 hover:bg-white/10'
-            }`}
-          >
-            <Award className="w-4 h-4" /> MCQ Practice
-          </button>
-          <button
-            onClick={() => setMode('chat')}
-            className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
-              mode === 'chat'
-                ? 'bg-primary/20 border border-primary text-primary'
-                : 'bg-white/5 border border-white/10 hover:bg-white/10'
-            }`}
-          >
-            <Book className="w-4 h-4" /> Chat & Learn
-          </button>
-          {/* Voice Controls */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleMute}
-              className={`px-3 py-2 rounded-xl flex items-center gap-2 transition-all ${
-                isMuted
-                  ? 'bg-red-500/20 border border-red-500 text-red-500'
-                  : 'bg-white/5 border border-white/10 hover:bg-white/10'
-              }`}
-            >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              {isMuted ? 'Muted' : 'Voice'}
-            </button>
-
-            {/* Voice Flavor Selector */}
-            <select
-              value={selectedVoiceFlavor}
-              onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm focus:border-primary/50 outline-none"
-            >
-              {Object.keys(voiceFlavors).map(flavor => (
-                <option key={flavor} value={flavor}>{flavor}</option>
-              ))}
-            </select>
-
-            {/* Speech Rate Controls */}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-xs text-white/60">Speed</span>
-              <input
-                type="range"
-                min="0.5"
-                max="1.5"
-                step="0.1"
-                value={speechRate}
-                onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
-                className="w-16 accent-primary"
-              />
-              <span className="text-xs font-mono w-8">{speechRate.toFixed(1)}x</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Skills Selection */}
         {!selectedSkill && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {skills.map((skill) => (
@@ -460,9 +127,8 @@ export function ChatCoach() {
           </div>
         )}
 
-        {/* Chat Messages */}
         <div className="bg-white/5 rounded-2xl p-6 h-[500px] overflow-y-auto space-y-4">
-          {messages.map((msg, index) => (
+          {messages.map((msg) => (
             <motion.div
               key={msg.id}
               initial={{ opacity: 0, y: 10 }}
@@ -474,55 +140,8 @@ export function ChatCoach() {
                   ? 'bg-primary/20 border border-primary/30'
                   : 'bg-white/10 border border-white/20'
               }`}>
-                <div className="space-y-3">
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-invert prose-sm max-w-none">
-                    {msg.text.split('\n').map((line, idx) => {
-                      // Handle headings
-                      if (line.startsWith('##')) {
-                        return <h3 key={idx} className="font-semibold mt-4 mb-2 text-white/90">{line.replace(/^##\s*/, '')}</h3>;
-                      }
-                      if (line.startsWith('#')) {
-                        return <h2 key={idx} className="font-semibold mt-4 mb-2 text-lg text-white">{line.replace(/^#\s*/, '')}</h2>;
-                      }
-                      // Handle bullet points
-                      if (line.startsWith('- ') || line.startsWith('• ')) {
-                        return <div key={idx} className="ml-4 text-white/80">• {line.replace(/^[-•]\s*/, '')}</div>;
-                      }
-                      // Handle numbered items
-                      if (/^\d+\./.test(line)) {
-                        return <div key={idx} className="ml-4 text-white/80">{line}</div>;
-                      }
-                      // Handle code blocks
-                      if (line.includes('```')) {
-                        return null; // Skip code markers, handle inline code below
-                      }
-                      // Handle empty lines
-                      if (!line.trim()) {
-                        return <div key={idx} className="h-2" />;
-                      }
-                      // Regular text with inline formatting
-                      const formattedLine = line
-                        .replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>')
-                        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-                        .replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 bg-white/10 rounded text-xs">$1</code>');
-                      return <div key={idx} dangerouslySetInnerHTML={{ __html: formattedLine }} />;
-                    })}
-                  </div>
-
-                  {/* MCQ Options */}
-                  {msg.type === 'mcq' && msg.options && (
-                    <div className="space-y-2 mt-4">
-                      {msg.options.map((option, optIndex) => (
-                        <button
-                          key={optIndex}
-                          onClick={() => handleAnswer(optIndex, index)}
-                          className="w-full p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-all"
-                        >
-                          <span className="font-medium mr-2">{String.fromCharCode(65 + optIndex)})</span> {option}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {msg.text}
                 </div>
               </div>
             </motion.div>
@@ -536,41 +155,28 @@ export function ChatCoach() {
           )}
         </div>
 
-        {/* Input Area */}
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
+        {selectedSkill && (
+          <div className="flex gap-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder={selectedSkill ? `Ask about ${selectedSkill.name} or request specific scenarios...` : "Select a skill above or ask any question..."}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder:text-white/40"
+              placeholder={`Ask about ${selectedSkill.name} concepts, activities, or scenarios...`}
+              className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder:text-white/40"
             />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
+              className="p-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50"
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            </button>
           </div>
-
-          <button
-            onClick={toggleListening}
-            className={`p-3 rounded-xl transition-all ${
-              isListening
-                ? 'bg-red-500/20 border border-red-500 text-red-500'
-                : 'bg-white/5 border border-white/10 hover:bg-white/10'
-            }`}
-          >
-            {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-          </button>
-
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className="p-3 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50"
-          >
-            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-          </button>
-        </div>
+        )}
 
         <div className="text-xs text-center text-white/40">
-          💡 Covers: Interviews • Certifications • Production Issues • Best Practices • Troubleshooting • Monitoring • Security • Automation
+          📚 Learn: Core Concepts → Daily Tasks → Real Scenarios → Problem Solving
         </div>
       </div>
     </div>
