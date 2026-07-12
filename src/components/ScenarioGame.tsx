@@ -33,7 +33,7 @@ export function ScenarioGame() {
   const [answered, setAnswered] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const speechRate = 1.0;
+  const [speechRate, setSpeechRate] = useState(1.0);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 

@@ -60,18 +60,15 @@ export function VoiceCoachEnhanced() {
   const [isMuted, setIsMuted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [awaitingAnswer, setAwaitingAnswer] = useState(false);
-  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Aphrodite');
-  const [speechRate, setSpeechRate] = useState(0.85);
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Female');
+  const [speechRate, setSpeechRate] = useState(1.0);
+  const [questionCount, setQuestionCount] = useState(0);
   const [preferredVoice, setPreferredVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [detectedSkillLevel, setDetectedSkillLevel] = useState<UserSkillLevel>('Intermediate');
   const [conversationHistory, setConversationHistory] = useState<string[]>([]);
 
   const voiceFlavors = {
-    Aphrodite: { name: 'Aphrodite', pitch: 1.15, description: 'Warm, enchanting Greek goddess' },
-    Amba: { name: 'Amba', pitch: 1.1, description: 'Gentle, melodic Indian goddess' },
-    Venus: { name: 'Venus', pitch: 1.2, description: 'Elegant, romantic Roman goddess' },
-    Ishtar: { name: 'Ishtar', pitch: 1.05, description: 'Strong, confident Babylonian goddess' },
-    Freyja: { name: 'Freyja', pitch: 1.12, description: 'Nurturing, wise Norse goddess' }
+    Female: { name: 'Female', pitch: 1.1, description: 'Professional female voice' }
   };
 
   const utteranceRef = useRef<SpeechSynthesisVoice | null>(null);
@@ -182,6 +179,16 @@ Generate questions that simulate elite technical interviews and architectural re
   };
 
   const askInterviewQuestion = async (skill: string) => {
+    if (questionCount >= 5) {
+      const completionMsg: Message = {
+        id: Date.now(),
+        text: "Interview session complete! You've answered 5 questions. Great job!",
+        isUser: false
+      };
+      setMessages(prev => [...prev, completionMsg]);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -231,8 +238,9 @@ Generate questions that simulate elite technical interviews and architectural re
         setCurrentQuestion(sanitizedResponse);
         setAwaitingAnswer(true);
         setConversationHistory(prev => [...prev, questionText]);
+        setQuestionCount(prev => prev + 1);
 
-        await speak(questionText, 0.85);
+        await speak(questionText, speechRate);
       }
     } catch (error) {
       // Fallback question with production focus
@@ -256,7 +264,7 @@ Generate questions that simulate elite technical interviews and architectural re
       setMessages(prev => [...prev, fallbackMsg]);
       setCurrentQuestion(fallbackMsg.text);
       setAwaitingAnswer(true);
-      await speak(fallbackMsg.questionText!.displayText, 0.85);
+      await speak(fallbackMsg.questionText!.displayText, speechRate);
     }
 
     setIsLoading(false);
@@ -413,6 +421,7 @@ Generate questions that simulate elite technical interviews and architectural re
     setIsMuted(false);
     setConversationHistory([]);
     setDetectedSkillLevel('Intermediate');
+    setQuestionCount(0);
   };
 
   return (
@@ -477,6 +486,19 @@ Generate questions that simulate elite technical interviews and architectural re
                 </button>
                 <button onClick={stopSpeaking} disabled={!isSpeaking} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50">
                   <MicOff className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-1 px-3 py-1 rounded-xl bg-white/5 border border-white/10">
+                  <span className="text-xs text-white/60">Rate:</span>
+                  <button onClick={() => setSpeechRate(Math.max(0.5, speechRate - 0.1))} className="px-1.5 py-0.5 rounded hover:bg-white/10">-</button>
+                  <span className="text-xs font-medium w-8 text-center">{speechRate.toFixed(1)}</span>
+                  <button onClick={() => setSpeechRate(Math.min(2.0, speechRate + 0.1))} className="px-1.5 py-0.5 rounded hover:bg-white/10">+</button>
+                </div>
+                <button
+                  onClick={() => selectedSkill && askInterviewQuestion(selectedSkill)}
+                  disabled={questionCount >= 5 || isLoading}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-secondary disabled:opacity-50 text-sm font-medium"
+                >
+                  Generate Question
                 </button>
               </div>
             </div>
