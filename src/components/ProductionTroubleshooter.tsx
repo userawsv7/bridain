@@ -3,7 +3,8 @@
 import React, { useState, useRef } from 'react';
 import {
   Send, Volume2, VolumeX, Loader2, Mic, MicOff, Copy, Upload,
-  AlertTriangle, Shield, BookOpen, Clock, ChevronRight, Target
+  AlertTriangle, Shield, BookOpen, Clock, Target, Server, Container,
+  Settings, Cloud, GitBranch, Database, Zap, CheckCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -12,137 +13,156 @@ interface Message {
   text: string;
   isUser: boolean;
   category?: string;
+  tool?: string;
 }
 
-interface Category {
+interface Tool {
   id: string;
   label: string;
   icon: React.ReactNode;
   description: string;
-  symptoms: string[];
+  commonIssues: string[];
+  quickCommands: string[];
 }
 
-const categories: Category[] = [
+const tools: Tool[] = [
   {
-    id: 'performance',
-    label: 'Performance',
+    id: 'kubernetes',
+    label: 'Kubernetes',
+    icon: <Server className="w-4 h-4" />,
+    description: 'Pods, deployments, services, networking',
+    commonIssues: ['CrashLoopBackOff', 'ImagePullBackOff', 'Pending', 'Connection refused'],
+    quickCommands: ['kubectl get pods -A', 'kubectl describe pod', 'kubectl logs --previous']
+  },
+  {
+    id: 'docker',
+    label: 'Docker',
+    icon: <Container className="w-4 h-4" />,
+    description: 'Containers, images, volumes, networks',
+    commonIssues: ['Container exit', 'Image not found', 'Port binding', 'Volume mount'],
+    quickCommands: ['docker ps -a', 'docker logs', 'docker inspect']
+  },
+  {
+    id: 'helm',
+    label: 'Helm',
+    icon: <Settings className="w-4 h-4" />,
+    description: 'Charts, releases, values, templates',
+    commonIssues: ['Chart not found', 'Template error', 'Values mismatch', 'Release failed'],
+    quickCommands: ['helm list', 'helm status', 'helm template']
+  },
+  {
+    id: 'ansible',
+    label: 'Ansible',
+    icon: <Zap className="w-4 h-4" />,
+    description: 'Playbooks, inventory, modules, facts',
+    commonIssues: ['Host unreachable', 'Module failed', 'Permission denied', 'Syntax error'],
+    quickCommands: ['ansible-playbook --check', 'ansible-inventory --graph', 'ansible-doc']
+  },
+  {
+    id: 'terraform',
+    label: 'Terraform',
+    icon: <Cloud className="w-4 h-4" />,
+    description: 'State, plans, providers, resources',
+    commonIssues: ['State lock', 'Provider error', 'Resource conflict', 'Plan failed'],
+    quickCommands: ['terraform plan', 'terraform show', 'terraform state list']
+  },
+  {
+    id: 'argocd',
+    label: 'ArgoCD',
+    icon: <GitBranch className="w-4 h-4" />,
+    description: 'Applications, sync, health, repos',
+    commonIssues: ['Sync failed', 'Health unknown', 'Repo error', 'App out of sync'],
+    quickCommands: ['argocd app list', 'argocd app get', 'argocd app sync']
+  },
+  {
+    id: 'ai',
+    label: 'AI/ML',
     icon: <Target className="w-4 h-4" />,
-    description: 'Latency, throughput, resource issues',
-    symptoms: ['High CPU/Memory', 'Slow responses', 'Timeouts', 'High latency']
+    description: 'Models, inference, training, deployment',
+    commonIssues: ['Model loading', 'Inference timeout', 'GPU OOM', 'Version mismatch'],
+    quickCommands: ['kubectl get pods -l app=ml', 'kubectl logs deployment/model', 'nvidia-smi']
   },
   {
-    id: 'availability',
-    label: 'Availability',
-    icon: <AlertTriangle className="w-4 h-4" />,
-    description: 'Outages, crashes, service downtime',
-    symptoms: ['Service down', 'Connection refused', 'Health check failures', 'Pod restarts']
-  },
-  {
-    id: 'data',
-    label: 'Data Issues',
-    icon: <Shield className="w-4 h-4" />,
-    description: 'Corruption, inconsistency, data loss',
-    symptoms: ['Missing data', 'Inconsistent state', 'Backup failures', 'Replication issues']
-  },
-  {
-    id: 'deployment',
-    label: 'Deployment',
-    icon: <Clock className="w-4 h-4" />,
-    description: 'Failed releases, rollback problems',
-    symptoms: ['Deploy failures', 'Config issues', 'Version conflicts', 'Rollback needed']
+    id: 'infrastructure',
+    label: 'Infrastructure',
+    icon: <Database className="w-4 h-4" />,
+    description: 'Cloud resources, networking, security',
+    commonIssues: ['Resource limits', 'Network ACLs', 'IAM policies', 'Cost spikes'],
+    quickCommands: ['aws sts get-caller-identity', 'terraform show', 'kubectl get nodes']
   }
 ];
 
-const probeTemplate = (category: Category): string => `## ${category.label} Issue - Diagnostic Framework
+interface DiagnosticTemplate {
+  issue: string;
+  rca: string[];
+  commands: string[];
+  fix: string;
+  prevention: string[];
+}
 
-### Step 1: Initial Triage
-**Timeline**: When did symptoms start? Any deployments/changes?
-**Scope**: Users affected? Revenue impact? SLA risk?
-
-### Step 2: Evidence Collection
-Please provide:
-- Error messages/logs
-- Relevant metrics (CPU, memory, requests)
-- Recent changes made
-- Affected services/endpoints
-
-### Step 3: Analysis Framework
-I'll provide:
-1. **Root Cause Analysis** - Systematic problem identification
-2. **Impact Assessment** - Business and technical consequences
-3. **Risk Evaluation** - Security, compliance, stability risks
-4. **Step-by-Step Fix** - Copy-paste ready commands
-5. **Prevention Strategy** - How to avoid recurrence
-6. **Learning Resources** - Concepts to understand
-
-Paste logs, error output, or describe the issue in detail. Large uploads supported.`;
-
-const rcaTemplate = (issue: string): string => `## Root Cause Analysis
-
-### Problem Statement
-${issue || '[Describe the observed behavior]'}
-
-### 5 Whys Analysis
-1. Symptom: [What you're seeing]
-2. Direct Cause: [Immediate technical reason]
-3. Contributing Factor: [Why that happened]
-4. Process Gap: [Missing control/check]
-5. Systemic Issue: [Why the gap exists]
-
-### Evidence Trail
-- Logs: [Key entries showing the failure point]
-- Metrics: [Anomalies before/during incident]
-- Timeline: [Sequence of events]
-
-### Impact Assessment
-**Business**: [Users affected, revenue, SLA breach]
-**Technical**: [Blast radius, dependencies, data integrity]
-**Risk**: [Security exposure, compliance, future stability]
-
-### Immediate Actions
-\`\`\`bash
-# [Copy-paste ready diagnostic commands]
-kubectl get pods -l app=[service]
-kubectl logs [pod-name] --previous
-curl -v [endpoint]/health
-\`\`\`
-
-### Fix & Verification
-1. [Step 1 with expected outcome]
-2. [Step 2 with verification method]
-3. [Step 3 with success criteria]
-
-### Prevention Checklist
-- [ ] Add monitoring for: [specific metric]
-- [ ] Implement circuit breaker for: [dependency]
-- [ ] Update runbook with: [scenario]
-- [ ] Schedule review for: [process improvement]
-
-### Learning Module
-**Key Concept**: [Technical concept to understand]
-**Related Patterns**: [Similar issues to watch]
-**Best Practices**: [Industry standards to follow]`;
+const diagnosticTemplates: { [key: string]: DiagnosticTemplate } = {
+  'kubernetes': {
+    issue: 'Kubernetes Pod Issue',
+    rca: ['Check pod status and events', 'Review container logs', 'Inspect resource limits', 'Verify networking and RBAC'],
+    commands: ['kubectl get pods -o wide', 'kubectl describe pod [name]', 'kubectl logs [pod] --previous', 'kubectl get events --sort-by=.lastTimestamp'],
+    fix: 'kubectl apply -f fix.yaml || kubectl delete pod [name] --grace-period=0 --force',
+    prevention: ['Add resource limits', 'Implement health checks', 'Set proper RBAC', 'Use pod disruption budgets']
+  },
+  'docker': {
+    issue: 'Docker Container Issue',
+    rca: ['Check container status', 'Review container logs', 'Inspect image and layers', 'Verify network and volumes'],
+    commands: ['docker ps -a', 'docker logs [container]', 'docker inspect [container]', 'docker network ls'],
+    fix: 'docker restart [container] || docker run --rm [image] [command]',
+    prevention: ['Use health checks', 'Implement restart policies', 'Pin image versions', 'Monitor resource usage']
+  },
+  'helm': {
+    issue: 'Helm Chart Issue',
+    rca: ['Validate chart syntax', 'Check values override', 'Review template rendering', 'Verify repository access'],
+    commands: ['helm lint [chart]', 'helm template [release] [chart]', 'helm history [release]', 'helm get values [release]'],
+    fix: 'helm upgrade [release] [chart] --set [values] || helm rollback [release] [revision]',
+    prevention: ['Version control charts', 'Use values files', 'Implement chart tests', 'Document dependencies']
+  },
+  'ansible': {
+    issue: 'Ansible Playbook Issue',
+    rca: ['Check inventory connectivity', 'Review task execution', 'Verify module parameters', 'Inspect privilege escalation'],
+    commands: ['ansible all -m ping', 'ansible-playbook playbook.yml --check', 'ansible-playbook playbook.yml -vvv', 'ansible-doc [module]'],
+    fix: 'ansible-playbook playbook.yml --extra-vars "fix=true" || ansible-playbook fix.yml',
+    prevention: ['Idempotent playbooks', 'Error handling blocks', 'Use check mode', 'Implement tags']
+  },
+  'terraform': {
+    issue: 'Terraform State Issue',
+    rca: ['Check state locking', 'Review resource drift', 'Verify provider credentials', 'Inspect configuration'],
+    commands: ['terraform plan', 'terraform show', 'terraform state list', 'terraform providers'],
+    fix: 'terraform apply || terraform import [resource] [id] || terraform state rm [resource]',
+    prevention: ['State locking enabled', 'Regular plan reviews', 'Use workspaces', 'Backup state files']
+  },
+  'argocd': {
+    issue: 'ArgoCD Sync Issue',
+    rca: ['Check app health status', 'Review sync errors', 'Verify git repository', 'Inspect target revision'],
+    commands: ['argocd app list', 'argocd app get [app]', 'argocd app diff [app]', 'argocd repo list'],
+    fix: 'argocd app sync [app] --force || argocd app rollback [app] [revision]',
+    prevention: ['Automated sync policies', 'Health checks', 'Pre/post sync hooks', 'Resource quotas']
+  }
+};
 
 export function ProductionTroubleshooter() {
   const [messages, setMessages] = useState<Message[]>([{
     id: 0,
-    text: "Production Issue Resolution System\n\nI help diagnose and resolve issues systematically with:\n\n• Structured probing for complete context\n• Root cause analysis with evidence\n• Impact and risk assessment\n• Copy-paste ready fixes\n• Prevention strategies\n• Concept explanations\n\nSelect a category or describe your issue:",
+    text: "Production Issue Resolution System\n\nEnterprise-grade troubleshooting for any stack:\n\n• Kubernetes, Docker, Helm, Ansible, Terraform, ArgoCD\n• AI/ML Infrastructure & Cloud Resources\n• Auto-detection from logs and errors\n• Root cause analysis with evidence\n• Copy-paste ready fixes and commands\n• Prevention strategies and best practices\n\nSelect a tool or describe your issue:",
     isUser: false
   }]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [useFemaleVoice, setUseFemaleVoice] = useState(true);
+  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Victoria');
+  const [speechRate, setSpeechRate] = useState(0.90);
 
   const recognitionRef = useRef<any>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [selectedVoiceFlavor, setSelectedVoiceFlavor] = useState('Victoria');
-  const [speechRate, setSpeechRate] = useState(0.90);
 
   const voiceFlavors: { [key: string]: { name: string; pitch: number } } = {
     Victoria: { name: 'Victoria', pitch: 1.15 },
@@ -158,7 +178,7 @@ export function ProductionTroubleshooter() {
     const voices = window.speechSynthesis.getVoices();
     const flavor = voiceFlavors[selectedVoiceFlavor];
     const female = voices.find(v =>
-      v.name.includes('Female') || v.name.includes(flavor.name) || v.name.includes('Karen') || v.name.includes('Victoria') || v.name.includes('Samantha')
+      v.name.includes('Female') || v.name.includes(flavor.name)
     ) || voices[0];
 
     window.speechSynthesis.cancel();
@@ -242,6 +262,112 @@ export function ProductionTroubleshooter() {
     toast.success('Copied');
   };
 
+  const detectIssue = (content: string): { tool: string; issue: string } | null => {
+    const lc = content.toLowerCase();
+
+    // Kubernetes patterns
+    if (lc.includes('crashloop') || lc.includes('exit code')) return { tool: 'kubernetes', issue: 'CrashLoopBackOff' };
+    if (lc.includes('imagepull') || lc.includes('errimagepull')) return { tool: 'kubernetes', issue: 'ImagePullBackOff' };
+    if (lc.includes('pending') && lc.includes('pod')) return { tool: 'kubernetes', issue: 'Pending Pod' };
+    if (lc.includes('connection refused') || lc.includes('timeout')) return { tool: 'kubernetes', issue: 'Network/Service Issue' };
+    if (lc.includes('forbidden') || lc.includes('rbac')) return { tool: 'kubernetes', issue: 'RBAC/Permission Denied' };
+
+    // Docker patterns
+    if (lc.includes('docker') && (lc.includes('exit') || lc.includes('killed'))) return { tool: 'docker', issue: 'Container Exit' };
+    if (lc.includes('no space left') || lc.includes('disk full')) return { tool: 'docker', issue: 'Storage Full' };
+    if (lc.includes('port') && lc.includes('bind')) return { tool: 'docker', issue: 'Port Binding Conflict' };
+
+    // Helm patterns
+    if (lc.includes('helm') && lc.includes('error')) return { tool: 'helm', issue: 'Chart Error' };
+    if (lc.includes('release') && lc.includes('failed')) return { tool: 'helm', issue: 'Release Failed' };
+
+    // Ansible patterns
+    if (lc.includes('ansible') && lc.includes('failed')) return { tool: 'ansible', issue: 'Playbook Failed' };
+    if (lc.includes('unreachable') || lc.includes('ssh')) return { tool: 'ansible', issue: 'Host Unreachable' };
+
+    // Terraform patterns
+    if (lc.includes('terraform') && lc.includes('error')) return { tool: 'terraform', issue: 'State/Plan Error' };
+    if (lc.includes('lock') && lc.includes('acquire')) return { tool: 'terraform', issue: 'State Lock' };
+
+    // ArgoCD patterns
+    if (lc.includes('argocd') && lc.includes('sync')) return { tool: 'argocd', issue: 'Sync Failed' };
+    if (lc.includes('health') && lc.includes('degraded')) return { tool: 'argocd', issue: 'Health Degraded' };
+
+    // AI/ML patterns
+    if (lc.includes('cuda') || lc.includes('gpu') || lc.includes('oom')) return { tool: 'ai', issue: 'GPU/Resource Issue' };
+    if (lc.includes('model') && lc.includes('load')) return { tool: 'ai', issue: 'Model Loading Failed' };
+
+    return null;
+  };
+
+  const generateResponse = (text: string, detectedTool?: Tool): string => {
+    const lowerText = text.toLowerCase();
+    const detection = detectIssue(text);
+
+    if (detection) {
+      const template = diagnosticTemplates[detection.tool];
+      if (template) {
+        return `### 🔍 Auto-detected: ${detection.tool.toUpperCase()} - ${detection.issue}
+
+### Root Cause Analysis
+${template.rca.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+
+### Diagnostic Commands
+\`\`\`bash
+${template.commands.join('\n')}
+\`\`\`
+
+### Immediate Fix
+\`\`\`bash
+${template.fix}
+\`\`\`
+
+### Prevention Strategy
+${template.prevention.map(p => `- [ ] ${p}`).join('\n')}
+
+### Impact Assessment
+**Business**: Service disruption, SLA breach risk
+**Technical**: Resource exhaustion, configuration drift
+**Risk**: Data loss, security exposure, cascading failures`;
+      }
+    }
+
+    // Generic RCA if tool is selected
+    if (detectedTool) {
+      const template = diagnosticTemplates[detectedTool.id];
+      if (template) {
+        return `### ${template.issue} Analysis
+
+### Root Cause Analysis
+${template.rca.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+
+### Quick Diagnostics
+\`\`\`bash
+${detectedTool.quickCommands.join('\n')}
+\`\`\`
+
+### Recommended Fix
+\`\`\`bash
+${template.fix}
+\`\`\`
+
+### Prevention Checklist
+${template.prevention.map(p => `- [ ] ${p}`).join('\n')}`;
+      }
+    }
+
+    return `### Production Issue Analysis
+
+Describe the symptoms or paste error logs. I'll provide:
+1. **Root Cause Analysis** - Systematic identification
+2. **Evidence Collection** - Key logs and metrics
+3. **Impact Assessment** - Business and technical
+4. **Step-by-Step Fix** - Copy-paste commands
+5. **Prevention Strategy** - Avoid recurrence
+
+Supported tools: Kubernetes, Docker, Helm, Ansible, Terraform, ArgoCD, AI/ML, Infrastructure`;
+  };
+
   const processInput = async (text: string) => {
     const userMsg: Message = { id: Date.now(), text, isUser: true };
     setMessages(prev => [...prev, userMsg]);
@@ -250,106 +376,76 @@ export function ProductionTroubleshooter() {
 
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    let response: Message;
-    const lowerText = text.toLowerCase();
-
-    // Auto detect issues from logs content
-    const detectIssue = (content: string) => {
-      const lc = content.toLowerCase();
-      if (lc.includes('crashloop') || lc.includes('exit code 1')) return 'CrashLoopBackOff - pod restarting constantly';
-      if (lc.includes('imagepull') || lc.includes('errimagepull')) return 'ImagePullBackOff - image not found';
-      if (lc.includes('memory') || lc.includes('oom')) return 'OutOfMemory - pod killed by OOM';
-      if (lc.includes('pending')) return 'Pending - scheduler cannot place pod';
-      if (lc.includes('connection refused') || lc.includes('timeout')) return 'Network connectivity or service down';
-      if (lc.includes('permission') || lc.includes('forbidden')) return 'RBAC/Permission denied';
-      return null;
+    const response = generateResponse(text, selectedTool || undefined);
+    const responseMsg: Message = {
+      id: Date.now() + 1,
+      text: response,
+      isUser: false,
+      tool: selectedTool?.id
     };
 
-    const detected = detectIssue(text);
-    if (detected) {
-      response = {
-        id: Date.now() + 1,
-        text: `### 🔍 Auto-detected: ${detected}\n\n${rcaTemplate(text)}\n\n### ⚡ Immediate Fix\n\`\`\`bash\nkubectl get pods -o wide\nkubectl describe pod [pod-name]\nkubectl logs [pod-name] --previous\n\`\`\``,
-        isUser: false
-      };
-    } else if (lowerText.includes('rca') || lowerText.includes('root cause')) {
-      response = { id: Date.now() + 1, text: rcaTemplate(text), isUser: false, category: 'rca' };
-    } else if (selectedCategory) {
-      response = {
-        id: Date.now() + 1,
-        text: `${rcaTemplate(text)}\n\n### Quick Commands\n\`\`\`bash\n# Check status\nkubectl get pods -l app=[${selectedCategory.id}]\n\n# View logs\nkubectl logs -f [pod-name]\n\n# Describe resource\nkubectl describe [resource] [name]\n\`\`\``,
-        isUser: false,
-        category: 'solution'
-      };
-    } else {
-      response = {
-        id: Date.now() + 1,
-        text: "Describe the issue, upload logs, or select a category. I'll detect problems automatically and give RCA + fixes.",
-        isUser: false
-      };
-    }
-
-    setMessages(prev => [...prev, response]);
-    if (!isMuted) speak(response.text);
+    setMessages(prev => [...prev, responseMsg]);
+    if (!isMuted) speak(response);
     setIsLoading(false);
   };
 
-  const selectCategory = (category: Category) => {
-    setSelectedCategory(category);
+  const selectTool = (tool: Tool) => {
+    setSelectedTool(tool);
     const msg: Message = {
       id: Date.now(),
-      text: probeTemplate(category),
+      text: `### ${tool.label} Troubleshooting Mode
+
+**Common Issues**: ${tool.commonIssues.join(', ')}
+**Quick Commands**:
+\`\`\`bash
+${tool.quickCommands.join('\n')}
+\`\`\`
+
+Describe your issue or paste logs. I'll detect the problem and provide RCA + fixes.`,
       isUser: false,
-      category: category.id
+      tool: tool.id
     };
     setMessages(prev => [...prev, msg]);
     if (!isMuted) speak(msg.text);
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-8 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 mb-4">
           <AlertTriangle className="w-4 h-4 text-orange-400" />
           <span className="text-sm text-orange-400">Production Issue Resolution</span>
         </div>
-        <h1 className="text-3xl font-semibold text-white mb-2">Systematic Troubleshooting</h1>
+        <h1 className="text-3xl font-semibold text-white mb-2">Enterprise Troubleshooter</h1>
         <p className="text-gray-400 max-w-lg mx-auto">
-          Diagnose production issues with structured analysis, copy-paste fixes, and prevention strategies
+          Production-grade diagnostics for Kubernetes, Docker, Helm, Ansible, Terraform, ArgoCD & more
         </p>
       </div>
 
-      {/* Category Selection */}
+      {/* Tool Selection */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3 px-1">
-          <span className="text-sm text-gray-400">Select Issue Category</span>
+          <span className="text-sm text-gray-400">Select Tool/Technology</span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {categories.map((category) => (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+          {tools.map((tool) => (
             <button
-              key={category.id}
-              onClick={() => selectCategory(category)}
-              className={`group p-4 rounded-xl border transition-all text-left ${
-                selectedCategory?.id === category.id
+              key={tool.id}
+              onClick={() => selectTool(tool)}
+              className={`group p-3 rounded-xl border transition-all text-left ${
+                selectedTool?.id === tool.id
                   ? 'bg-orange-500/10 border-orange-500/50'
                   : 'bg-gray-900 border-gray-800 hover:border-gray-700'
               }`}
             >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-lg bg-gray-800 text-gray-400 group-hover:text-orange-400">
-                  {category.icon}
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-1.5 rounded-lg bg-gray-800 text-gray-400 group-hover:text-orange-400">
+                  {tool.icon}
                 </div>
-                <span className="font-medium text-white">{category.label}</span>
+                <span className="font-medium text-sm text-white">{tool.label}</span>
               </div>
-              <p className="text-sm text-gray-400 mb-3">{category.description}</p>
-              <div className="flex flex-wrap gap-1">
-                {category.symptoms.slice(0, 2).map((symptom, i) => (
-                  <span key={i} className="text-xs px-2 py-0.5 bg-gray-800 rounded text-gray-500">
-                    {symptom}
-                  </span>
-                ))}
-              </div>
+              <p className="text-xs text-gray-500 line-clamp-2">{tool.description}</p>
             </button>
           ))}
         </div>
@@ -358,10 +454,10 @@ export function ProductionTroubleshooter() {
       {/* Chat Interface */}
       <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
         {/* Messages */}
-        <div className="h-[400px] overflow-y-auto p-6 space-y-4">
+        <div className="h-[450px] overflow-y-auto p-6 space-y-4">
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-5 py-4 ${
+              <div className={`max-w-[90%] rounded-2xl px-5 py-4 ${
                 message.isUser
                   ? 'bg-orange-600 text-white'
                   : 'bg-gray-800 text-gray-200'
@@ -445,33 +541,31 @@ export function ProductionTroubleshooter() {
           <div className="flex items-center justify-between mt-3 px-1">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-3 text-xs">
-              <select
-                value={selectedVoiceFlavor}
-                onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-gray-300"
-              >
-                {Object.keys(voiceFlavors).map(v => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
-              <div className="flex items-center gap-1 text-gray-400">
-                <span>Rate</span>
-                <input
-                  type="range"
-                  min="0.6"
-                  max="1.6"
-                  step="0.05"
-                  value={speechRate}
-                  onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
-                  className="w-20 accent-orange-500"
-                />
-                <span className="w-8 tabular-nums">{speechRate.toFixed(2)}x</span>
+                <select
+                  value={selectedVoiceFlavor}
+                  onChange={(e) => setSelectedVoiceFlavor(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-gray-300"
+                >
+                  {Object.keys(voiceFlavors).map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-1 text-gray-400">
+                  <span>Rate</span>
+                  <input
+                    type="range"
+                    min="0.6"
+                    max="1.6"
+                    step="0.05"
+                    value={speechRate}
+                    onChange={(e) => setSpeechRate(parseFloat(e.target.value))}
+                    className="w-20 accent-orange-500"
+                  />
+                  <span className="w-8 tabular-nums">{speechRate.toFixed(2)}x</span>
+                </div>
               </div>
             </div>
-              <span className="text-xs text-gray-600">•</span>
-              <span className="text-xs text-gray-400">Unlimited uploads • Real-time transcription</span>
-            </div>
-            <span className="text-xs text-gray-500">Supports RCA, impact analysis, prevention strategies</span>
+            <span className="text-xs text-gray-500">Auto-detection • RCA • Fix Commands • Prevention</span>
           </div>
         </div>
       </div>
