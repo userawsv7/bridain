@@ -410,14 +410,51 @@ export function ScenarioGame() {
                     {msg.options && !msg.explanation && (
                       <div className="mt-4 space-y-2">
                         {msg.options.map((option, optIndex) => (
-                          <button
+                          <label
                             key={optIndex}
-                            onClick={() => handleAnswer(option.split(')')[0].trim() + ')', index)}
-                            className="w-full text-left p-3 rounded-xl border bg-white/5 border-white/20 hover:bg-white/10 hover:border-primary/50 transition-all"
+                            className="flex items-center gap-3 p-4 rounded-xl border bg-white/5 border-white/20 hover:bg-white/10 hover:border-primary/50 transition-all cursor-pointer"
                           >
-                            {option}
-                          </button>
+                            <input
+                              type="radio"
+                              name={`question-${msg.id}`}
+                              onChange={() => handleAnswer(option.split(')')[0].trim() + ')', index)}
+                              className="w-4 h-4 text-primary"
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
                         ))}
+                      </div>
+                    )}
+                    {msg.explanation && msg.options && (
+                      <div className="mt-4 space-y-2">
+                        {msg.options.map((option, optIndex) => {
+                          const optionLetter = option.split(')')[0].trim() + ')';
+                          const isCorrect = optionLetter === msg.correctAnswer;
+                          const userAnswer = msg.text.includes('Your answer:') ?
+                            msg.text.split('Your answer: ')[1]?.split('\n')[0] : null;
+                          const isUserAnswer = optionLetter === userAnswer;
+                          return (
+                            <div
+                              key={optIndex}
+                              className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                                isCorrect ? 'bg-green-500/20 border-green-500/50' :
+                                isUserAnswer && !isCorrect ? 'bg-red-500/20 border-red-500/50' :
+                                'bg-white/5 border-white/20'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                checked={isUserAnswer || false}
+                                disabled
+                                className="w-4 h-4"
+                              />
+                              <span className={`text-sm ${isCorrect ? 'text-green-400 font-medium' : isUserAnswer ? 'text-red-400' : ''}`}>
+                                {option}
+                              </span>
+                              {isCorrect && <span className="ml-auto text-xs text-green-400">✓ Correct</span>}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
