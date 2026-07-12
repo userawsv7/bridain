@@ -27,6 +27,7 @@ export type ResourceCategory =
   | 'Architecture'
   | 'Troubleshooting'
   | 'Best Practices'
+  | 'Security Best Practices'
   | 'YouTube'
   | 'Books'
   | 'Podcasts'
