@@ -77,8 +77,8 @@ export function VoiceCoachEnhanced() {
   const sanitizeForTTS = (text: string): string => {
     return text
       .replace(/#{1,6}\s*/g, '')
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
       .replace(/_{1,2}/g, '')
       .replace(/`{1,3}/g, '')
       .replace(/\s+/g, ' ')
@@ -179,16 +179,6 @@ Generate questions that simulate elite technical interviews and architectural re
   };
 
   const askInterviewQuestion = async (skill: string) => {
-    if (questionCount >= 5) {
-      const completionMsg: Message = {
-        id: Date.now(),
-        text: "Interview session complete! You've answered 5 questions. Great job!",
-        isUser: false
-      };
-      setMessages(prev => [...prev, completionMsg]);
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -238,8 +228,6 @@ Generate questions that simulate elite technical interviews and architectural re
         setCurrentQuestion(sanitizedResponse);
         setAwaitingAnswer(true);
         setConversationHistory(prev => [...prev, questionText]);
-        setQuestionCount(prev => prev + 1);
-
         await speak(questionText, speechRate);
       }
     } catch (error) {
