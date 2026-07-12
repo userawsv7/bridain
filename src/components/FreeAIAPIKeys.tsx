@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import {
-  Key, ExternalLink, Copy, Check, AlertCircle, Zap, Brain, Code, Image,
-  MessageCircle, Mic, Video, Globe, Bot, Trophy, Star, ArrowRight
+  Key, ExternalLink, Check, AlertCircle, Zap, Brain, Code,
+  MessageCircle, Globe, Bot, Trophy, Star, ArrowRight, Award,
+  Clock, Users, TrendingUp, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,6 +21,8 @@ interface AIProvider {
   icon: React.ReactNode;
   models: string[];
   features: string[];
+  rating: number;
+  users: string;
 }
 
 const aiProviders: AIProvider[] = [
@@ -35,7 +38,9 @@ const aiProviders: AIProvider[] = [
     color: 'bg-purple-500',
     icon: <Brain className="w-5 h-5" />,
     models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
-    features: ['200K context window', 'Function calling', 'JSON mode', 'Vision capabilities']
+    features: ['200K context window', 'Function calling', 'JSON mode', 'Vision capabilities'],
+    rating: 4.9,
+    users: '50K+'
   },
   {
     id: 'openai',
@@ -49,7 +54,9 @@ const aiProviders: AIProvider[] = [
     color: 'bg-green-500',
     icon: <Bot className="w-5 h-5" />,
     models: ['gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'dall-e-3'],
-    features: ['Function calling', 'Assistants API', 'Fine-tuning', 'Vision & audio']
+    features: ['Function calling', 'Assistants API', 'Fine-tuning', 'Vision & audio'],
+    rating: 4.8,
+    users: '100K+'
   },
   {
     id: 'google',
@@ -63,7 +70,9 @@ const aiProviders: AIProvider[] = [
     color: 'bg-blue-500',
     icon: <Globe className="w-5 h-5" />,
     models: ['gemini-pro', 'gemini-pro-vision', 'gemini-ultra'],
-    features: ['1M+ context window', 'Multimodal input', 'Safety settings', 'Embedding models']
+    features: ['1M+ context window', 'Multimodal input', 'Safety settings', 'Embedding models'],
+    rating: 4.7,
+    users: '75K+'
   },
   {
     id: 'cohere',
@@ -77,7 +86,9 @@ const aiProviders: AIProvider[] = [
     color: 'bg-orange-500',
     icon: <MessageCircle className="w-5 h-5" />,
     models: ['command', 'command-light', 'embed-english'],
-    features: ['RAG optimized', '50+ languages', 'Semantic search', 'Fine-tuning']
+    features: ['RAG optimized', '50+ languages', 'Semantic search', 'Fine-tuning'],
+    rating: 4.6,
+    users: '25K+'
   },
   {
     id: 'huggingface',
@@ -91,7 +102,9 @@ const aiProviders: AIProvider[] = [
     color: 'bg-yellow-500',
     icon: <Code className="w-5 h-5" />,
     models: ['Llama-2', 'Mistral', 'Stable Diffusion', 'Whisper'],
-    features: ['50K+ models', 'Inference API', 'Model cards', 'Spaces hosting']
+    features: ['50K+ models', 'Inference API', 'Model cards', 'Spaces hosting'],
+    rating: 4.5,
+    users: '200K+'
   },
   {
     id: 'mistral',
@@ -105,7 +118,9 @@ const aiProviders: AIProvider[] = [
     color: 'bg-red-500',
     icon: <Zap className="w-5 h-5" />,
     models: ['mistral-large', 'mistral-medium', 'mistral-small', 'codestral'],
-    features: ['Function calling', 'JSON mode', 'Long context', 'Code completion']
+    features: ['Function calling', 'JSON mode', 'Long context', 'Code completion'],
+    rating: 4.4,
+    users: '30K+'
   },
   {
     id: 'together',
@@ -119,7 +134,9 @@ const aiProviders: AIProvider[] = [
     color: 'bg-indigo-500',
     icon: <Star className="w-5 h-5" />,
     models: ['Llama-3', 'Mixtral', 'Qwen', 'Gemma'],
-    features: ['<100ms latency', 'Fine-tuning API', 'Dedicated endpoints', 'Streaming']
+    features: ['<100ms latency', 'Fine-tuning API', 'Dedicated endpoints', 'Streaming'],
+    rating: 4.3,
+    users: '15K+'
   },
   {
     id: 'replicate',
@@ -131,9 +148,11 @@ const aiProviders: AIProvider[] = [
     apiKeyUrl: 'https://replicate.com/account/api-tokens',
     docsUrl: 'https://replicate.com/docs',
     color: 'bg-teal-500',
-    icon: <Image className="w-5 h-5" />,
+    icon: <Award className="w-5 h-5" />,
     models: ['Stable Diffusion', 'Whisper', 'Llama', 'ControlNet'],
-    features: ['1,000+ models', 'Versioned models', 'Webhooks', 'Batch processing']
+    features: ['1,000+ models', 'Versioned models', 'Webhooks', 'Batch processing'],
+    rating: 4.5,
+    users: '40K+'
   }
 ];
 
@@ -186,34 +205,58 @@ export function FreeAIAPIKeys() {
         </div>
       </div>
 
-      {/* Provider Grid */}
+      {/* Provider Grid - Elite Card Design */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
         {aiProviders.map((provider) => (
           <button
             key={provider.id}
             onClick={() => setSelectedProvider(provider)}
-            className="group bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-5 text-left transition-all hover:scale-[1.02]"
+            className="group relative bg-gray-900/50 backdrop-blur border border-gray-800/50 hover:border-gray-700 rounded-2xl p-6 text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-orange-500/5"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className={`p-3 rounded-xl text-white ${provider.color}`}>
-                {provider.icon}
-              </div>
-              <div className="flex items-center gap-1 text-xs text-green-500">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                Free Tier
-              </div>
-            </div>
+            {/* Gradient overlay on hover */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-orange-500/0 via-orange-500/0 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-            <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-orange-500 transition-colors">
-              {provider.name}
-            </h3>
-            <p className="text-sm text-gray-400 mb-3 line-clamp-2">
-              {provider.description}
-            </p>
+            <div className="relative">
+              {/* Header with icon and badge */}
+              <div className="flex items-start justify-between mb-4">
+                <div className={`p-3 rounded-2xl text-white ${provider.color} shadow-lg`}>
+                  {provider.icon}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                    <span className="text-xs text-gray-400">{provider.rating}</span>
+                  </div>
+                  <div className="px-2 py-0.5 bg-green-500/10 rounded-full border border-green-500/20">
+                    <span className="text-xs text-green-500 font-medium">Free</span>
+                  </div>
+                </div>
+              </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-800">
-              <span className="text-xs text-gray-500">{provider.freeLimit}</span>
-              <ArrowRight className="w-4 h-4 text-gray-600 group-hover:text-orange-500 transition-colors" />
+              {/* Title and description */}
+              <h3 className="text-lg font-semibold text-white mb-1 pr-8 group-hover:text-orange-500 transition-colors">
+                {provider.name}
+              </h3>
+              <p className="text-sm text-gray-400 mb-4 pr-4 line-clamp-2">
+                {provider.description}
+              </p>
+
+              {/* Stats row */}
+              <div className="flex items-center justify-between text-xs mb-4">
+                <div className="flex items-center gap-1 text-gray-500">
+                  <Users className="w-3.5 h-3.5" />
+                  <span>{provider.users}</span>
+                </div>
+                <span className="text-orange-400/80 font-medium">{provider.freeLimit.split(' ')[0]}</span>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
+                <span className="text-xs text-gray-500 line-clamp-1 pr-2">{provider.freeLimit}</span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-800/50 group-hover:bg-orange-500/10 transition-colors">
+                  <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-orange-500 transition-colors" />
+                </div>
+              </div>
             </div>
           </button>
         ))}
