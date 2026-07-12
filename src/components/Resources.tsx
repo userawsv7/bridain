@@ -33,7 +33,8 @@ interface ResourcesData {
 
 const skills = [
   'Docker', 'Kubernetes', 'AWS', 'Python', 'Terraform', 'React', 'CI/CD', 'DevOps',
-  'System Design', 'Machine Learning', 'Data Engineering', 'Cloud Architecture', 'Linux', 'Git'
+  'System Design', 'Machine Learning', 'Data Engineering', 'Cloud Architecture', 'Linux', 'Git',
+  'Node.js', 'Java', 'Go', 'Rust', 'TypeScript', 'MongoDB', 'PostgreSQL', 'Redis'
 ];
 
 export function Resources() {
@@ -293,6 +294,94 @@ export function Resources() {
               </div>
             </ResourceSection>
           </div>
+
+          {/* Concept Explanation Websites & One-Stop Solutions */}
+          <ResourceSection title="Concept Explanation Websites - The Best One-Stop Solutions" icon={BookOpen} color="secondary">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="p-5 bg-gradient-to-br from-white/5 to-white/10 rounded-xl border border-white/20">
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-primary" /> Best Concept Explanation Sites
+                </h4>
+                <div className="space-y-3">
+                  <a href="https://www.freecodecamp.org/news/" target="_blank" rel="noopener noreferrer"
+                     className="block text-sm hover:text-primary transition-colors">
+                    → FreeCodeCamp - Best for beginner to advanced concepts with practical examples
+                  </a>
+                  <a href="https://medium.com/tag/technology" target="_blank" rel="noopener noreferrer"
+                     className="block text-sm hover:text-primary transition-colors">
+                    → Medium - In-depth technical articles from industry experts
+                  </a>
+                  <a href="https://dev.to/" target="_blank" rel="noopener noreferrer"
+                     className="block text-sm hover:text-primary transition-colors">
+                    → DEV Community - Real-world explanations from practicing engineers
+                  </a>
+                  <a href="https://stackoverflow.blog/" target="_blank" rel="noopener noreferrer"
+                     className="block text-sm hover:text-primary transition-colors">
+                    → Stack Overflow Blog - Deep technical insights and best practices
+                  </a>
+                </div>
+              </div>
+
+              <div className="p-5 bg-gradient-to-br from-white/5 to-white/10 rounded-xl border border-white/20">
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-secondary" /> Interactive Learning Platforms
+                </h4>
+                <div className="space-y-3">
+                  <a href="https://www.interviewbit.com/" target="_blank" rel="noopener noreferrer"
+                     className="block text-sm hover:text-primary transition-colors">
+                    → InterviewBit - Practice problems + concept explanations
+                  </a>
+                  <a href="https://leetcode.com/explore/" target="_blank" rel="noopener noreferrer"
+                     className="block text-sm hover:text-primary transition-colors">
+                    → LeetCode Explore - Structured learning paths with explanations
+                  </a>
+                  <a href="https://roadmap.sh/" target="_blank" rel="noopener noreferrer"
+                     className="block text-sm hover:text-primary transition-colors">
+                    → roadmap.sh - Visual learning paths for any technology
+                  </a>
+                  <a href="https://github.com/public-apis/public-apis" target="_blank" rel="noopener noreferrer"
+                     className="block text-sm hover:text-primary transition-colors">
+                    → Public APIs - Hands-on practice with real APIs
+                  </a>
+                </div>
+              </div>
+            </div>
+          </ResourceSection>
+
+          <ResourceSection title="Complete One-Stop Learning Solutions" icon={Award} color="accent">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <h5 className="font-semibold mb-2">📚 Documentation Hubs</h5>
+                <ul className="text-sm space-y-1 text-white/70">
+                  <li>• MDN Web Docs (Web tech)</li>
+                  <li>• DevDocs.io (Unified docs)</li>
+                  <li>• Microsoft Learn (Azure/.NET)</li>
+                  <li>• AWS Documentation</li>
+                  <li>• Google Cloud Docs</li>
+                </ul>
+              </div>
+              <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <h5 className="font-semibold mb-2">🎓 Complete Curriculums</h5>
+                <ul className="text-sm space-y-1 text-white/70">
+                  <li>• The Odin Project (Full Stack)</li>
+                  <li>• App Academy Open (Free)</li>
+                  <li>• Harvard CS50 (Free)</li>
+                  <li>• MIT OpenCourseWare</li>
+                  <li>• Stanford Online</li>
+                </ul>
+              </div>
+              <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <h5 className="font-semibold mb-2">🛠️ Practice Platforms</h5>
+                <ul className="text-sm space-y-1 text-white/70">
+                  <li>• Frontend Masters (Free tier)</li>
+                  <li>• Exercism (Free mentoring)</li>
+                  <li>• Codewars (Gamified practice)</li>
+                  <li>• HackerRank (Skill building)</li>
+                  <li>• CodeSignal (Interview prep)</li>
+                </ul>
+              </div>
+            </div>
+          </ResourceSection>
 
           <ResourceSection title="Additional Free Resources" icon={Search}>
             <div className="grid md:grid-cols-2 gap-3">

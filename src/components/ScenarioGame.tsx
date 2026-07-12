@@ -282,7 +282,7 @@ Include actual commands, configurations, and production scenarios for: ${skill}`
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="glass rounded-3xl p-8 space-y-6">
+      <div className="glass rounded-3xl p-8 space-y-6 border border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
