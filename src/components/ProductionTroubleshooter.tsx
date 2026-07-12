@@ -274,11 +274,6 @@ export function ProductionTroubleshooter() {
     if (lc.includes('ui') || lc.includes('frontend')) return { tool: 'ui', issue: 'UI Issue' };
     if (lc.includes('db') || lc.includes('database') || lc.includes('sql')) return { tool: 'database', issue: 'Database Issue' };
 
-    // Return the first matched skill if any
-    if (matchedSkills.length > 0 && matchedSkills[0] !== lc) {
-      return { tool: matchedSkills[0].toLowerCase(), issue: `${matchedSkills[0]} Issue` };
-    }
-
     return null;
   };
 
