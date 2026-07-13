@@ -15,6 +15,9 @@ export function Resources() {
   const [selectedSource, setSelectedSource] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [chatMode, setChatMode] = useState<'browse' | 'interview' | 'docs' | 'dumps' | 'concepts'>('browse');
+  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [chatInput, setChatInput] = useState('');
 
   const categories = getUniqueCategories();
   const skills = getUniqueSkills();
@@ -98,6 +101,36 @@ export function Resources() {
   };
 
   const hasActiveFilters = searchQuery || selectedSkill || selectedCategory || selectedLevel || selectedPricing || selectedSource;
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !selectedSkill) return;
+
+    const userMessage = chatInput.trim();
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setChatInput('');
+
+    let response = '';
+    const query = userMessage.toLowerCase();
+
+    if (chatMode === 'interview') {
+      if (query.includes('question')) {
+        response = `Common interview questions for ${selectedSkill}:\n• Explain core concepts of ${selectedSkill}\n• Describe a project using ${selectedSkill}\n• How do you handle errors in ${selectedSkill}?`;
+      } else {
+        response = `For ${selectedSkill} interview prep: Focus on practical experience, common patterns, and problem-solving scenarios.`;
+      }
+    } else if (chatMode === 'docs') {
+      response = `Official documentation for ${selectedSkill}: Search the official docs site, check release notes, and review API references.`;
+    } else if (chatMode === 'dumps') {
+      response = `Certification practice questions for ${selectedSkill}: Use official practice tests and focus on scenario-based questions.`;
+    } else if (chatMode === 'concepts') {
+      response = `Core concepts for ${selectedSkill}: Start with fundamentals, then move to advanced topics like performance and security.`;
+    }
+
+    setTimeout(() => {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    }, 500);
+  };
 
   const getCategoryIcon = (category: string) => {
     if (category.includes('Documentation')) return <BookOpen className="w-4 h-4" />;
@@ -198,7 +231,10 @@ export function Resources() {
             {skills.slice(0, 20).map(skill => (
               <button
                 key={skill}
-                onClick={() => setSelectedSkill(selectedSkill === skill ? '' : skill)}
+                onClick={() => {
+                  setSelectedSkill(selectedSkill === skill ? '' : skill);
+                  if (selectedSkill !== skill) setChatMode('browse');
+                }}
                 className={`px-3 py-1 rounded-lg text-sm transition-colors ${
                   selectedSkill === skill
                     ? 'bg-primary text-white'
@@ -210,6 +246,68 @@ export function Resources() {
             ))}
           </div>
         </div>
+
+        {/* Chat Mode Selector - only shows when skill selected */}
+        {selectedSkill && (
+          <div className="mb-4 flex gap-2">
+            <button
+              onClick={() => { setChatMode('browse'); setChatMessages([]); }}
+              className={`px-3 py-1 rounded-lg text-sm ${chatMode === 'browse' ? 'bg-primary text-white' : 'bg-white/5'}`}
+            >
+              Browse Resources
+            </button>
+            <button
+              onClick={() => setChatMode('interview')}
+              className={`px-3 py-1 rounded-lg text-sm ${chatMode === 'interview' ? 'bg-primary text-white' : 'bg-white/5'}`}
+            >
+              Interview Questions
+            </button>
+            <button
+              onClick={() => setChatMode('docs')}
+              className={`px-3 py-1 rounded-lg text-sm ${chatMode === 'docs' ? 'bg-primary text-white' : 'bg-white/5'}`}
+            >
+              Official Docs
+            </button>
+            <button
+              onClick={() => setChatMode('dumps')}
+              className={`px-3 py-1 rounded-lg text-sm ${chatMode === 'dumps' ? 'bg-primary text-white' : 'bg-white/5'}`}
+            >
+              Certification Dumps
+            </button>
+            <button
+              onClick={() => setChatMode('concepts')}
+              className={`px-3 py-1 rounded-lg text-sm ${chatMode === 'concepts' ? 'bg-primary text-white' : 'bg-white/5'}`}
+            >
+              Core Concepts
+            </button>
+          </div>
+        )}
+
+        {/* Chat Interface for selected modes */}
+        {selectedSkill && chatMode !== 'browse' && (
+          <div className="mb-4 glass rounded-xl p-4">
+            <div className="h-48 overflow-y-auto mb-3 space-y-2">
+              {chatMessages.length === 0 && (
+                <div className="text-white/40 text-sm">Ask about {chatMode} for {selectedSkill}...</div>
+              )}
+              {chatMessages.map((msg, idx) => (
+                <div key={idx} className={`text-sm ${msg.role === 'user' ? 'text-primary' : 'text-white/80'}`}>
+                  {msg.content}
+                </div>
+              ))}
+            </div>
+            <form onSubmit={handleChatSubmit} className="flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder={`Ask about ${chatMode}...`}
+                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm"
+              />
+              <button type="submit" className="px-4 py-2 bg-primary rounded-lg text-sm">Send</button>
+            </form>
+          </div>
+        )}
 
         {/* Advanced Filters */}
         <AnimatePresence>

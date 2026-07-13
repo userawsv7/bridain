@@ -129,28 +129,16 @@ export function BrydenAI() {
     setChatMessages(prev => [...prev, { role: 'user', content: inputMessage }]);
     setInputMessage('');
 
-    // Simple response logic
+    // Only respond to free API key related queries for any purpose
+    const apiKeyTerms = ['api', 'key', 'free', 'credit', 'token', 'sign', 'register', 'account', 'limit', 'price', 'cost', 'tier', 'quota', 'rate'];
+    const isApiKeyQuery = apiKeyTerms.some(term => userMessage.includes(term));
+
     let response = '';
-    if (userMessage.includes('anthropic') || userMessage.includes('claude')) {
-      response = 'For Anthropic: Go to console.anthropic.com → Sign up → Settings → API Keys → Create Key. Free: $5 credits!';
-    } else if (userMessage.includes('openai') || userMessage.includes('gpt')) {
-      response = 'For OpenAI: Visit platform.openai.com → API Keys → Create key. Free: $5 credits! Save key immediately.';
-    } else if (userMessage.includes('google') || userMessage.includes('gemini')) {
-      response = 'For Google Gemini: aistudio.google.com → Get API key → 60 requests/min free!';
-    } else if (userMessage.includes('hugging')) {
-      response = 'For Hugging Face: huggingface.co → Settings → Access Tokens → New token. 30K chars/month free!';
-    } else if (userMessage.includes('mistral')) {
-      response = 'For Mistral: console.mistral.ai → API Keys → Create key. €1 free credits!';
-    } else if (userMessage.includes('cohere')) {
-      response = 'For Cohere: dashboard.cohere.ai → Register → API Keys. 1,000 calls/month free!';
-    } else if (userMessage.includes('together')) {
-      response = 'For Together AI: api.together.xyz → Settings → API Keys. $1 free monthly!';
-    } else if (userMessage.includes('replicate')) {
-      response = 'For Replicate: replicate.com → Account → API tokens → Create. $10 free compute!';
-    } else if (userMessage.includes('all') || userMessage.includes('list')) {
-      response = '8 providers available: Anthropic ($5), OpenAI ($5), Google (free tier), Cohere (1K calls), Hugging Face (30K chars), Mistral (€1), Together ($1), Replicate ($10). Click the links above!';
+    if (!isApiKeyQuery) {
+      response = 'I only help with free API keys. Ask me about getting free API keys for any purpose or service!';
     } else {
-      response = 'I can help with: Anthropic, OpenAI, Google, Cohere, Hugging Face, Mistral, Together AI, or Replicate. Which one?';
+      // Generic free API key guidance for any service
+      response = `For free API keys, check these approaches:\n• Look for "Free tier" or "Developer" plans on the service website\n• Check if they offer signup credits (usually $5-$25)\n• Search "[service name] free API key" for specific instructions\n• Look for open-source alternatives with self-hosted options\n• Check GitHub for community-provided free tier lists`;
     }
 
     setTimeout(() => {
