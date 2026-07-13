@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from 'sonner';
+import { GlobalChat } from '@/components/GlobalChat';
 
 export const metadata: Metadata = {
   title: '🧠 Bridain - Play While You Learn',
@@ -17,6 +18,7 @@ export default function RootLayout({
       <body>
         {children}
         <Toaster position="top-center" richColors />
+        <GlobalChat />
       </body>
     </html>
   );
