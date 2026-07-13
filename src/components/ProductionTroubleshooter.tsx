@@ -81,9 +81,12 @@ export function ProductionTroubleshooter() {
 
       const data = await response.json();
 
+      // Ensure we get the actual response, not a fallback message
+      const responseText = data.response || data.text || 'Analyzing your issue...';
+
       const aiMsg: Message = {
         id: Date.now() + 1,
-        text: data.text || 'I analyzed your issue. Let me provide a structured troubleshooting approach.',
+        text: responseText,
         isUser: false,
         category
       };
