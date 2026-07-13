@@ -10,10 +10,11 @@ import { Resources } from '../components/Resources';
 import { VoiceCoach } from '../components/VoiceCoach';
 import { ProductionTroubleshooter } from '../components/ProductionTroubleshooter';
 import { ATSResumeBuilder } from '../components/ATSResumeBuilder';
-import { AlertTriangle, Target as TargetIcon } from 'lucide-react';
+import { BrydenAI } from '../components/BrydenAI';
+import { AlertTriangle, Target as TargetIcon, Key } from 'lucide-react';
 
 export default function Bridain() {
-  const [activeTab, setActiveTab] = useState<'coach' | 'game' | 'resume' | 'resources' | 'voicecoach' | 'troubleshoot' | 'atsresume'>('coach');
+  const [activeTab, setActiveTab] = useState<'coach' | 'game' | 'resume' | 'resources' | 'voicecoach' | 'troubleshoot' | 'atsresume' | 'brydenai'>('coach');
 
   const tabs = [
     { id: 'coach', label: 'Coach', icon: Target, emoji: '🎯' },
@@ -23,6 +24,7 @@ export default function Bridain() {
     { id: 'resume', label: 'Resume Builder', icon: FileText, emoji: '📄' },
     { id: 'atsresume', label: 'ATS Resume', icon: TargetIcon, emoji: '🎯' },
     { id: 'resources', label: 'Resources', icon: Trophy, emoji: '🎁' },
+    { id: 'brydenai', label: 'BrydenAI', icon: Key, emoji: '🔑' },
   ];
 
   return (
@@ -106,6 +108,7 @@ export default function Bridain() {
         {activeTab === 'resume' && <ResumeBuilder />}
         {activeTab === 'atsresume' && <ATSResumeBuilder />}
         {activeTab === 'resources' && <Resources />}
+        {activeTab === 'brydenai' && <BrydenAI />}
       </div>
 
       {/* Footer Quote */}
