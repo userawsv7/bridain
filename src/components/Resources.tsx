@@ -466,6 +466,292 @@ export function Resources() {
         </div>
       )}
 
+      {/* AI Infrastructure Engineer Roadmap */}
+      <div className="mt-12 p-6 bg-gray-900 border border-gray-800 rounded-2xl">
+        <h2 className="text-3xl font-bold mb-4">AI Infrastructure Engineer Roadmap</h2>
+        <p className="text-gray-400 mb-8">If your goal is <strong>AI Infrastructure Engineer / AI Platform Engineer</strong> (not AI application developer), focus on the infrastructure stack that runs AI workloads.</p>
+
+        {/* Learning Roadmap Priority */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">🎯 Learning Roadmap (Priority)</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['1. Linux', 'https://linuxjourney.com'],
+              ['2. Docker', 'https://docs.docker.com/get-started'],
+              ['3. Kubernetes', 'https://kubernetes.io/docs/home'],
+              ['4. Kubernetes Labs', 'https://killercoda.com'],
+              ['5. Git', 'https://learngitbranching.js.org'],
+              ['6. CI/CD', 'https://www.jenkins.io/doc'],
+              ['7. GitHub Actions', 'https://docs.github.com/actions'],
+              ['8. ArgoCD', 'https://argo-cd.readthedocs.io'],
+              ['9. Helm', 'https://helm.sh/docs'],
+              ['10. Terraform', 'https://developer.hashicorp.com/terraform/tutorials'],
+              ['11. Ansible', 'https://docs.ansible.com'],
+              ['12. Prometheus', 'https://prometheus.io/docs'],
+              ['13. Grafana', 'https://grafana.com/tutorials'],
+              ['14. Loki', 'https://grafana.com/docs/loki/latest'],
+              ['15. OpenTelemetry', 'https://opentelemetry.io/docs'],
+              ['16. AWS', 'https://skillbuilder.aws'],
+              ['17. Azure', 'https://learn.microsoft.com/training'],
+              ['18. GCP', 'https://cloud.google.com/learn'],
+              ['19. Networking', 'https://www.practicalnetworking.net'],
+              ['20. Linux Networking', 'https://www.redhat.com/sysadmin']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Infrastructure */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">🤖 AI Infrastructure</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['NVIDIA CUDA', 'https://developer.nvidia.com/cuda-zone'],
+              ['NVIDIA NIM', 'https://developer.nvidia.com/nim'],
+              ['NVIDIA Triton', 'https://docs.nvidia.com/deeplearning/triton-inference-server'],
+              ['NVIDIA GPU Operator', 'https://docs.nvidia.com/datacenter/cloud-native/gpu-operator'],
+              ['KServe', 'https://kserve.github.io/website'],
+              ['Kubeflow', 'https://www.kubeflow.org/docs'],
+              ['Ray', 'https://docs.ray.io'],
+              ['MLflow', 'https://mlflow.org/docs/latest'],
+              ['BentoML', 'https://docs.bentoml.com'],
+              ['Ollama', 'https://ollama.com'],
+              ['vLLM', 'https://docs.vllm.ai'],
+              ['Hugging Face Inference', 'https://huggingface.co/docs'],
+              ['TensorRT-LLM', 'https://nvidia.github.io/TensorRT-LLM'],
+              ['SGLang', 'https://docs.sglang.ai'],
+              ['Open WebUI', 'https://docs.openwebui.com']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Platform Engineering */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">⚙️ Platform Engineering</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['Crossplane', 'https://docs.crossplane.io'],
+              ['Backstage', 'https://backstage.io/docs'],
+              ['Argo Workflows', 'https://argo-workflows.readthedocs.io'],
+              ['Argo Rollouts', 'https://argo-rollouts.readthedocs.io'],
+              ['Argo Events', 'https://argoproj.github.io'],
+              ['Tekton', 'https://tekton.dev/docs'],
+              ['FluxCD', 'https://fluxcd.io/docs'],
+              ['Cilium', 'https://docs.cilium.io'],
+              ['Istio', 'https://istio.io/latest/docs'],
+              ['Linkerd', 'https://linkerd.io'],
+              ['Kyverno', 'https://kyverno.io/docs'],
+              ['Gatekeeper', 'https://open-policy-agent.github.io/gatekeeper'],
+              ['OPA', 'https://www.openpolicyagent.org/docs'],
+              ['External Secrets', 'https://external-secrets.io'],
+              ['cert-manager', 'https://cert-manager.io/docs']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* AI + DevOps Automation */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">🔄 AI + DevOps Automation</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['MCP', 'https://modelcontextprotocol.io'],
+              ['LangGraph', 'https://langchain-ai.github.io/langgraph'],
+              ['OpenAI Agents SDK', 'https://openai.github.io/openai-agents-python'],
+              ['n8n', 'https://docs.n8n.io'],
+              ['Kestra', 'https://kestra.io/docs'],
+              ['Temporal', 'https://docs.temporal.io'],
+              ['Apache Airflow', 'https://airflow.apache.org/docs'],
+              ['Dagger', 'https://dagger.io'],
+              ['Pulumi', 'https://www.pulumi.com/docs'],
+              ['Atlantis', 'https://www.runatlantis.io']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Observability */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">📊 AI Observability</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['Langfuse', 'https://langfuse.com/docs'],
+              ['Phoenix', 'https://arize.com/phoenix'],
+              ['Weights & Biases', 'https://docs.wandb.ai'],
+              ['Grafana AI Observability', 'https://grafana.com/docs'],
+              ['OpenTelemetry', 'https://opentelemetry.io/docs']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Kubernetes Practice */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">☸️ Kubernetes Practice</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['Killercoda', 'https://killercoda.com'],
+              ['Play with Kubernetes', 'https://labs.play-with-k8s.com'],
+              ['Kubernetes Examples', 'https://github.com/kubernetes/examples'],
+              ['Awesome Kubernetes', 'https://github.com/ramitsurana/awesome-kubernetes'],
+              ['Kubernetes Patterns', 'https://k8spatterns.io']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* GitOps */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">🔁 GitOps</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['ArgoCD Docs', 'https://argo-cd.readthedocs.io'],
+              ['Argo Examples', 'https://github.com/argoproj'],
+              ['FluxCD', 'https://fluxcd.io/docs'],
+              ['CNCF GitOps', 'https://opengitops.dev']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Cloud Native (CNCF) */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">☁️ Cloud Native (CNCF)</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['CNCF Landscape', 'https://landscape.cncf.io'],
+              ['CNCF Projects', 'https://www.cncf.io/projects'],
+              ['Kubernetes SIGs', 'https://github.com/kubernetes/community'],
+              ['CNCF YouTube', 'https://www.youtube.com/@CloudNativeFdn']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Free Hands-on Labs */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">🧪 Free Hands-on Labs</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['Killercoda', 'https://killercoda.com'],
+              ['Play with Docker', 'https://labs.play-with-docker.com'],
+              ['Play with Kubernetes', 'https://labs.play-with-k8s.com'],
+              ['Azure Labs', 'https://microsoftlearning.github.io'],
+              ['AWS Workshops', 'https://workshops.aws'],
+              ['Google Cloud Skills Boost', 'https://www.cloudskillsboost.google']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* YouTube Channels */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">📺 YouTube Channels</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['TechWorld with Nana', 'Kubernetes, Docker, CI/CD'],
+              ['KodeKloud', 'DevOps, Kubernetes'],
+              ['Bret Fisher', 'Docker'],
+              ['DevOps Toolkit', 'Kubernetes, GitOps'],
+              ['CNCF', 'Cloud Native'],
+              ['Google Cloud Tech', 'GKE, AI Infrastructure'],
+              ['AWS', 'EKS, AI Services'],
+              ['Microsoft Azure', 'AKS'],
+              ['NVIDIA Developer', 'GPUs, CUDA, AI Infrastructure'],
+              ['OpenTelemetry', 'Observability'],
+              ['Argo Project', 'GitOps'],
+              ['HashiCorp', 'Terraform'],
+              ['Grafana', 'Monitoring'],
+              ['Isovalent', 'Cilium'],
+              ['Ray', 'Distributed AI']
+            ].map(([name, focus], i) => (
+              <div key={i} className="text-sm p-2 bg-gray-800 rounded text-gray-300">
+                <strong>{name}</strong> — {focus}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Books (Free) */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">📚 Books (Free)</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['Kubernetes Documentation', 'https://kubernetes.io/docs/home'],
+              ['Docker Documentation', 'https://docs.docker.com'],
+              ['Linux Journey', 'https://linuxjourney.com'],
+              ['Kubernetes Patterns', 'https://k8spatterns.io'],
+              ['Red Hat Sysadmin Articles', 'https://www.redhat.com/sysadmin']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Best GitHub Repositories */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-semibold mb-4">⭐ Best GitHub Repositories</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              ['awesome-devops', 'https://github.com/wmariuss/awesome-devops'],
+              ['awesome-kubernetes', 'https://github.com/ramitsurana/awesome-kubernetes'],
+              ['awesome-platform-engineering', 'https://github.com/platformengineering/awesome-platform-engineering'],
+              ['awesome-ai', 'https://github.com/owainlewis/awesome-artificial-intelligence'],
+              ['awesome-mlops', 'https://github.com/visenger/awesome-mlops'],
+              ['awesome-gitops', 'https://github.com/weaveworks/awesome-gitops'],
+              ['awesome-docker', 'https://github.com/veggiemonk/awesome-docker']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm p-2 bg-gray-800 rounded">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Recommended Learning Order */}
+        <div className="p-6 bg-gray-800 rounded-xl">
+          <h3 className="text-2xl font-semibold mb-4">🚀 Recommended Learning Order</h3>
+          <ol className="text-gray-300 space-y-1 list-decimal list-inside columns-1 md:columns-2">
+            <li>Linux</li><li>Networking</li><li>Git</li><li>Docker</li><li>Kubernetes (CKA-level)</li>
+            <li>Helm</li><li>CI/CD (Jenkins + GitHub Actions)</li><li>ArgoCD (GitOps)</li><li>Terraform</li>
+            <li>AWS/Azure/GCP</li><li>Prometheus + Grafana + Loki + OpenTelemetry</li><li>Cilium + Istio</li>
+            <li>Crossplane + Backstage</li><li>NVIDIA GPUs + CUDA + GPU Operator</li><li>KServe + Triton + vLLM + Ray</li>
+            <li>MLflow + Kubeflow</li><li>AI observability (Langfuse, Phoenix)</li><li>AI-powered DevOps automation (MCP, LangGraph, n8n, Temporal)</li>
+          </ol>
+          <p className="mt-4 text-sm text-gray-400">This path aligns well with becoming an <strong>AI Infrastructure Engineer</strong>, <strong>AI Platform Engineer</strong>, or <strong>MLOps/LLMOps Infrastructure Engineer</strong>.</p>
+        </div>
+      </div>
+
       {/* Resource Modal */}
       <AnimatePresence>
         {selectedResource && (
