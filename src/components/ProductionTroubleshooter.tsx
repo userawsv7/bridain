@@ -116,6 +116,14 @@ export function ProductionTroubleshooter() {
     setIsLoading(true);
 
     try {
+      // Build conversation history for context
+      const conversationHistory = messages
+        .filter(m => m.id !== 0) // Exclude the initial welcome message
+        .map(m => ({
+          role: m.isUser ? 'user' : 'assistant',
+          content: m.text
+        }));
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,7 +132,8 @@ export function ProductionTroubleshooter() {
           mode: 'troubleshoot',
           skill: category,
           skillLevel: 'Intermediate',
-          context: `Production troubleshooting for ${category} issue`
+          context: `Production troubleshooting for ${category} issue`,
+          history: conversationHistory
         })
       });
 

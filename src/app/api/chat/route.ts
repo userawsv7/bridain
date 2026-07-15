@@ -398,8 +398,8 @@ GENERAL COACHING: Provide helpful, technically accurate guidance for ${skillName
 // Main API handler with strict typing
 export async function POST(request: Request): Promise<NextResponse<ChatResponse>> {
   try {
-    const body: ChatRequest = await request.json();
-    const { message, context, skill, mode } = body;
+    const body: ChatRequest & { history?: Array<{role: string, content: string}> } = await request.json();
+    const { message, context, skill, mode, history } = body;
 
     // Input validation
     if (!message || typeof message !== 'string') {
@@ -429,7 +429,7 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse>
 
     // Primary: Groq for intelligent responses
     if (groqKey) {
-      response = await callGroq(message, context || '', groqKey, systemPrompt, mode);
+      response = await callGroq(message, context || '', groqKey, systemPrompt, mode, history);
       emoji = '⚡';
       powered = 'Groq';
     }
@@ -460,7 +460,14 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse>
 }
 
 // Groq API caller with enhanced error handling
-async function callGroq(message: string, context: string, apiKey: string, systemPrompt: string, mode?: string): Promise<string> {
+async function callGroq(message: string, context: string, apiKey: string, systemPrompt: string, mode?: string, history?: Array<{role: string, content: string}>): Promise<string> {
+  // Build messages array with history if available
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...(history || []).map(h => ({ role: h.role, content: h.content })),
+    { role: 'user', content: message },
+  ];
+
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -469,10 +476,7 @@ async function callGroq(message: string, context: string, apiKey: string, system
     },
     body: JSON.stringify({
       model: 'llama-3.1-8b-instant',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message },
-      ],
+      messages,
       max_tokens: mode === 'resources' ? 2000 : 1500,
       temperature: mode === 'scenario_game' ? 0.7 : 0.3,
     }),
