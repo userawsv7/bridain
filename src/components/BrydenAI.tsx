@@ -137,8 +137,17 @@ export function BrydenAI() {
     if (!isApiKeyQuery) {
       response = 'I only help with free API keys. Ask me about getting free API keys for any purpose or service!';
     } else {
-      // Generic free API key guidance for any service
-      response = `For free API keys, check these approaches:\n• Look for "Free tier" or "Developer" plans on the service website\n• Check if they offer signup credits (usually $5-$25)\n• Search "[service name] free API key" for specific instructions\n• Look for open-source alternatives with self-hosted options\n• Check GitHub for community-provided free tier lists`;
+      // Check if user mentions any provider from the page
+      const providerMatch = providers.find(p =>
+        userMessage.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
+      );
+
+      if (providerMatch) {
+        response = `**${providerMatch.name}** - Here's how to get your free API key:\n\n📎 **Direct Link:** ${providerMatch.url}\n\n📋 **Steps:**\n${providerMatch.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}\n\n💰 **Free Limit:** ${providerMatch.freeLimit}\n\nClick the link above to get started!`;
+      } else {
+        // Generic free API key guidance for any service
+        response = `For free API keys, check these approaches:\n• Look for "Free tier" or "Developer" plans on the service website\n• Check if they offer signup credits (usually $5-$25)\n• Search "[service name] free API key" for specific instructions\n• Look for open-source alternatives with self-hosted options\n• Check GitHub for community-provided free tier lists`;
+      }
     }
 
     setTimeout(() => {

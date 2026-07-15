@@ -113,7 +113,30 @@ export function Resources() {
     let response = '';
     const query = userMessage.toLowerCase();
 
-    if (chatMode === 'interview') {
+    // First, try to find matching skills/resources from the page data
+    const skillMatch = skills.find(skill => query.includes(skill.toLowerCase()));
+    const filteredMatches = result.filter(r =>
+      r.skills.some(skill => query.includes(skill.toLowerCase())) ||
+      r.name.toLowerCase().includes(query) ||
+      r.description.toLowerCase().includes(query)
+    );
+
+    if (skillMatch || filteredMatches.length > 0) {
+      if (filteredMatches.length > 0) {
+        const match = filteredMatches[0];
+        response = `Found resource: **${match.name}**\n\n📋 **Description:** ${match.description}\n\n🎯 **Skills:** ${match.skills.join(', ')}\n\n💰 **Pricing:** ${match.pricing}\n\n📚 **Level:** ${match.level}\n\n🔗 **Source:** ${match.source}\n\n📎 Visit: ${match.url}`;
+        if (filteredMatches.length > 1) {
+          response += `\n\n📌 Also found ${filteredMatches.length - 1} more related resources. Try different keywords for more options.`;
+        }
+      } else if (skillMatch) {
+        const skillResources = result.filter(r => r.skills.some(s => s.toLowerCase().includes(skillMatch.toLowerCase())));
+        response = `**${skillMatch}** - Found ${skillResources.length} resources:\n\n`;
+        skillResources.slice(0, 5).forEach((r, i) => {
+          response += `${i + 1}. **${r.name}** (${r.pricing}, ${r.level})\n   ${r.description.substring(0, 100)}...\n\n`;
+        });
+        if (skillResources.length > 5) response += `...and ${skillResources.length - 5} more. Refine your search for specifics.`;
+      }
+    } else if (chatMode === 'interview') {
       if (query.includes('question')) {
         response = `Common interview questions for ${selectedSkill}:\n• Explain core concepts of ${selectedSkill}\n• Describe a project using ${selectedSkill}\n• How do you handle errors in ${selectedSkill}?`;
       } else {
