@@ -15,9 +15,6 @@ export function Resources() {
   const [selectedSource, setSelectedSource] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
-  const [chatMode, setChatMode] = useState<'browse' | 'interview' | 'docs' | 'dumps' | 'concepts'>('browse');
-  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
-  const [chatInput, setChatInput] = useState('');
 
   const categories = getUniqueCategories();
   const skills = getUniqueSkills();

@@ -116,7 +116,7 @@ interface ChatMessage {
 
 export function BrydenAI() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', content: 'Hi! I can help you get free API keys from any of these providers. Which one are you interested in?' }
+    { role: 'assistant', content: '🔍 **Find Assistant** - Type any skill, provider, or topic. I\'ll find and link you to the exact section or page.' }
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [showChat, setShowChat] = useState(false);
@@ -129,75 +129,66 @@ export function BrydenAI() {
     setChatMessages(prev => [...prev, { role: 'user', content: inputMessage }]);
     setInputMessage('');
 
-    // Detect skill/provider keywords and provide page links
-    const skillKeywords = {
-      'kubernetes': { page: '/troubleshooter', label: 'Production Troubleshooter' },
-      'docker': { page: '/troubleshooter', label: 'Production Troubleshooter' },
-      'terraform': { page: '/troubleshooter', label: 'Production Troubleshooter' },
-      'aws': { page: '/troubleshooter', label: 'Production Troubleshooter' },
-      'python': { page: '/resources', label: 'Resources' },
-      'react': { page: '/resources', label: 'Resources' },
-      'javascript': { page: '/resources', label: 'Resources' },
-      'devops': { page: '/resources', label: 'Resources' },
-      'mlops': { page: '/resources', label: 'Resources' },
-      'interview': { page: '/interview', label: 'Interview Prep' },
-      'scenario': { page: '/scenarios', label: 'Scenarios' },
+    // Comprehensive keyword mapping for navigation
+    const findMap: Record<string, {type: 'page' | 'section' | 'data', target: string, label: string, desc?: string}> = {
+      // Pages
+      'troubleshoot': {type: 'page', target: '/troubleshooter', label: 'Production Troubleshooter', desc: 'Resolve any tech issue'},
+      'kubernetes': {type: 'page', target: '/troubleshooter', label: 'Production Troubleshooter', desc: 'K8s troubleshooting'},
+      'docker': {type: 'page', target: '/troubleshooter', label: 'Production Troubleshooter', desc: 'Container issues'},
+      'terraform': {type: 'page', target: '/troubleshooter', label: 'Production Troubleshooter', desc: 'IaC problems'},
+      'aws': {type: 'page', target: '/troubleshooter', label: 'Production Troubleshooter', desc: 'Cloud debugging'},
+      'resources': {type: 'page', target: '/resources', label: 'Resources', desc: 'Learning materials'},
+      'python': {type: 'page', target: '/resources', label: 'Resources', desc: 'Python learning'},
+      'react': {type: 'page', target: '/resources', label: 'Resources', desc: 'React learning'},
+      'javascript': {type: 'page', target: '/resources', label: 'Resources', desc: 'JS learning'},
+      'devops': {type: 'page', target: '/resources', label: 'Resources', desc: 'DevOps resources'},
+      'mlops': {type: 'page', target: '/resources', label: 'Resources', desc: 'MLOps materials'},
+      'interview': {type: 'page', target: '/interview', label: 'Interview Prep', desc: 'Practice interviews'},
+      'scenario': {type: 'page', target: '/scenarios', label: 'Scenarios', desc: 'Production scenarios'},
+      // API Providers (this page sections)
+      'anthropic': {type: 'section', target: '#anthropic', label: 'Anthropic Claude', desc: 'Free tier: $5 credits'},
+      'claude': {type: 'section', target: '#anthropic', label: 'Anthropic Claude', desc: 'Free tier: $5 credits'},
+      'openai': {type: 'section', target: '#openai', label: 'OpenAI GPT', desc: 'Free tier: $5 credits'},
+      'gpt': {type: 'section', target: '#openai', label: 'OpenAI GPT', desc: 'Free tier: $5 credits'},
+      'google': {type: 'section', target: '#google', label: 'Google Gemini', desc: 'Free: 60 req/min'},
+      'gemini': {type: 'section', target: '#google', label: 'Google Gemini', desc: 'Free: 60 req/min'},
+      'cohere': {type: 'section', target: '#cohere', label: 'Cohere', desc: 'Free: 1000 calls/mo'},
+      'hugging': {type: 'section', target: '#hugging-face', label: 'Hugging Face', desc: 'Free: 30k chars/mo'},
+      'mistral': {type: 'section', target: '#mistral', label: 'Mistral AI', desc: 'Free: €1 credits'},
+      'together': {type: 'section', target: '#together', label: 'Together AI', desc: 'Free: $1/mo'},
+      'replicate': {type: 'section', target: '#replicate', label: 'Replicate', desc: 'Free: $10 compute'},
     };
 
-    const providerKeywords = {
-      'anthropic': { page: '#anthropic', label: 'Anthropic Claude section' },
-      'claude': { page: '#anthropic', label: 'Anthropic Claude section' },
-      'openai': { page: '#openai', label: 'OpenAI GPT section' },
-      'gpt': { page: '#openai', label: 'OpenAI GPT section' },
-      'google': { page: '#google', label: 'Google Gemini section' },
-      'gemini': { page: '#google', label: 'Google Gemini section' },
-      'cohere': { page: '#cohere', label: 'Cohere section' },
-      'huggingface': { page: '#hugging-face', label: 'Hugging Face section' },
-      'mistral': { page: '#mistral', label: 'Mistral AI section' },
-      'together': { page: '#together', label: 'Together AI section' },
-      'replicate': { page: '#replicate', label: 'Replicate section' },
-    };
-
-    // Find matching keywords
-    const matchedSkills = Object.entries(skillKeywords).filter(([kw]) => userMessage.includes(kw));
-    const matchedProviders = Object.entries(providerKeywords).filter(([kw]) => userMessage.includes(kw));
+    // Find all matches
+    const matches = Object.entries(findMap).filter(([kw]) => userMessage.includes(kw));
 
     let response = '';
 
-    if (matchedSkills.length > 0) {
-      const links = matchedSkills.map(([, info]) => `[${info.label}](${info.page})`).join(', ');
-      response = `Based on your question about ${matchedSkills.map(([kw]) => kw).join('/')}, check out: ${links}\n\n`;
-    }
-
-    if (matchedProviders.length > 0) {
-      const providerLinks = matchedProviders.map(([, info]) => info.label).join(', ');
-      if (response) response += '\n';
-      response += `For ${matchedProviders.map(([kw]) => kw).join('/')}, see the ${providerLinks} below on this page.`;
-    }
-
-    // Original API key logic
-    const apiKeyTerms = ['api', 'key', 'free', 'credit', 'token', 'sign', 'register', 'account', 'limit', 'price', 'cost', 'tier', 'quota', 'rate'];
-    const isApiKeyQuery = apiKeyTerms.some(term => userMessage.includes(term));
-
-    if (!isApiKeyQuery && !matchedSkills.length && !matchedProviders.length) {
-      response = response || 'I help with free API keys and can guide you to relevant pages. Ask about providers, skills, or free API access!';
-    } else if (isApiKeyQuery) {
+    if (matches.length > 0) {
+      matches.forEach(([, info]) => {
+        if (info.type === 'page') {
+          response += `📍 **${info.label}** → [Click to open ${info.target}](${info.target})\n   ${info.desc}\n\n`;
+        } else {
+          response += `📍 **${info.label}** → Scroll to section below\n   ${info.desc}\n\n`;
+        }
+      });
+    } else {
+      // Try to match provider data
       const providerMatch = providers.find(p =>
-        userMessage.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
+        userMessage.includes(p.name.toLowerCase().split(' ')[0]) ||
+        p.name.toLowerCase().includes(userMessage.split(' ')[0])
       );
 
       if (providerMatch) {
-        const linkInfo = response ? '\n\n' : '';
-        response += `${linkInfo}**${providerMatch.name}** - Here's how to get your free API key:\n\n📎 **Direct Link:** ${providerMatch.url}\n\n📋 **Steps:**\n${providerMatch.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}\n\n💰 **Free Limit:** ${providerMatch.freeLimit}\n\nClick the link above to get started!`;
-      } else if (!matchedProviders.length) {
-        response += response ? '\n\n' : '';
-        response += `For free API keys, check these approaches:\n• Look for "Free tier" or "Developer" plans on the service website\n• Check if they offer signup credits (usually $5-$25)\n• Search "[service name] free API key" for specific instructions\n• Look for open-source alternatives with self-hosted options\n• Check GitHub for community-provided free tier lists`;
+        response = `**${providerMatch.name}**\n\n📎 [Get API Key →](${providerMatch.url})\n\n📋 Steps:\n${providerMatch.steps.map((s, i) => `${i+1}. ${s}`).join('\n')}\n\n💰 ${providerMatch.freeLimit}`;
+      } else {
+        response = `🔍 No matches for "${inputMessage}". Try: kubernetes, docker, python, anthropic, openai, google, etc.`;
       }
     }
 
     setTimeout(() => {
-      setChatMessages(prev => [...prev, { role: 'assistant', content: response }]);
-    }, 500);
+      setChatMessages(prev => [...prev, { role: 'assistant', content: response.trim() }]);
+    }, 300);
   };
 
   return (
