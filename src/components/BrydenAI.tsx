@@ -232,6 +232,319 @@ export function BrydenAI() {
           <li>• Store keys in environment variables, never commit to git</li>
         </ul>
       </div>
+
+      {/* Comprehensive API Directory */}
+      <div className="mt-8 p-6 bg-gray-900 border border-gray-800 rounded-2xl">
+        <h2 className="text-2xl font-bold mb-6">Comprehensive API Directory</h2>
+        <p className="text-gray-400 mb-6">Extensive collection of free and freemium APIs across all categories</p>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            🤖 AI & Machine Learning APIs
+          </h3>
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            {[
+              ['Google AI Studio', 'https://aistudio.google.com'],
+              ['OpenRouter', 'https://openrouter.ai'],
+              ['GroqCloud', 'https://console.groq.com'],
+              ['Hugging Face', 'https://huggingface.co'],
+              ['Cerebras Cloud', 'https://cloud.cerebras.ai'],
+              ['Together AI', 'https://www.together.ai'],
+              ['Fireworks AI', 'https://fireworks.ai'],
+              ['Mistral AI', 'https://console.mistral.ai'],
+              ['Cohere', 'https://dashboard.cohere.com'],
+              ['Cloudflare Workers AI', 'https://developers.cloudflare.com/workers-ai/']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🌤️ Weather APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['OpenWeatherMap', 'https://openweathermap.org/api'],
+              ['WeatherAPI', 'https://www.weatherapi.com'],
+              ['Tomorrow.io', 'https://www.tomorrow.io'],
+              ['Open-Meteo', 'https://open-meteo.com']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🗺️ Maps & Geolocation APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['Mapbox', 'https://www.mapbox.com'],
+              ['Geoapify', 'https://www.geoapify.com'],
+              ['LocationIQ', 'https://locationiq.com'],
+              ['Nominatim (OpenStreetMap)', 'https://nominatim.openstreetmap.org']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">💰 Finance APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['Alpha Vantage', 'https://www.alphavantage.co'],
+              ['Finnhub', 'https://finnhub.io'],
+              ['Polygon.io', 'https://polygon.io'],
+              ['Twelve Data', 'https://twelvedata.com']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🪙 Cryptocurrency APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['CoinGecko', 'https://www.coingecko.com/en/api'],
+              ['CoinMarketCap', 'https://coinmarketcap.com/api'],
+              ['CoinCap', 'https://coincap.io']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">📧 Email APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['Resend', 'https://resend.com'],
+              ['Mailgun', 'https://www.mailgun.com'],
+              ['Brevo', 'https://www.brevo.com'],
+              ['SendGrid', 'https://sendgrid.com']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">📱 SMS APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['Twilio', 'https://www.twilio.com'],
+              ['Vonage', 'https://developer.vonage.com'],
+              ['MessageBird', 'https://www.messagebird.com']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">📰 News APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['NewsAPI', 'https://newsapi.org'],
+              ['GNews', 'https://gnews.io'],
+              ['NYTimes', 'https://developer.nytimes.com'],
+              ['The Guardian', 'https://open-platform.theguardian.com']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">📄 OCR & Document APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['OCR.space', 'https://ocr.space'],
+              ['Mindee', 'https://www.mindee.com'],
+              ['Veryfi', 'https://www.veryfi.com']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">📋 PDF APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['PDF.co', 'https://pdf.co'],
+              ['PDFShift', 'https://pdfshift.io'],
+              ['PDFMonkey', 'https://pdfmonkey.io']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🌐 Translation APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['DeepL', 'https://www.deepl.com/pro-api'],
+              ['LibreTranslate', 'https://libretranslate.com'],
+              ['MyMemory', 'https://mymemory.translated.net/doc/spec.php']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🎨 Image Generation APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['Pollinations', 'https://pollinations.ai'],
+              ['Stability AI', 'https://stability.ai'],
+              ['Replicate', 'https://replicate.com'],
+              ['Hugging Face', 'https://huggingface.co']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🎤 Speech & Audio APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['ElevenLabs', 'https://elevenlabs.io'],
+              ['Deepgram', 'https://deepgram.com'],
+              ['AssemblyAI', 'https://assemblyai.com'],
+              ['Speechmatics', 'https://speechmatics.com']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🔍 Search APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['Serper', 'https://serper.dev'],
+              ['SerpApi', 'https://serpapi.com'],
+              ['Brave Search', 'https://brave.com/search/api']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🔧 Git & DevOps APIs</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['GitHub', 'https://github.com'],
+              ['GitLab', 'https://gitlab.com'],
+              ['CircleCI', 'https://circleci.com'],
+              ['Jenkins', 'https://www.jenkins.io']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">☸️ Kubernetes & Orchestration</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['Kubernetes', 'https://kubernetes.io'],
+              ['Helm', 'https://helm.sh'],
+              ['Argo CD', 'https://argo-cd.readthedocs.io'],
+              ['Flux CD', 'https://fluxcd.io']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-4">🎲 Public Data & Testing APIs (No Keys Required)</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['Random User Generator', 'https://randomuser.me'],
+              ['REST Countries', 'https://restcountries.com'],
+              ['Dog API', 'https://dog.ceo/dog-api'],
+              ['Cat Facts', 'https://catfact.ninja'],
+              ['PokéAPI', 'https://pokeapi.co'],
+              ['JSONPlaceholder', 'https://jsonplaceholder.typicode.com'],
+              ['DummyJSON', 'https://dummyjson.com'],
+              ['FakerAPI', 'https://fakerapi.it']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold mb-4">📚 API Directories & Marketplaces</h3>
+          <div className="grid md:grid-cols-2 gap-2 mb-4">
+            {[
+              ['APIsList', 'https://apislist.com'],
+              ['PublicAPIs.dev', 'https://publicapis.dev'],
+              ['PublicAPIs.io', 'https://publicapis.io'],
+              ['RapidAPI', 'https://rapidapi.com'],
+              ['API Layer', 'https://apilayer.com/marketplace'],
+              ['FreePublicAPIs', 'https://freepublicapis.com'],
+              ['FreeAPIs.io', 'https://freeapis.io']
+            ].map(([name, url], i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-500 text-sm">
+                {name} → {url}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 bg-gray-800 rounded-lg">
+          <h4 className="font-semibold mb-2 text-green-400">API Key Types Explained:</h4>
+          <ul className="text-gray-400 text-sm space-y-1">
+            <li>✅ <strong>Permanent free API key</strong> - Ongoing free quota (Groq, Google AI Studio, OpenRouter, Hugging Face, OpenWeatherMap, CoinGecko)</li>
+            <li>🎁 <strong>Free trial credits</strong> - Credits that expire (Together AI, Fireworks AI, Mistral AI, Stability AI, Twilio)</li>
+            <li>🆓 <strong>No API key required</strong> - Fair-use limits (Open-Meteo, REST Countries, Dog API, PokeAPI, JSONPlaceholder)</li>
+            <li>💰 <strong>Paid only</strong> - Limited free tier (Some Mapbox, Polygon.io, SendGrid features)</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
