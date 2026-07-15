@@ -129,24 +129,69 @@ export function BrydenAI() {
     setChatMessages(prev => [...prev, { role: 'user', content: inputMessage }]);
     setInputMessage('');
 
-    // Only respond to free API key related queries for any purpose
+    // Detect skill/provider keywords and provide page links
+    const skillKeywords = {
+      'kubernetes': { page: '/troubleshooter', label: 'Production Troubleshooter' },
+      'docker': { page: '/troubleshooter', label: 'Production Troubleshooter' },
+      'terraform': { page: '/troubleshooter', label: 'Production Troubleshooter' },
+      'aws': { page: '/troubleshooter', label: 'Production Troubleshooter' },
+      'python': { page: '/resources', label: 'Resources' },
+      'react': { page: '/resources', label: 'Resources' },
+      'javascript': { page: '/resources', label: 'Resources' },
+      'devops': { page: '/resources', label: 'Resources' },
+      'mlops': { page: '/resources', label: 'Resources' },
+      'interview': { page: '/interview', label: 'Interview Prep' },
+      'scenario': { page: '/scenarios', label: 'Scenarios' },
+    };
+
+    const providerKeywords = {
+      'anthropic': { page: '#anthropic', label: 'Anthropic Claude section' },
+      'claude': { page: '#anthropic', label: 'Anthropic Claude section' },
+      'openai': { page: '#openai', label: 'OpenAI GPT section' },
+      'gpt': { page: '#openai', label: 'OpenAI GPT section' },
+      'google': { page: '#google', label: 'Google Gemini section' },
+      'gemini': { page: '#google', label: 'Google Gemini section' },
+      'cohere': { page: '#cohere', label: 'Cohere section' },
+      'huggingface': { page: '#hugging-face', label: 'Hugging Face section' },
+      'mistral': { page: '#mistral', label: 'Mistral AI section' },
+      'together': { page: '#together', label: 'Together AI section' },
+      'replicate': { page: '#replicate', label: 'Replicate section' },
+    };
+
+    // Find matching keywords
+    const matchedSkills = Object.entries(skillKeywords).filter(([kw]) => userMessage.includes(kw));
+    const matchedProviders = Object.entries(providerKeywords).filter(([kw]) => userMessage.includes(kw));
+
+    let response = '';
+
+    if (matchedSkills.length > 0) {
+      const links = matchedSkills.map(([, info]) => `[${info.label}](${info.page})`).join(', ');
+      response = `Based on your question about ${matchedSkills.map(([kw]) => kw).join('/')}, check out: ${links}\n\n`;
+    }
+
+    if (matchedProviders.length > 0) {
+      const providerLinks = matchedProviders.map(([, info]) => info.label).join(', ');
+      if (response) response += '\n';
+      response += `For ${matchedProviders.map(([kw]) => kw).join('/')}, see the ${providerLinks} below on this page.`;
+    }
+
+    // Original API key logic
     const apiKeyTerms = ['api', 'key', 'free', 'credit', 'token', 'sign', 'register', 'account', 'limit', 'price', 'cost', 'tier', 'quota', 'rate'];
     const isApiKeyQuery = apiKeyTerms.some(term => userMessage.includes(term));
 
-    let response = '';
-    if (!isApiKeyQuery) {
-      response = 'I only help with free API keys. Ask me about getting free API keys for any purpose or service!';
-    } else {
-      // Check if user mentions any provider from the page
+    if (!isApiKeyQuery && !matchedSkills.length && !matchedProviders.length) {
+      response = response || 'I help with free API keys and can guide you to relevant pages. Ask about providers, skills, or free API access!';
+    } else if (isApiKeyQuery) {
       const providerMatch = providers.find(p =>
         userMessage.toLowerCase().includes(p.name.toLowerCase().split(' ')[0])
       );
 
       if (providerMatch) {
-        response = `**${providerMatch.name}** - Here's how to get your free API key:\n\n📎 **Direct Link:** ${providerMatch.url}\n\n📋 **Steps:**\n${providerMatch.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}\n\n💰 **Free Limit:** ${providerMatch.freeLimit}\n\nClick the link above to get started!`;
-      } else {
-        // Generic free API key guidance for any service
-        response = `For free API keys, check these approaches:\n• Look for "Free tier" or "Developer" plans on the service website\n• Check if they offer signup credits (usually $5-$25)\n• Search "[service name] free API key" for specific instructions\n• Look for open-source alternatives with self-hosted options\n• Check GitHub for community-provided free tier lists`;
+        const linkInfo = response ? '\n\n' : '';
+        response += `${linkInfo}**${providerMatch.name}** - Here's how to get your free API key:\n\n📎 **Direct Link:** ${providerMatch.url}\n\n📋 **Steps:**\n${providerMatch.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}\n\n💰 **Free Limit:** ${providerMatch.freeLimit}\n\nClick the link above to get started!`;
+      } else if (!matchedProviders.length) {
+        response += response ? '\n\n' : '';
+        response += `For free API keys, check these approaches:\n• Look for "Free tier" or "Developer" plans on the service website\n• Check if they offer signup credits (usually $5-$25)\n• Search "[service name] free API key" for specific instructions\n• Look for open-source alternatives with self-hosted options\n• Check GitHub for community-provided free tier lists`;
       }
     }
 
