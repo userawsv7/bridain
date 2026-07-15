@@ -115,7 +115,7 @@ export function Resources() {
 
     // First, try to find matching skills/resources from the page data
     const skillMatch = skills.find(skill => query.includes(skill.toLowerCase()));
-    const filteredMatches = result.filter(r =>
+    const filteredMatches = allResources.filter(r =>
       r.skills.some(skill => query.includes(skill.toLowerCase())) ||
       r.name.toLowerCase().includes(query) ||
       r.description.toLowerCase().includes(query)
@@ -129,7 +129,7 @@ export function Resources() {
           response += `\n\n📌 Also found ${filteredMatches.length - 1} more related resources. Try different keywords for more options.`;
         }
       } else if (skillMatch) {
-        const skillResources = result.filter(r => r.skills.some(s => s.toLowerCase().includes(skillMatch.toLowerCase())));
+        const skillResources = allResources.filter(r => r.skills.some(s => s.toLowerCase().includes(skillMatch.toLowerCase())));
         response = `**${skillMatch}** - Found ${skillResources.length} resources:\n\n`;
         skillResources.slice(0, 5).forEach((r, i) => {
           response += `${i + 1}. **${r.name}** (${r.pricing}, ${r.level})\n   ${r.description.substring(0, 100)}...\n\n`;
