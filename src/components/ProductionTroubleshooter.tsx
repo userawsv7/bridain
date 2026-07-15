@@ -88,7 +88,6 @@ export function ProductionTroubleshooter() {
 
     const userMessage = input.trim();
     const category = detectSkillFromInput(userMessage);
-    setDetectedCategory(category);
 
     const userMsg: Message = {
       id: Date.now(),
